@@ -19,6 +19,7 @@ import 'package:thermal_printer/thermal_printer.dart';
 import '../../blocs/Bloc Event/kot_event.dart';
 import '../../blocs/Bloc Event/kot_event.dart' as kot_evt;
 import '../../blocs/Bloc Event/order_event.dart';
+import '../../blocs/Bloc Logic/auth_bloc.dart';
 import '../../blocs/Bloc Logic/checkin_bloc.dart';
 import '../../blocs/Bloc Logic/discount_bloc.dart';
 import '../../blocs/Bloc Logic/kot_bloc.dart';
@@ -1835,6 +1836,7 @@ class _OrderPanelState extends State<OrderPanel> {
   // }
   @override
   Widget build(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
     // 1️⃣ Trigger KOT loading for existing order
     final orderBloc = context.read<OrderBloc>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1867,8 +1869,13 @@ class _OrderPanelState extends State<OrderPanel> {
     return BlocListener<KotBloc, KotState>(
       listener: (context, kotState) {
         if (kotState is KotLoaded) {
-          debugPrint("KotLoaded: ${kotState.kots.length}");
-          context.read<OrderBloc>().add(RefreshKotList(kotState.kots));
+          final seen = <String>{};
+          final dedupedKots = <KotModel>[
+            for (final k in kotState.kots)
+              if (seen.add(k.kotNumber ?? k.kotId.toString())) k,
+          ];
+          debugPrint("KotLoaded: ${kotState.kots.length} (deduped: ${dedupedKots.length})");
+          context.read<OrderBloc>().add(RefreshKotList(dedupedKots));
         }
       },
       child: BlocBuilder<OrderBloc, OrderState>(
@@ -2543,6 +2550,7 @@ class _OrderPanelState extends State<OrderPanel> {
                           ],
                           child: ViewAllKOTDropdown(
                             kots: state.kotList,
+                            pin: widget.pin,
                             parentOrderId:
                                 state.orderId > 0
                                     ? state.orderId
@@ -2891,225 +2899,311 @@ class _OrderPanelState extends State<OrderPanel> {
                                     ? const Color(0xFFF97316)
                                     : Colors.grey,
                                 onPressed:
-                                    canPrintKot
-                                        ? () async {
-                                          final orderBloc =
-                                              context.read<OrderBloc>();
-                                          final kotBloc =
-                                              context.read<KotBloc>();
-                                          final orderRepo = OrderRepository(
-                                            baseUrl: AppConstants.baseDomain,
-                                          );
-                                          if (state.orderItems.isEmpty) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                duration: Duration(seconds: 1),
-                                                content: Text(
-                                                  'No items to create KOT!',
+                                canPrintKot
+                                    ? () async {
+                                  final orderBloc =
+                                  context.read<OrderBloc>();
+                                  final kotBloc =
+                                  context.read<KotBloc>();
+                                  final orderRepo = OrderRepository(
+                                    baseUrl: AppConstants.baseDomain,
+                                  );
+                                  if (state.orderItems.isEmpty) {
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        duration: Duration(seconds: 1),
+                                        content: Text(
+                                          'No items to create KOT!',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder:
+                                        (_) => const Center(
+                                      child:
+                                      CircularProgressIndicator(),
+                                    ),
+                                  );
+
+                                  try {
+                                    final captainId = int.tryParse(
+                                      this.widget.userId,
+                                    );
+                                    if (captainId == null ||
+                                        widget.token.isEmpty) {
+                                      throw Exception(
+                                        'Invalid user session. Please check in again.',
+                                      );
+                                    }
+
+                                    final KotModel? kot =
+                                    await orderRepo.createKOT(
+                                      parentOrderId: state.orderId,
+                                      kotId: "",
+                                      items: state.orderItems,
+                                      token: widget.token,
+                                      restaurantId:
+                                      orderBloc
+                                          .state
+                                          .restaurantId
+                                          .toString(),
+                                      zoneId:
+                                      orderBloc.state.zoneId,
+                                      captainId: captainId,
+                                    );
+
+                                    Navigator.of(context).pop();
+
+                                    final permissions =
+                                    await SessionManager.loadPermissions();
+                                    final captainName =
+                                        permissions?.displayName ?? '';
+                                    if (kot != null) {
+                                      debugPrint(
+                                        '========== KOT CREATED ==========',
+                                      );
+
+                                      debugPrint(
+                                        'KOT Number: ${kot.kotNumber}',
+                                      );
+
+                                      debugPrint(
+                                        'Original KOT Status: ${kot.status}',
+                                      );
+
+                                      debugPrint(
+                                        'Is Takeaway: ${widget.isTakeAway}',
+                                      );
+
+                                      // ==========================================================
+                                      // KDS MQTT KOT
+                                      // ==========================================================
+
+                                      final mqttKot = kot.copyWith(
+                                        status: kot.status.toLowerCase() == 'created'
+                                            ? 'pending'
+                                            : kot.status,
+                                      );
+
+                                      debugPrint(
+                                        '========== MQTT KOT ==========',
+                                      );
+
+                                      debugPrint(
+                                        'Restaurant ID: '
+                                            '${orderBloc.state.restaurantId}',
+                                      );
+
+                                      debugPrint(
+                                        'Parent Order ID: ${state.orderId}',
+                                      );
+
+                                      debugPrint(
+                                        'Zone ID: ${orderBloc.state.zoneId}',
+                                      );
+
+                                      debugPrint(
+                                        'Zone Name: ${orderBloc.state.zoneName}',
+                                      );
+
+                                      debugPrint(
+                                        'Order Type: '
+                                            '${widget.isTakeAway ? "takeaway" : "dine_in"}',
+                                      );
+
+                                      debugPrint(
+                                        'KOT Number: ${mqttKot.kotNumber}',
+                                      );
+
+                                      debugPrint(
+                                        'KOT Status: ${mqttKot.status}',
+                                      );
+
+                                      debugPrint(
+                                        'KOT JSON: ${mqttKot.toJson()}',
+                                      );
+
+                                      // ==========================================================
+                                      // PRINT KOT
+                                      // ==========================================================
+
+                                      await printKot(
+                                        kotNo: kot.kotNumber ?? '',
+                                        orderId: kot.parentOrderId.toString(),
+                                        tableName: widget.isTakeAway
+                                            ? ''
+                                            : orderBloc.state.tableName,
+                                        captainName: captainName,
+                                        items: state.orderItems.map(
+                                              (e) {
+                                            return {
+                                              "name": e.name,
+                                              "qty": e.quantity,
+                                              "modifiers": e.modifiers.toList(),
+                                              "addons": e.addOns,
+                                              "note": e.note,
+                                            };
+                                          },
+                                        ).toList(),
+                                        kot: kot,
+                                      );
+
+                                      // ==========================================================
+                                      // SEND KOT TO KDS THROUGH MQTT
+                                      // ==========================================================
+
+                                      try {
+                                        debugPrint(
+                                            '========== SENDING KOT TO KDS =========='
+                                        );
+
+                                        await KdsMqttPublisher.notifyKotCreated(
+                                          restaurantId:
+                                          orderBloc.state.restaurantId.toString(),
+
+                                          parentOrderId:
+                                          state.orderId,
+
+                                          zoneId:
+                                          orderBloc.state.zoneId,
+
+                                          zoneName:
+                                          orderBloc.state.zoneName,
+
+                                          orderType:
+                                          widget.isTakeAway
+                                              ? 'takeaway'
+                                              : 'dine_in',
+
+                                          kot:
+                                          mqttKot,
+
+                                          tableName:
+                                          widget.isTakeAway
+                                              ? ''
+                                              : orderBloc.state.tableName,
+                                        );
+
+                                        debugPrint(
+                                            '========== KOT SENT TO KDS =========='
+                                        );
+                                      } catch (e, stack) {
+                                        debugPrint(
+                                          '❌ Failed to send KOT to KDS: $e',
+                                        );
+
+                                        debugPrint(
+                                          'Stack: $stack',
+                                        );
+                                      }
+
+                                      // ==========================================================
+                                      // POS LOCAL KOT STATUS
+                                      // ==========================================================
+
+                                      final updatedKot = kot.copyWith(
+                                        status:
+                                        kot.status.toLowerCase() == 'created'
+                                            ? 'Yet To Prepare'
+                                            : kot.status,
+                                      );
+
+                                      orderBloc.add(
+                                        AddKOT(updatedKot),
+                                      );
+
+                                      orderBloc.add(
+                                        ClearOrder(),
+                                      );
+
+                                      // ==========================================================
+                                      // SUCCESS MESSAGE
+                                      // ==========================================================
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: SizedBox(
+                                            width: 400,
+                                            child: Row(
+                                              mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                              children: [
+                                                const Icon(
+                                                  Icons.check_circle,
+                                                  color: Colors.white,
+                                                  size: 20,
                                                 ),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                            return;
-                                          }
-
-                                          showDialog(
-                                            context: context,
-                                            barrierDismissible: false,
-                                            builder:
-                                                (_) => const Center(
-                                                  child:
-                                                      CircularProgressIndicator(),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'KOT Created: ${kot.kotNumber}',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Colors.white,
+                                                  ),
                                                 ),
-                                          );
-
-                                          try {
-                                            final captainId = int.tryParse(
-                                              this.widget.userId,
-                                            );
-                                            if (captainId == null ||
-                                                widget.token.isEmpty) {
-                                              throw Exception(
-                                                'Invalid user session. Please check in again.',
-                                              );
-                                            }
-
-                                            final KotModel? kot =
-                                                await orderRepo.createKOT(
-                                                  parentOrderId: state.orderId,
-                                                  kotId: "",
-                                                  items: state.orderItems,
-                                                  token: widget.token,
-                                                  restaurantId:
-                                                      orderBloc
-                                                          .state
-                                                          .restaurantId
-                                                          .toString(),
-                                                  zoneId:
-                                                      orderBloc.state.zoneId,
-                                                  captainId: captainId,
-                                                );
-
-                                            Navigator.of(context).pop();
-
-                                            final permissions =
-                                                await SessionManager.loadPermissions();
-                                            final captainName =
-                                                permissions?.displayName ?? '';
-                                            if (kot != null) {
-                                              debugPrint(
-                                                "CreateKOT Status = ${kot.status}",
-                                              );
-                                              await printKot(
-                                                kotNo: kot.kotNumber ?? '',
-                                                orderId:
-                                                    kot.parentOrderId
-                                                        .toString(),
-                                                tableName:
-                                                    orderBloc.state.tableName,
-                                                captainName: captainName,
-                                                items:
-                                                    state.orderItems
-                                                        .map(
-                                                          (e) => {
-                                                            "name": e.name,
-                                                            "qty": e.quantity,
-                                                            "modifiers":
-                                                                e.modifiers
-                                                                    .toList(),
-                                                            "addons": e.addOns,
-                                                          },
-                                                        )
-                                                        .toList(),
-                                                kot: kot,
-                                              );
-                                              await KdsMqttPublisher.notifyKotCreated(
-                                                restaurantId:
-                                                    orderBloc.state.restaurantId
-                                                        .toString(),
-                                                parentOrderId: state.orderId,
-                                                zoneId: orderBloc.state.zoneId,
-                                                zoneName:
-                                                    orderBloc.state.zoneName,
-                                                orderType:
-                                                    widget.isTakeAway
-                                                        ? "Take Away"
-                                                        : "Dine-In",
-                                                kot: kot,
-                                                tableName:
-                                                    orderBloc.state.tableName,
-                                              );
-                                              // // ✅ Convert "created" to "Yet To Prepare" for immediate UI display
-                                              final updatedKot = kot.copyWith(
-                                                status:
-                                                    kot.status.toLowerCase() ==
-                                                            "created"
-                                                        ? "Yet To Prepare"
-                                                        : kot.status,
-                                              );
-
-                                              orderBloc.add(AddKOT(updatedKot));
-                                              kotBloc.add(
-                                                AddKotToList(updatedKot),
-                                              ); // ✅ Use updatedKot here
-
-                                              orderBloc.add(ClearOrder());
-
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: SizedBox(
-                                                    width: 400,
-                                                    child: Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .center,
-                                                      children: [
-                                                        const Icon(
-                                                          Icons.check_circle,
-                                                          color: Colors.white,
-                                                          size: 20,
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 8,
-                                                        ),
-                                                        Text(
-                                                          'KOT Created: ${kot.kotNumber}',
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w500,
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  duration: const Duration(
-                                                    seconds: 1,
-                                                  ),
-                                                  behavior:
-                                                      SnackBarBehavior.floating,
-                                                  margin: EdgeInsets.only(
-                                                    left: 400,
-                                                    right: 400,
-                                                    bottom:
-                                                        MediaQuery.of(
-                                                          context,
-                                                        ).size.height *
-                                                        0.90,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  backgroundColor: Colors.green,
-                                                  elevation: 6,
-                                                ),
-                                              );
-                                            }
-                                          } catch (e) {
-                                            if (Navigator.of(
-                                              context,
-                                              rootNavigator: true,
-                                            ).canPop()) {
-                                              Navigator.of(
-                                                context,
-                                                rootNavigator: true,
-                                              ).pop();
-                                            }
-                                            final message = e
-                                                .toString()
-                                                .replaceFirst(
-                                                  "Exception: ",
-                                                  "",
-                                                );
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              SnackBar(
-                                                content: Text(message),
-                                                backgroundColor: Colors.red,
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                                duration: const Duration(
-                                                  seconds: 1,
-                                                ),
-                                              ),
-                                            );
-                                            AppLogger.error(message);
-                                          }
-                                        }
-                                        : null,
+                                              ],
+                                            ),
+                                          ),
+                                          duration: const Duration(seconds: 1),
+                                          behavior: SnackBarBehavior.floating,
+                                          margin: EdgeInsets.only(
+                                            left: 400,
+                                            right: 400,
+                                            bottom:
+                                            MediaQuery.of(context).size.height *
+                                                0.90,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                            BorderRadius.circular(12),
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          elevation: 6,
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (Navigator.of(
+                                      context,
+                                      rootNavigator: true,
+                                    ).canPop()) {
+                                      Navigator.of(
+                                        context,
+                                        rootNavigator: true,
+                                      ).pop();
+                                    }
+                                    final message = e
+                                        .toString()
+                                        .replaceFirst(
+                                      "Exception: ",
+                                      "",
+                                    );
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(
+                                      SnackBar(
+                                        content: Text(message),
+                                        backgroundColor: Colors.red,
+                                        behavior:
+                                        SnackBarBehavior.floating,
+                                        duration: const Duration(
+                                          seconds: 1,
+                                        ),
+                                      ),
+                                    );
+                                    AppLogger.error(message);
+                                  }
+                                }
+                                    : null,
                               ),
 
                               orderButton(
@@ -3333,136 +3427,157 @@ class _OrderPanelState extends State<OrderPanel> {
 
     return GestureDetector(
       onTap:
-          canCheckout
-              ? () async {
-                final orderRepo = OrderRepository(
-                  baseUrl: AppConstants.baseDomain,
-                );
+      canCheckout
+          ? () async {
+        final orderRepo = OrderRepository(
+          baseUrl: AppConstants.baseDomain,
+        );
 
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder:
-                      (_) => const Center(child: CircularProgressIndicator()),
-                );
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (_) => const Center(child: CircularProgressIndicator()),
+        );
 
-                try {
-                  final captainId = int.tryParse(widget.userId);
+        try {
+          final captainId = int.tryParse(widget.userId);
 
-                  if (captainId == null) {
-                    throw Exception("Invalid user session");
-                  }
+          if (captainId == null) {
+            throw Exception("Invalid user session");
+          }
 
-                  final existingKotId =
-                      state.kotList.isNotEmpty
-                          ? state.kotList.first.kotId
-                          : null;
+          final existingKotId =
+          state.kotList.isNotEmpty
+              ? state.kotList.first.kotId
+              : null;
 
-                  if (existingKotId == null || existingKotId == 0) {
-                    // FIRST TIME -> CREATE KOT
-                    final kot = await orderRepo.createKOT(
-                      parentOrderId: state.orderId,
-                      kotId: "",
-                      items: state.orderItems,
-                      token: widget.token,
-                      restaurantId: state.restaurantId,
-                      zoneId: state.zoneId,
-                      captainId: captainId,
-                    );
+          if (existingKotId == null || existingKotId == 0) {
+            // ==========================================================
+            // FIRST TIME -> CREATE TAKEAWAY KOT
+            // ==========================================================
 
-                    if (kot == null) {
-                      throw Exception("Failed to generate KOT");
-                    }
+            final kot = await orderRepo.createKOT(
+              parentOrderId: state.orderId,
+              kotId: "",
+              items: state.orderItems,
+              token: widget.token,
+              restaurantId: state.restaurantId,
+              zoneId: state.zoneId,
+              captainId: captainId,
+            );
 
-                    debugPrint("KOT Status from API = ${kot.status}");
-                    debugPrint("KOT JSON = ${kot.toJson()}");
+            if (kot == null) {
+              throw Exception("Failed to generate KOT");
+            }
 
-                    orderBloc.add(AddKOT(kot));
-                    orderBloc.add(SetTakeAwayKotId(kot.kotId));
-                  } else {
-                    // SECOND TIME -> UPDATE SAME KOT
-                    await orderRepo.updateTakeAwayKot(
-                      kotId: existingKotId,
-                      parentOrderId: state.orderId,
-                      restaurantId: int.parse(state.restaurantId),
-                      captainId: captainId,
-                      items: state.orderItems,
-                      token: widget.token,
-                    );
-                  }
+            debugPrint("========== TAKEAWAY KOT CREATED ==========");
+            debugPrint("Parent Order ID : ${state.orderId}");
+            debugPrint("KOT ID          : ${kot.kotId}");
+            debugPrint("KOT Number      : ${kot.kotNumber}");
+            debugPrint("KOT Status      : ${kot.status}");
+            debugPrint("KOT JSON        : ${kot.toJson()}");
+            debugPrint("==========================================");
 
-                  Navigator.pop(context);
+            // ==========================================================
+            // UPDATE LOCAL POS ORDER STATE
+            // ==========================================================
 
-                  debugPrint(
-                    "💳 Navigating to PaymentScreen from Take Away - isTakeAway: true",
-                  );
+            orderBloc.add(AddKOT(kot));
+            orderBloc.add(SetTakeAwayKotId(kot.kotId));
 
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => MultiBlocProvider(
-                            providers: [
-                              BlocProvider.value(
-                                value: context.read<OrderBloc>(),
-                              ),
-                              BlocProvider.value(
-                                value: context.read<PaymentBloc>(),
-                              ),
-                              BlocProvider.value(
-                                value: context.read<RemoveDiscountBloc>(),
-                              ),
-                            ],
-                            child: PaymentScreen(
-                              loadedTables: widget.loadedTables,
-                              pin: widget.pin,
-                              token: widget.token,
-                              restaurantId: widget.restaurantId,
-                              restaurantName: widget.restaurantName,
-                              zoneId: widget.zoneId,
-                              isTakeAway: true,
-                            ),
-                          ),
-                    ),
-                  );
-                } catch (e) {
-                  if (Navigator.canPop(context)) {
-                    Navigator.pop(context);
-                  }
+            // ==========================================================
+            // IMPORTANT:
+            // DO NOT SEND MQTT HERE.
+            //
+            // KDS should NOT display takeaway before payment.
+            // MQTT will be sent after payment is completed.
+            // ==========================================================
+          }
+          else {
+            // SECOND TIME -> UPDATE SAME KOT
+            await orderRepo.updateTakeAwayKot(
+              kotId: existingKotId,
+              parentOrderId: state.orderId,
+              restaurantId: int.parse(state.restaurantId),
+              captainId: captainId,
+              items: state.orderItems,
+              token: widget.token,
+            );
+          }
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        e.toString().replaceFirst("Exception: ", ""),
-                      ),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-              : null,
+          Navigator.pop(context);
+
+          debugPrint(
+            "💳 Navigating to PaymentScreen from Take Away - isTakeAway: true",
+          );
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (_) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(
+                    value: context.read<OrderBloc>(),
+                  ),
+                  BlocProvider.value(
+                    value: context.read<PaymentBloc>(),
+                  ),
+                  BlocProvider.value(
+                    value: context.read<RemoveDiscountBloc>(),
+                  ),
+                ],
+                child: PaymentScreen(
+                  loadedTables: widget.loadedTables,
+                  pin: widget.pin,
+                  token: widget.token,
+                  restaurantId: widget.restaurantId,
+                  restaurantName: widget.restaurantName,
+                  zoneId: widget.zoneId,
+                  isTakeAway: true,
+                ),
+              ),
+            ),
+          );
+        } catch (e) {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                e.toString().replaceFirst("Exception: ", ""),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+          : null,
       child: Container(
         width: double.infinity,
         height: 55,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color:
-              canCheckout ? const Color(0xFF086888) : const Color(0xFFDEDEDE),
+          canCheckout ? const Color(0xFF086888) : const Color(0xFFDEDEDE),
           borderRadius: BorderRadius.circular(14),
           border:
-              canCheckout
-                  ? null
-                  : Border.all(color: const Color(0xFFC0C0C0), width: 1),
+          canCheckout
+              ? null
+              : Border.all(color: const Color(0xFFC0C0C0), width: 1),
           boxShadow:
-              canCheckout
-                  ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                  : [],
+          canCheckout
+              ? [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ]
+              : [],
         ),
         child: Text(
           "Check out",

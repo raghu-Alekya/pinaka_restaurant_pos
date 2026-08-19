@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/widgets/pin_confirmation_popup.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/transer_kot.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/void_items.dart';
 import '../../blocs/Bloc Event/kot_event.dart';
@@ -18,6 +19,7 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc State/order_list_state.dart';
 import '../../blocs/Bloc State/order_state.dart';
 import '../../blocs/Bloc State/void_item_state.dart';
+import '../../models/UserPermissions.dart';
 import '../../models/order/KOT_model.dart';
 import '../../models/order/void_kot_items.dart';
 import '../../repositories/auth_repository.dart';
@@ -48,6 +50,7 @@ class ViewAllKOTDropdown extends StatefulWidget {
   // ✅ NEW: notifies the parent whenever this dropdown expands/collapses,
   // so the parent can hide/show its own order list accordingly.
   final ValueChanged<bool>? onToggle;
+  final String pin; // ✅ ADD THIS
 
   const ViewAllKOTDropdown({
     super.key,
@@ -58,6 +61,7 @@ class ViewAllKOTDropdown extends StatefulWidget {
     required this.token,
     required this.kots, // ✅ FIXED
     this.onToggle, // ✅ NEW
+    required this.pin, // ✅ ADD THIS
   });
 
   @override
@@ -68,7 +72,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   bool _expanded = true;
   final Map<String, bool> _kotExpanded = {};
   int _previousOrderItemCount = 0;
-
+  UserPermissions? _permissions;
   // 🔴 FIX: local mirror of the KOT list, kept in sync with the bloc's
   // latest state so cancel/void status updates show up automatically,
   // without waiting for the parent to pass a new `widget.kots`.
@@ -86,6 +90,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
     _kots = widget.kots; // seed with whatever the parent gave us initially
     _fetchKots();
     _loadCurrency();
+    _loadPermissions();
     _startAutoRefresh(); // 🔴 FIX
     // ✅ NEW: report initial expansion state to the parent on first build
     // so the parent's _showKotList stays in sync from the start.
@@ -125,7 +130,15 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       ),
     );
   }
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
 
+    if (savedPermissions != null && mounted) {
+      setState(() {
+        _permissions = savedPermissions;
+      });
+    }
+  }
   @override
   void didUpdateWidget(covariant ViewAllKOTDropdown oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -932,6 +945,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                         /// Void Button
                                                         InkWell(
                                                           onTap: () async {
+                                                            // -----------------------------------------
+                                                            // 1. CHECK KOT ID
+                                                            // -----------------------------------------
                                                             if (kot.kotId ==
                                                                 null) {
                                                               debugPrint(
@@ -940,6 +956,9 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                               return;
                                                             }
 
+                                                            // -----------------------------------------
+                                                            // 2. FETCH KOT LINE ITEMS
+                                                            // -----------------------------------------
                                                             final bloc =
                                                                 context
                                                                     .read<
@@ -976,12 +995,94 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                 .mounted)
                                                               return;
 
+                                                            // -----------------------------------------
+                                                            // 3. HANDLE FETCH ERROR
+                                                            // -----------------------------------------
+                                                            if (state
+                                                                is KotLineItemsError) {
+                                                              ScaffoldMessenger.of(
+                                                                context,
+                                                              ).showSnackBar(
+                                                                SnackBar(
+                                                                  content: Text(
+                                                                    state
+                                                                        .message,
+                                                                  ),
+                                                                  duration:
+                                                                      const Duration(
+                                                                        seconds:
+                                                                            1,
+                                                                      ),
+                                                                  backgroundColor:
+                                                                      Colors
+                                                                          .red,
+                                                                ),
+                                                              );
+
+                                                              return;
+                                                            }
+
+                                                            // -----------------------------------------
+                                                            // 4. KOT ITEMS LOADED
+                                                            // -----------------------------------------
                                                             if (state
                                                                 is KotLineItemsLoaded) {
                                                               final response =
                                                                   state
                                                                       .response;
 
+                                                              // -----------------------------------------
+                                                              // 5. SHOW PIN CONFIRMATION POPUP
+                                                              // -----------------------------------------
+                                                              final bool
+                                                              pinMatched = await PinConfirmationPopup.show(
+                                                                context:
+                                                                    context,
+                                                                expectedPin:
+                                                                    widget.pin,
+
+                                                                // Dynamic text for VOID action
+                                                                title:
+                                                                    'Confirm Void',
+                                                                message:
+                                                                    'Please enter your PIN to void items from this KOT.',
+                                                                cancelText:
+                                                                    'Cancel',
+                                                                proceedText:
+                                                                    'Proceed',
+
+                                                                // Optional callbacks
+                                                                onCancel: () {
+                                                                  debugPrint(
+                                                                    '❌ Void cancelled',
+                                                                  );
+                                                                },
+
+                                                                onProceed: () {
+                                                                  debugPrint(
+                                                                    '✅ PIN verified for void action',
+                                                                  );
+                                                                },
+                                                              );
+
+                                                              if (!context
+                                                                  .mounted)
+                                                                return;
+
+                                                              // -----------------------------------------
+                                                              // 6. CANCEL / PIN FAILED
+                                                              // -----------------------------------------
+                                                              if (!pinMatched) {
+                                                                debugPrint(
+                                                                  '❌ Void cancelled or PIN verification failed',
+                                                                );
+                                                                return;
+                                                              }
+
+                                                              // -----------------------------------------
+                                                              // 7. PIN VERIFIED
+                                                              // OPEN VOID ITEMS DIALOG
+                                                              // -----------------------------------------
                                                               await showDialog(
                                                                 context:
                                                                     context,
@@ -1009,78 +1110,72 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                       items:
                                                                           response
                                                                               .items,
+
                                                                       tableNo:
                                                                           widget
                                                                               .tableNo,
+
                                                                       kotNo:
                                                                           response
                                                                               .kotNumber,
+
                                                                       kotId:
                                                                           response
                                                                               .kotId,
+
                                                                       restaurantId:
                                                                           response
                                                                               .restaurantId,
+
                                                                       zoneId:
                                                                           response
                                                                               .zoneId,
+
                                                                       token:
                                                                           widget
                                                                               .token,
+                                                                      storedPinNumber: widget.pin,
+                                                                      role: _permissions?.role ?? '', // ✅
                                                                       parentOrderId:
                                                                           context
                                                                               .read<
                                                                                 KotBloc
                                                                               >()
                                                                               .currentParentOrderId,
+
                                                                       item: kot,
+
                                                                       onRemark: (
                                                                         value,
                                                                       ) {
                                                                         debugPrint(
-                                                                          value,
+                                                                          "Void remark: $value",
                                                                         );
                                                                       },
                                                                     ),
                                                                   );
                                                                 },
                                                               );
-                                                              // 🔴 FIX: after the void dialog closes (whatever the
-                                                              // outcome), immediately refetch so the status/strike-through
-                                                              // reflects without needing another manual action.
+
+                                                              // -----------------------------------------
+                                                              // 8. REFRESH KOTS AFTER VOID DIALOG CLOSES
+                                                              // -----------------------------------------
                                                               if (context
                                                                   .mounted) {
                                                                 _fetchKots();
                                                               }
-                                                            } else if (state
-                                                                is KotLineItemsError) {
-                                                              ScaffoldMessenger.of(
-                                                                context,
-                                                              ).showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text(
-                                                                    state
-                                                                        .message,
-                                                                  ),
-                                                                  duration:
-                                                                      const Duration(
-                                                                        seconds:
-                                                                            1,
-                                                                      ),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .red,
-                                                                ),
-                                                              );
                                                             }
                                                           },
+
                                                           borderRadius:
                                                               BorderRadius.circular(
                                                                 8,
                                                               ),
+
                                                           child: Container(
                                                             height: 28,
                                                             width: 28,
+
                                                             decoration:
                                                                 BoxDecoration(
                                                                   color:
@@ -1091,6 +1186,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                         8,
                                                                       ),
                                                                 ),
+
                                                             child: Center(
                                                               child: Image.asset(
                                                                 "assets/icon/Void.png",
@@ -1103,290 +1199,289 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                             ),
                                                           ),
                                                         ),
+
                                                         const SizedBox(
                                                           width: 15,
                                                         ),
 
                                                         /// Transfer Button
-                                                        InkWell(
-                                                          onTap: () async {
-                                                            debugPrint(
-                                                              "🔥 STEP 0: Transfer KOT button tapped",
-                                                            );
+                                              InkWell(
+                                              onTap: () async {
+                                            debugPrint("🔥 STEP 0: Transfer KOT button tapped");
 
-                                                            try {
-                                                              final token =
-                                                                  await SessionManager.getToken();
-                                                              if (token ==
-                                                                      null ||
-                                                                  token.isEmpty)
-                                                                return;
+                                            try {
+                                              // -----------------------------------------
+                                              // 1. SHOW PIN CONFIRMATION POPUP
+                                              // -----------------------------------------
+                                              final bool pinMatched = await PinConfirmationPopup.show(
+                                                context: context,
+                                                expectedPin: widget.pin,
 
-                                                              final transferItems =
-                                                                  kot.items.map((
-                                                                    e,
-                                                                  ) {
-                                                                    return TransferKotItem(
-                                                                      name:
-                                                                          e.itemName ??
-                                                                          "",
-                                                                      note:
-                                                                          e.note.isNotEmpty
-                                                                              ? e.note
-                                                                              : (e.modifiers.isNotEmpty
-                                                                                  ? e.modifiers.join(
-                                                                                    ", ",
-                                                                                  )
-                                                                                  : ""),
-                                                                      qty:
-                                                                          e.quantity ??
-                                                                          1,
-                                                                      amount:
-                                                                          e.totalWithAddons,
-                                                                    );
-                                                                  }).toList();
+                                                title: 'Confirm Transfer',
+                                                message: 'Please enter your PIN to transfer this KOT.',
+                                                cancelText: 'Cancel',
+                                                proceedText: 'Proceed',
 
-                                                              final zoneRepository =
-                                                                  ZoneRepository();
-                                                              final zoneResponse =
-                                                                  await zoneRepository
-                                                                      .getAllZones(
-                                                                        token,
-                                                                      );
+                                                // -----------------------------------------
+                                                // CANCEL
+                                                // -----------------------------------------
+                                                onCancel: () {
+                                                  debugPrint("❌ Transfer cancelled");
+                                                },
 
-                                                              final Map<
-                                                                String,
-                                                                String
-                                                              >
-                                                              zoneNames =
-                                                                  extractZoneNames(
-                                                                    zoneResponse,
-                                                                  );
+                                                // -----------------------------------------
+                                                // PROCEED
+                                                // Existing Transfer KOT onTap logic
+                                                // -----------------------------------------
+                                                onProceed: () async {
+                                                  debugPrint("✅ PIN verified - starting Transfer KOT");
 
-                                                              final tableRepository =
-                                                                  TableRepository();
-                                                              final tableResponse =
-                                                                  await tableRepository
-                                                                      .getAllTables(
-                                                                        token,
-                                                                      );
+                                                  try {
+                                                    final token =
+                                                    await SessionManager.getToken();
 
-                                                              final Map<
-                                                                String,
-                                                                List<String>
-                                                              >
-                                                              zoneTables = {};
-                                                              final Map<
-                                                                String,
-                                                                int
-                                                              >
-                                                              tableIds = {};
-                                                              final Map<
-                                                                String,
-                                                                int
-                                                              >
-                                                              zoneIds = {};
-                                                              final Map<
-                                                                String,
-                                                                String
-                                                              >
-                                                              tableStatus = {};
+                                                    if (token == null || token.isEmpty) {
+                                                      debugPrint("❌ Token is missing");
+                                                      return;
+                                                    }
 
-                                                              for (final table
-                                                                  in tableResponse) {
-                                                                final zoneId =
-                                                                    table['zone_id'];
-                                                                final tableName =
-                                                                    table['table_name'];
-                                                                final tableId =
-                                                                    table['table_id'];
-                                                                final status =
-                                                                    table['status'];
+                                                    final transferItems =
+                                                    kot.items.map((e) {
+                                                      return TransferKotItem(
+                                                        name: e.itemName ?? "",
 
-                                                                if (zoneId !=
-                                                                        null &&
-                                                                    tableName !=
-                                                                        null) {
-                                                                  zoneTables
-                                                                      .putIfAbsent(
-                                                                        zoneId
-                                                                            .toString(),
-                                                                        () =>
-                                                                            [],
-                                                                      );
-                                                                  zoneTables[zoneId
-                                                                          .toString()]!
-                                                                      .add(
-                                                                        tableName,
-                                                                      );
-                                                                }
+                                                        note: e.note.isNotEmpty
+                                                            ? e.note
+                                                            : (e.modifiers.isNotEmpty
+                                                            ? e.modifiers.join(", ")
+                                                            : ""),
 
-                                                                if (tableName !=
-                                                                        null &&
-                                                                    tableId !=
-                                                                        null) {
-                                                                  tableIds[tableName] =
-                                                                      tableId;
-                                                                }
+                                                        qty: e.quantity ?? 1,
 
-                                                                if (zoneId !=
-                                                                    null) {
-                                                                  zoneIds[zoneId
-                                                                          .toString()] =
-                                                                      zoneId;
-                                                                }
+                                                        amount: e.totalWithAddons,
+                                                      );
+                                                    }).toList();
 
-                                                                if (tableName !=
-                                                                        null &&
-                                                                    status !=
-                                                                        null) {
-                                                                  tableStatus[tableName] =
-                                                                      status;
-                                                                }
-                                                              }
+                                                    // -----------------------------------------
+                                                    // FETCH ZONES
+                                                    // -----------------------------------------
+                                                    final zoneRepository =
+                                                    ZoneRepository();
 
-                                                              String
-                                                              getZoneFromTable(
-                                                                String
-                                                                tableName,
-                                                                Map<
-                                                                  String,
-                                                                  List<String>
-                                                                >
-                                                                zoneTables,
-                                                              ) {
-                                                                for (final entry
-                                                                    in zoneTables
-                                                                        .entries) {
-                                                                  if (entry
-                                                                      .value
-                                                                      .contains(
-                                                                        tableName,
-                                                                      )) {
-                                                                    return entry
-                                                                        .key;
-                                                                  }
-                                                                }
-                                                                return '';
-                                                              }
+                                                    final zoneResponse =
+                                                    await zoneRepository.getAllZones(
+                                                      token,
+                                                    );
 
-                                                              final kotZone =
-                                                                  getZoneFromTable(
-                                                                    widget
-                                                                        .tableNo,
-                                                                    zoneTables,
-                                                                  );
+                                                    final Map<String, String> zoneNames =
+                                                    extractZoneNames(zoneResponse);
 
-                                                              final result = await showDialog(
-                                                                context:
-                                                                    context,
-                                                                barrierDismissible:
-                                                                    false,
-                                                                builder:
-                                                                    (
-                                                                      _,
-                                                                    ) => BlocProvider(
-                                                                      create:
-                                                                          (
-                                                                            _,
-                                                                          ) => TransferKotBloc(
-                                                                            repository:
-                                                                                KotTransferRepository(),
-                                                                          ),
-                                                                      child: TransferKOTDialog(
-                                                                        tableName:
-                                                                            widget.tableNo,
-                                                                        kotNo:
-                                                                            (kot.kotNumber?.isNotEmpty ??
-                                                                                    false)
-                                                                                ? kot.kotNumber!
-                                                                                : "KOT#${kot.kotId}",
-                                                                        dateTime:
-                                                                            kot.time ??
-                                                                            DateTime.now(),
-                                                                        items:
-                                                                            transferItems,
-                                                                        zoneTables:
-                                                                            zoneTables,
-                                                                        orderId:
-                                                                            widget.parentOrderId!,
-                                                                        kotId:
-                                                                            kot.kotId!,
-                                                                        fromTableId:
-                                                                            tableIds[widget.tableNo]!,
-                                                                        restaurantId:
-                                                                            widget.restaurantId!,
-                                                                        authToken:
-                                                                            widget.token,
-                                                                        zoneIds:
-                                                                            zoneIds,
-                                                                        tableIds:
-                                                                            tableIds,
-                                                                        tableStatus:
-                                                                            tableStatus,
-                                                                        kotZone:
-                                                                            kotZone,
-                                                                        zoneNames:
-                                                                            zoneNames,
-                                                                      ),
-                                                                    ),
-                                                              );
+                                                    // -----------------------------------------
+                                                    // FETCH TABLES
+                                                    // -----------------------------------------
+                                                    final tableRepository =
+                                                    TableRepository();
 
-                                                              if (result !=
-                                                                  null) {
-                                                                context.read<KotBloc>().add(
-                                                                  FetchKots(
-                                                                    parentOrderId:
-                                                                        widget
-                                                                            .parentOrderId,
-                                                                    restaurantId:
-                                                                        widget
-                                                                            .restaurantId!,
-                                                                    zoneId:
-                                                                        widget
-                                                                            .zoneId,
-                                                                    token:
-                                                                        widget
-                                                                            .token,
-                                                                  ),
-                                                                );
-                                                              }
-                                                            } catch (e) {
-                                                              debugPrint(
-                                                                e.toString(),
-                                                              );
-                                                            }
-                                                          },
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
-                                                          child: Container(
-                                                            height: 28,
-                                                            width: 28,
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  const Color(
-                                                                    0xFF4CAF50,
-                                                                  ),
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    8,
-                                                                  ),
-                                                            ),
-                                                            child: Center(
-                                                              child: Image.asset(
-                                                                "assets/transfer.png",
-                                                                height: 14,
-                                                                width: 14,
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                              ),
-                                                            ),
-                                                          ),
+                                                    final tableResponse =
+                                                    await tableRepository.getAllTables(
+                                                      token,
+                                                    );
+
+                                                    final Map<String, List<String>> zoneTables =
+                                                    {};
+
+                                                    final Map<String, int> tableIds =
+                                                    {};
+
+                                                    final Map<String, int> zoneIds =
+                                                    {};
+
+                                                    final Map<String, String> tableStatus =
+                                                    {};
+
+                                                    for (final table in tableResponse) {
+                                                      final zoneId = table['zone_id'];
+                                                      final tableName = table['table_name'];
+                                                      final tableId = table['table_id'];
+                                                      final status = table['status'];
+
+                                                      if (zoneId != null && tableName != null) {
+                                                        zoneTables
+                                                            .putIfAbsent(
+                                                          zoneId.toString(),
+                                                              () => [],
+                                                        )
+                                                            .add(tableName);
+                                                      }
+
+                                                      if (tableName != null && tableId != null) {
+                                                        tableIds[tableName] = tableId;
+                                                      }
+
+                                                      if (zoneId != null) {
+                                                        zoneIds[zoneId.toString()] = zoneId;
+                                                      }
+
+                                                      if (tableName != null && status != null) {
+                                                        tableStatus[tableName] = status;
+                                                      }
+                                                    }
+
+                                                    // -----------------------------------------
+                                                    // GET ZONE FROM TABLE
+                                                    // -----------------------------------------
+                                                    String getZoneFromTable(
+                                                        String tableName,
+                                                        Map<String, List<String>> zoneTables,
+                                                        ) {
+                                                      for (final entry in zoneTables.entries) {
+                                                        if (entry.value.contains(tableName)) {
+                                                          return entry.key;
+                                                        }
+                                                      }
+
+                                                      return '';
+                                                    }
+
+                                                    final kotZone =
+                                                    getZoneFromTable(
+                                                      widget.tableNo,
+                                                      zoneTables,
+                                                    );
+
+                                                    // -----------------------------------------
+                                                    // OPEN TRANSFER KOT DIALOG
+                                                    // -----------------------------------------
+                                                    final result = await showDialog(
+                                                      context: context,
+                                                      barrierDismissible: false,
+                                                      builder: (_) => BlocProvider(
+                                                        create: (_) => TransferKotBloc(
+                                                          repository:
+                                                          KotTransferRepository(),
                                                         ),
-                                                        const SizedBox(
+                                                        child: TransferKOTDialog(
+                                                          tableName: widget.tableNo,
+
+                                                          kotNo:
+                                                          (kot.kotNumber?.isNotEmpty ??
+                                                              false)
+                                                              ? kot.kotNumber!
+                                                              : "KOT#${kot.kotId}",
+
+                                                          dateTime:
+                                                          kot.time ??
+                                                              DateTime.now(),
+
+                                                          items: transferItems,
+
+                                                          zoneTables: zoneTables,
+
+                                                          orderId:
+                                                          widget.parentOrderId!,
+
+                                                          kotId:
+                                                          kot.kotId!,
+
+                                                          fromTableId:
+                                                          tableIds[widget.tableNo]!,
+
+                                                          restaurantId:
+                                                          widget.restaurantId!,
+
+                                                          authToken:
+                                                          widget.token,
+
+                                                          zoneIds:
+                                                          zoneIds,
+
+                                                          tableIds:
+                                                          tableIds,
+
+                                                          tableStatus:
+                                                          tableStatus,
+
+                                                          kotZone:
+                                                          kotZone,
+
+                                                          zoneNames:
+                                                          zoneNames,
+                                                        ),
+                                                      ),
+                                                    );
+
+                                                    // -----------------------------------------
+                                                    // REFRESH KOTS
+                                                    // -----------------------------------------
+                                                    if (result != null &&
+                                                        context.mounted) {
+                                                      context.read<KotBloc>().add(
+                                                        FetchKots(
+                                                          parentOrderId:
+                                                          widget.parentOrderId,
+
+                                                          restaurantId:
+                                                          widget.restaurantId!,
+
+                                                          zoneId:
+                                                          widget.zoneId,
+
+                                                          token:
+                                                          widget.token,
+                                                        ),
+                                                      );
+                                                    }
+                                                  } catch (e) {
+                                                    debugPrint(
+                                                      "❌ Transfer KOT error: $e",
+                                                    );
+                                                  }
+                                                },
+                                              );
+
+                                              // -----------------------------------------
+                                              // PIN CANCELLED / FAILED
+                                              // -----------------------------------------
+                                              if (!context.mounted) return;
+
+                                              if (!pinMatched) {
+                                                debugPrint(
+                                                  "❌ Transfer cancelled or PIN verification failed",
+                                                );
+                                                return;
+                                              }
+                                            } catch (e) {
+                                              debugPrint(
+                                                "❌ Transfer PIN error: $e",
+                                              );
+                                            }
+                                          },
+
+                                          borderRadius: BorderRadius.circular(8),
+
+                                          child: Container(
+                                          height: 28,
+                                          width: 28,
+
+                                          decoration: BoxDecoration(
+                                          color: const Color(0xFF4CAF50),
+                                          borderRadius: BorderRadius.circular(8),
+                                          ),
+
+                                          child: Center(
+                                          child: Image.asset(
+                                          "assets/transfer.png",
+                                          height: 14,
+                                          width: 14,
+                                          color: Colors.white,
+                                          ),
+                                          ),
+                                          ),
+                                          ),
+
+
+
+                                          const SizedBox(
                                                           width: 10,
                                                         ),
 

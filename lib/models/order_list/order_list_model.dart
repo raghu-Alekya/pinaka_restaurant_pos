@@ -34,9 +34,13 @@ class OrderlistModel {
 
   String? status;
   bool? isParent;
+<<<<<<< HEAD
   String? createdVia;
   String? externalOrderId;
 
+=======
+  String? placedByName;
+>>>>>>> f0262edb21fe25838f43b3c7a55cc994a8e60c33
   List<KotOrder>? kotOrders;
   num? serviceChargeValue;
   num? serviceChargePercentage;
@@ -79,6 +83,7 @@ class OrderlistModel {
     this.serviceChargePercentage,
     this.tipAmount,
     this.couponDetails,
+    this.placedByName,
   });
 
   factory OrderlistModel.fromJson(Map<String, dynamic> json) {
@@ -191,6 +196,7 @@ class OrderlistModel {
 
     return OrderlistModel(
       completedByUserId: json['completed_by_user_id']?.toString(),
+<<<<<<< HEAD
       orderId: json['order_id'] is int ? json['order_id'] : int.tryParse(json['order_id']?.toString() ?? json['id']?.toString() ?? ''),
       orderType: parsedOrderType,
       date: json['date'] ?? json['date_created'] ?? json['created_at'],
@@ -206,6 +212,23 @@ class OrderlistModel {
       merchantDiscount: parseAmount(json['merchant_discount']),
       netPayable: effectiveAmount,
       roundOff: parseAmount(json['round_off']),
+=======
+      orderId: json['order_id'],
+      orderType: json['order_type'],
+      date: json['date'],
+      customerName: json['customer_name'],
+      customerPhone: json['customer_phone'],
+      paymentType: json['payment_type'],
+      kotOrderId: json['kot_order_id'],
+      placedByName: json['placed_by_name']?.toString(),
+      grossTotal: num.tryParse(json['gross_total']?.toString() ?? "0") ?? 0,
+      subTotal: num.tryParse(json['sub_total']?.toString() ?? "0") ?? 0,
+      totalTax: num.tryParse(json['total_tax']?.toString() ?? "0") ?? 0,
+      netTotal: num.tryParse(json['net_total']?.toString() ?? "0") ?? 0,
+      merchantDiscount: num.tryParse(json['merchant_discount']?.toString() ?? "0") ?? 0,
+      netPayable: num.tryParse(json['net_payable']?.toString() ?? "0") ?? 0,
+      roundOff: num.tryParse(json['round_off']?.toString() ?? "0") ?? 0,
+>>>>>>> f0262edb21fe25838f43b3c7a55cc994a8e60c33
 
       amount: effectiveAmount,
       discount: parseAmount(json['discount']),

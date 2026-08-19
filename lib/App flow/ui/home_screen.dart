@@ -711,10 +711,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 state.tableId == 0 &&
                                                 state.tableName.isEmpty;
                                             final activeOrderCount =
+<<<<<<< HEAD
+=======
+// <<<<<<< HEAD
+>>>>>>> f0262edb21fe25838f43b3c7a55cc994a8e60c33
                                                 (state.orderItems.isNotEmpty &&
                                                         isTakeAwayOrder)
                                                     ? "1"
                                                     : "0";
+<<<<<<< HEAD
+=======
+// =======
+                                            state.orderItems.isNotEmpty
+                                                ? "1"
+                                                : "0";
+// >>>>>>> 1475e96ef9396877b9273eabcd3232d8c754025e
+>>>>>>> f0262edb21fe25838f43b3c7a55cc994a8e60c33
 
                                             return SizedBox(
                                               width: 250,
@@ -1514,7 +1526,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 6),
 
               Text(
-                "17 July, 2026",
+                DateFormat('d MMMM, yyyy').format(DateTime.now()),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -1531,7 +1543,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icons.room_service_outlined,
             Colors.grey.shade100,
             Colors.grey,
-            "Queue",
+            "Queue Kot's",
             "${statusCount?.queue ?? 0}",
             isDark,
           ),
@@ -1540,7 +1552,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icons.access_time,
             const Color(0xFFFFF7D6),
             Colors.amber.shade700,
-            "Kitchen Preparing",
+            "Kitchen Preparing Kot's",
             "${statusCount?.kitchenPreparing ?? 0}",
             isDark,
           ),
@@ -1549,7 +1561,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icons.check_circle_outline,
             const Color(0xFFEAF2FF),
             Colors.blue,
-            "Ready to Serve",
+            "Ready to Serve Kot's",
             "${statusCount?.kotReady ?? 0}",
             isDark,
           ),
@@ -1558,7 +1570,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Icons.cancel_outlined,
             const Color(0xFFFFECEC),
             Colors.red,
-            "Cancelled",
+            "Cancelled Kot's",
             "${statusCount?.cancelled ?? 0}",
             isDark,
           ),

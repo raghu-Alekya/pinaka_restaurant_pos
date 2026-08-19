@@ -1091,14 +1091,18 @@ import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../blocs/Bloc Logic/subcategory_bloc.dart';
 import '../../blocs/Bloc State/subcategory_states.dart';
 import '../../constants/constants.dart';
+import '../../models/Product_Status_model.dart';
+import '../../models/UserPermissions.dart';
 import '../../models/category/items_model.dart';
 import '../../models/category/minisubcategory_model.dart';
 import '../../models/order/modifier_model.dart';
 import '../../models/order/order_items.dart';
 import '../../models/sidebar/category_model_.dart';
+import '../../repositories/auth_repository.dart';
 import '../../repositories/minisubcategory_repository.dart';
 import '../../repositories/modifier_repository.dart';
 import '../../repositories/order_repository.dart';
+import '../../repositories/product_status_repository.dart';
 import '../../repositories/variant_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../widgets/variant_popup.dart';
@@ -1283,19 +1287,23 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   // fetch) — never cleared to show a spinner or a blank screen first.
   List<MiniSubCategory> currentSubCategories = [];
   MiniSubCategory? selectedFolder;
-
+  UserPermissions? _userPermissions;
   // Request-id guards: every subcategory switch / folder tap bumps its
   // counter. A background fetch only applies its result if its id still
   // matches — so a slow response for a tab/folder the user already left
   // can never clobber what's currently on screen.
   int _subCategoryReqId = 0;
   int _folderReqId = 0;
+  final AuthRepository _authRepository = AuthRepository();
 
+  // final ProductStatusRepository _productStatusRepository =
+  // ProductStatusRepository();
   static final Map<int, List<Modifier>> _modifierCache = {};
   static final Map<int, List<Variant>> _variantCache = {};
   static final Map<int, List<Product>> _productCache = {};
   static final Set<int> _inFlightPrefetch = {};
-
+  static final Map<int, bool> _stockStatusCache = {};
+  late final ProductStatusRepository _productStatusRepository;
   late OrderRepository orderRepository;
   bool _isCreatingTakeAwayOrder = false;
   final List<Color> tileColors = [
@@ -1308,9 +1316,13 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   @override
   void initState() {
     super.initState();
+    _loadPermissions();
     currentSubCategories = widget.subCategories;
     orderRepository = OrderRepository(baseUrl: AppConstants.baseDomain);
     _loadCurrency();
+    _productStatusRepository = ProductStatusRepository(
+      token: widget.token,
+    );
     _prefetchAllSubCategoryProducts(widget.subCategories);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -1574,12 +1586,50 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     }).toList();
   }
 
-  bool _sameProductIds(List<Product> a, List<Product> b) {
-    final idsA = a.map((e) => e.id).toSet();
-    final idsB = b.map((e) => e.id).toSet();
-    return idsA.length == idsB.length && idsA.containsAll(idsB);
-  }
+  // bool _sameProductIds(List<Product> a, List<Product> b) {
+  //   final idsA = a.map((e) => e.id).toSet();
+  //   final idsB = b.map((e) => e.id).toSet();
+  //   return idsA.length == idsB.length && idsA.containsAll(idsB);
+  // }
+  bool _sameProducts(List<Product> a, List<Product> b) {
+    if (a.length != b.length) return false;
 
+    final mapA = {
+      for (final p in a) p.id: p,
+    };
+
+    final mapB = {
+      for (final p in b) p.id: p,
+    };
+
+    if (mapA.length != mapB.length) return false;
+
+    for (final id in mapA.keys) {
+      final productA = mapA[id];
+      final productB = mapB[id];
+
+      if (productB == null) return false;
+
+      if (productA!.inStock != productB.inStock) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+  List<Product> _applyStockOverrides(List<Product> products) {
+    return products.map((product) {
+      final stockStatus = _stockStatusCache[product.id];
+
+      if (stockStatus == null) {
+        return product;
+      }
+
+      return product.copyWith(
+        inStock: stockStatus,
+      );
+    }).toList();
+  }
   /// Warms the image disk-cache so tiles render instantly (and stay
   /// available offline) — same approach as the Home screen carousel/logo.
   void _precacheProductImages(List<Product> products) {
@@ -1624,17 +1674,34 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       widget
           .fetchProducts(category.id)
           .then((products) {
-            _inFlightPrefetch.remove(category.id);
-            if (mounted) {
-              final updated =
-                  category.isFolder
-                      ? _applyVegTagging(category.name, products)
-                      : products;
-              _productCache[category.id] = updated;
-              _precacheProductImages(updated);
-              _prefetchModifiersAndVariants(updated);
-            }
-          })
+        _inFlightPrefetch.remove(category.id);
+        if (mounted) {
+          final updated = _applyStockOverrides(
+            category.isFolder
+                ? _applyVegTagging(category.name, products)
+                : products,
+          );
+
+          _productCache[category.id] = updated;
+
+          _precacheProductImages(updated);
+          _prefetchModifiersAndVariants(updated);
+        }
+      })
+      // widget
+      //     .fetchProducts(category.id)
+      //     .then((products) {
+      //       _inFlightPrefetch.remove(category.id);
+      //       if (mounted) {
+      //         final updated =
+      //             category.isFolder
+      //                 ? _applyVegTagging(category.name, products)
+      //                 : products;
+      //         _productCache[category.id] = updated;
+      //         _precacheProductImages(updated);
+      //         _prefetchModifiersAndVariants(updated);
+      //       }
+      //     })
           .catchError((e) {
             _inFlightPrefetch.remove(category.id);
             debugPrint(
@@ -1660,18 +1727,34 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             if (!_productCache.containsKey(folder.id) &&
                 !_inFlightPrefetch.contains(folder.id)) {
               _inFlightPrefetch.add(folder.id);
+              // widget
+              //     .fetchProducts(folder.id)
+              //     .then((products) {
+              //       _inFlightPrefetch.remove(folder.id);
+              //       final updated =
+              //           folder.isFolder
+              //               ? _applyVegTagging(folder.name, products)
+              //               : products;
+              //       _productCache[folder.id] = updated;
+              //       _precacheProductImages(updated);
+              //       _prefetchModifiersAndVariants(updated);
+              //     })
               widget
                   .fetchProducts(folder.id)
                   .then((products) {
-                    _inFlightPrefetch.remove(folder.id);
-                    final updated =
-                        folder.isFolder
-                            ? _applyVegTagging(folder.name, products)
-                            : products;
-                    _productCache[folder.id] = updated;
-                    _precacheProductImages(updated);
-                    _prefetchModifiersAndVariants(updated);
-                  })
+                _inFlightPrefetch.remove(folder.id);
+
+                final updated = _applyStockOverrides(
+                  folder.isFolder
+                      ? _applyVegTagging(folder.name, products)
+                      : products,
+                );
+
+                _productCache[folder.id] = updated;
+
+                _precacheProductImages(updated);
+                _prefetchModifiersAndVariants(updated);
+              })
                   .catchError((_) {
                     _inFlightPrefetch.remove(folder.id);
                   });
@@ -1728,9 +1811,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
 
     if (folders.isNotEmpty) {
       final first = folders.first;
-      final resolved =
-          first.products.isNotEmpty ? first.products : _productCache[first.id];
 
+      // final resolved =
+      //     first.products.isNotEmpty ? first.products : _productCache[first.id];
+      final List<Product>? resolved =
+      first.products.isNotEmpty
+          ? _applyStockOverrides(first.products)
+          : _productCache[first.id] != null
+          ? _applyStockOverrides(_productCache[first.id]!)
+          : null;
       if (resolved != null) {
         // Instant — nothing to wait for.
         _productCache[first.id] = resolved;
@@ -1823,7 +1912,10 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       if (!mounted || reqId != _subCategoryReqId)
         return; // stale — user moved on
 
-      final updated = _applyVegTagging(folder.name, products);
+      // final updated = _applyVegTagging(folder.name, products);
+      final updated = _applyStockOverrides(
+        _applyVegTagging(folder.name, products),
+      );
       _productCache[folder.id] = updated;
       final newFolder = folder.copyWith(
         products: updated,
@@ -1852,12 +1944,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       final products = await widget.fetchProducts(folder.id);
       if (!mounted || reqId != _subCategoryReqId) return;
 
-      final updated = _applyVegTagging(folder.name, products);
+
+      final updated = _applyStockOverrides(
+        _applyVegTagging(folder.name, products),
+      );
       final cached = _productCache[folder.id];
       final changed =
           cached == null ||
           cached.length != updated.length ||
-          !_sameProductIds(cached, updated);
+          !_sameProducts(cached, updated);
 
       _productCache[folder.id] = updated;
       _precacheProductImages(updated);
@@ -1891,7 +1986,10 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       final products = await widget.fetchProducts(subCategoryId);
       if (!mounted || reqId != _subCategoryReqId) return;
 
-      _productCache[subCategoryId] = products;
+      // _productCache[subCategoryId] = products;
+      final updated = _applyStockOverrides(products);
+
+      _productCache[subCategoryId] = updated;
       setState(() {
         currentSubCategories = [
           MiniSubCategory(
@@ -1918,14 +2016,18 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     try {
       final products = await widget.fetchProducts(subCategoryId);
       if (!mounted || reqId != _subCategoryReqId) return;
-
+      final updated = _applyStockOverrides(products);
       final cached = _productCache[subCategoryId];
+      // final changed =
+      //     cached == null ||
+      //     cached.length != products.length ||
+      //     !_sameProductIds(cached, products);
       final changed =
           cached == null ||
-          cached.length != products.length ||
-          !_sameProductIds(cached, products);
-
-      _productCache[subCategoryId] = products;
+              cached.length != updated.length ||
+              !_sameProducts(cached, updated);
+      // _productCache[subCategoryId] = products;
+      _productCache[subCategoryId] = updated;
       _precacheProductImages(products);
       _prefetchModifiersAndVariants(products);
 
@@ -1937,7 +2039,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
               name: "Direct Items",
               isFolder: false,
               products: products,
-              count: products.length,
+              // count: products.length,
+              count: updated.length,
             ),
           ];
         });
@@ -1959,9 +2062,11 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     if (!mounted) return;
 
     final myReqId = ++_folderReqId;
+    // final resolved =
+    //     folder.products.isNotEmpty ? folder.products : _productCache[folder.id];
     final resolved =
-        folder.products.isNotEmpty ? folder.products : _productCache[folder.id];
-
+        _productCache[folder.id] ??
+            (folder.products.isNotEmpty ? folder.products : null);
     if (resolved != null) {
       // Instant swap — no spinner, no flicker.
       _productCache[folder.id] = resolved;
@@ -1997,9 +2102,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   Future<void> _loadFolderTapSilently(MiniSubCategory folder, int reqId) async {
     try {
       final products = await widget.fetchProducts(folder.id);
-      if (!mounted || reqId != _folderReqId) return; // user tapped elsewhere
 
-      final updated = _applyVegTagging(folder.name, products);
+      // IMPORTANT: keep this
+      // Prevents an old API response from updating the current folder.
+      if (!mounted || reqId != _folderReqId) return;
+
+      final updated = _applyStockOverrides(
+        _applyVegTagging(folder.name, products),
+      );
+
       _productCache[folder.id] = updated;
       final newFolder = folder.copyWith(
         products: updated,
@@ -2028,12 +2139,15 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       final products = await widget.fetchProducts(folder.id);
       if (!mounted || reqId != _folderReqId) return;
 
-      final updated = _applyVegTagging(folder.name, products);
+      // final updated = _applyVegTagging(folder.name, products);
+      final updated = _applyStockOverrides(
+        _applyVegTagging(folder.name, products),
+      );
       final cached = _productCache[folder.id];
       final changed =
           cached == null ||
           cached.length != updated.length ||
-          !_sameProductIds(cached, updated);
+          !_sameProducts(cached, updated);
 
       _productCache[folder.id] = updated;
       _precacheProductImages(updated);
@@ -2175,6 +2289,423 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     }
   }
 
+  Future<void> _loadPermissions() async {
+    final savedPermissions = await SessionManager.loadPermissions();
+    if (savedPermissions != null) {
+      setState(() {
+        _userPermissions = savedPermissions;
+      });
+    }
+  }
+
+  Future<void> _onProductLongPress(Product item) async {
+    if (!mounted) return;
+
+    // ============================================================
+    // 1. MAKE SURE PERMISSIONS ARE LOADED
+    // ============================================================
+
+    UserPermissions? permissions = _userPermissions;
+
+    if (permissions == null) {
+      debugPrint(
+        '⚠️ _userPermissions is null. Loading from SessionManager...',
+      );
+
+      permissions = await SessionManager.loadPermissions();
+
+      if (!mounted) return;
+
+      if (permissions != null) {
+        setState(() {
+          _userPermissions = permissions;
+        });
+      }
+    }
+
+    if (permissions == null) {
+      debugPrint(
+        '❌ Unable to load user permissions',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to load user permissions.',
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // 2. ROLE CHECK
+    // ============================================================
+    //
+    // final String rawRole = permissions.role;
+    // final String role = rawRole.toLowerCase().trim();
+    //
+    // debugPrint('════════════════════════════════════');
+    // debugPrint('🔐 PRODUCT LONG PRESS');
+    // debugPrint('👤 Raw role: "$rawRole"');
+    // debugPrint('👤 Normalized role: "$role"');
+    // debugPrint('📋 User: ${permissions.displayName}');
+    // debugPrint('🆔 User ID: ${permissions.userId}');
+    // debugPrint('🏷️ Product: ${item.name}');
+    // debugPrint('🆔 Product ID: ${item.id}');
+    // debugPrint('📦 Current stock: ${item.inStock}');
+    // debugPrint('════════════════════════════════════');
+    //
+    // final bool canChangeStock =
+    //     role == 'administrator' ||
+    //         role == 'admin' ||
+    //         role == 'manager' ||
+    //         role == 'merchant';
+    //
+    // debugPrint(
+    //   '🔑 Can change stock: $canChangeStock',
+    // );
+    //
+    // if (!canChangeStock) {
+    //   debugPrint(
+    //     '❌ Stock change BLOCKED for role: "$role"',
+    //   );
+    //
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(
+    //       content: Text(
+    //         'Only administrators, managers, and merchants can change stock status',
+    //       ),
+    //       duration: Duration(seconds: 1),
+    //       backgroundColor: Colors.red,
+    //     ),
+    //   );
+    //
+    //   return;
+    // }
+    //
+    // debugPrint(
+    //   '✅ Stock change AUTHORIZED for role: "$role"',
+    // );
+    final bool canChangeStock =
+        permissions.canUpdateInventoryStatus;
+
+    debugPrint(
+      '🔐 canUpdateInventory: '
+          '${permissions.canUpdateInventory}',
+    );
+
+    debugPrint(
+      '🔐 canUpdateInventoryStatus: '
+          '${permissions.canUpdateInventoryStatus}',
+    );
+
+    if (!canChangeStock) {
+      debugPrint(
+        '❌ Stock status change BLOCKED',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'You do not have permission to change product stock status.',
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
+    debugPrint(
+      '✅ Stock status change AUTHORIZED',
+    );
+    // ============================================================
+    // 3. GET SAVED LOGIN
+    // ============================================================
+
+    final savedLogin = await _authRepository.getSavedLogin();
+
+    if (!mounted) return;
+
+    if (savedLogin == null) {
+      debugPrint(
+        '❌ No saved login found',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Session expired. Please login again.',
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // 4. GET PIN AND TOKEN
+    // ============================================================
+
+    final String pin =
+        savedLogin['pin']?.toString() ?? '';
+
+    final String token =
+        savedLogin['token']?.toString() ?? '';
+
+    debugPrint(
+      '🔐 Saved PIN available: ${pin.isNotEmpty}',
+    );
+
+    debugPrint(
+      '🔑 Saved token available: ${token.isNotEmpty}',
+    );
+
+    if (pin.isEmpty) {
+      debugPrint(
+        '❌ Login PIN is empty',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Unable to retrieve login PIN. Please login again.',
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
+    if (token.isEmpty) {
+      debugPrint(
+        '❌ Authentication token is empty',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Authentication expired. Please login again.',
+          ),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
+    // ============================================================
+    // 5. CALCULATE NEW STOCK STATUS
+    // ============================================================
+
+    final bool newStockStatus = !item.inStock;
+
+    final String newStatus =
+    newStockStatus
+        ? 'instock'
+        : 'outofstock';
+
+    debugPrint(
+      '🔄 Stock changing:',
+    );
+
+    debugPrint(
+      '   Product ID: ${item.id}',
+    );
+
+    debugPrint(
+      '   Old status: '
+          '${item.inStock ? "instock" : "outofstock"}',
+    );
+
+    debugPrint(
+      '   New status: $newStatus',
+    );
+
+    // ============================================================
+    // 6. CREATE API REQUEST
+    // ============================================================
+
+    final request = ProductStatusRequest(
+      productId: item.id,
+      status: newStatus,
+      pin: pin,
+    );
+
+    debugPrint(
+      '📡 Sending product status request...',
+    );
+
+    // ============================================================
+    // 7. CALL API
+    // ============================================================
+
+    try {
+      final result =
+      await _productStatusRepository.updateProductStatus(
+        request,
+      );
+
+      debugPrint(
+        '✅ Product status API SUCCESS',
+      );
+
+      debugPrint(
+        '📦 API RESULT: $result',
+      );
+
+      debugPrint(
+        '📦 API RESULT: $result',
+      );
+
+      if (!mounted) return;
+
+// Remember the successful stock status.
+// This prevents later category/folder fetches
+// from restoring the old status.
+      _stockStatusCache[item.id] = newStockStatus;
+
+      // ============================================================
+      // 8. ONLY UPDATE LOCAL UI AFTER API SUCCESS
+      // ============================================================
+
+      setState(() {
+        // ----------------------------------------------------------
+        // Update every cached occurrence
+        // ----------------------------------------------------------
+
+        _productCache.forEach((key, products) {
+          _productCache[key] =
+              products.map((product) {
+                if (product.id == item.id) {
+                  return product.copyWith(
+                    inStock: newStockStatus,
+                  );
+                }
+
+                return product;
+              }).toList();
+        });
+
+        // ----------------------------------------------------------
+        // Update selected folder
+        // ----------------------------------------------------------
+
+        if (selectedFolder != null) {
+          final updatedProducts =
+          selectedFolder!.products.map((product) {
+            if (product.id == item.id) {
+              return product.copyWith(
+                inStock: newStockStatus,
+              );
+            }
+
+            return product;
+          }).toList();
+
+          selectedFolder =
+              selectedFolder!.copyWith(
+                products: updatedProducts,
+                count: updatedProducts.length,
+              );
+
+          currentSubCategories =
+              currentSubCategories.map((sub) {
+                if (sub.id == selectedFolder!.id) {
+                  return selectedFolder!;
+                }
+
+                return sub;
+              }).toList();
+        }
+
+        // ----------------------------------------------------------
+        // Update direct products
+        // ----------------------------------------------------------
+
+        currentSubCategories =
+            currentSubCategories.map((sub) {
+              final updatedProducts =
+              sub.products.map((product) {
+                if (product.id == item.id) {
+                  return product.copyWith(
+                    inStock: newStockStatus,
+                  );
+                }
+
+                return product;
+              }).toList();
+
+              return sub.copyWith(
+                products: updatedProducts,
+                count: updatedProducts.length,
+              );
+            }).toList();
+      });
+
+      // ============================================================
+      // 9. SUCCESS MESSAGE
+      // ============================================================
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newStockStatus
+                ? '${item.name} - In Stock'
+                : '${item.name} - Out of Stock',
+          ),
+          duration: const Duration(seconds: 1),
+          backgroundColor:
+          newStockStatus
+              ? Colors.green
+              : Colors.red,
+        ),
+      );
+
+      debugPrint(
+        '✅ Local product state updated successfully',
+      );
+    } catch (e, stackTrace) {
+      // ============================================================
+      // 10. API FAILED - DO NOT CHANGE LOCAL STATE
+      // ============================================================
+
+      debugPrint(
+        '❌ Product status API FAILED',
+      );
+
+      debugPrint(
+        '❌ Error: $e',
+      );
+
+      debugPrintStack(
+        stackTrace: stackTrace,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to update ${item.name}. Please try again.',
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _showVariantPopup(
     BuildContext context,
     Product product,
@@ -2297,7 +2828,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
                         color:
                             isDark
                                 ? const Color(
-                              0xFFE73E50,
+                                  0xFFE73E50,
                                 ) // Light red in dark mode
                                 : const Color(0xFFFF364C),
                         borderRadius: BorderRadius.circular(8),
@@ -2392,172 +2923,198 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
             // 🔹 PRODUCT CARD
             GestureDetector(
               onTap: () => _onItemTap(context, item),
-              child: Container(
-                height: 105,
-                padding: const EdgeInsets.fromLTRB(
-                  stripWidth + stripGap,
-                  0,
-                  0,
-                  0,
-                ),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF2B3045) : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  // border: Border.all(
-                  //   color: isDark
-                  //       ? const Color(0xFF444A63)
-                  //       : const Color(0x7FC4C7D1),
-                  // ),
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : Colors.black.withOpacity(0.10),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    // CONTENT
-                    Row(
-                      children: [
-                        const SizedBox(width: 8),
-                        if (item.image.isNotEmpty)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            // ✅ CachedNetworkImage: disk-cached like the
-                            // Home screen promo/logo images, so repeat
-                            // loads are instant and survive offline.
-                            child: CachedNetworkImage(
-                              imageUrl: item.image,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              fadeInDuration: const Duration(milliseconds: 120),
-                              memCacheWidth: 160,
-                              // placeholder: (_, __) => Container(
-                              //   width: 80,
-                              //   height: 80,
-                              //   color: const Color(0xFFF2F2F2),
-                              // ),
-                              placeholder:
-                                  (_, __) => const SizedBox(
-                                    width: 80,
-                                    height: 80,
-                                    child: ProductImageLoading(),
-                                  ),
-                              errorWidget:
-                                  (_, __, ___) =>
-                                      const Icon(Icons.fastfood, size: 40),
-                            ),
-                          )
-                        else
-                          const Icon(Icons.fastfood, size: 40),
-
-                        const SizedBox(width: 8),
-
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                softWrap: true,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : Colors.black,
+              onLongPress: () => _onProductLongPress(item),
+              child: Opacity(
+                opacity: item.inStock ? 1.0 : 0.45,
+                child: Container(
+                  height: 105,
+                  padding: const EdgeInsets.fromLTRB(
+                    stripWidth + stripGap,
+                    0,
+                    0,
+                    0,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        item.inStock
+                            ? (isDark ? const Color(0xFF2B3045) : Colors.white)
+                            : (isDark
+                                ? const Color(0xFF555555)
+                                : const Color(0xFFD0D0D0)),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : Colors.black.withOpacity(0.10),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    children: [
+                      // CONTENT
+                      Row(
+                        children: [
+                          const SizedBox(width: 8),
+                          if (item.image.isNotEmpty)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              // ✅ CachedNetworkImage: disk-cached like the
+                              // Home screen promo/logo images, so repeat
+                              // loads are instant and survive offline.
+                              child: CachedNetworkImage(
+                                imageUrl: item.image,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                fadeInDuration: const Duration(
+                                  milliseconds: 120,
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$_currency${item.price.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: isDark ? Colors.white : Colors.black,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // 🌱 VEG / NON-VEG STRIP
-                    Positioned(
-                      top: 6,
-                      right: 8,
-                      child:
-                          item.isVeg == null
-                              ? const SizedBox.shrink()
-                              : Container(
-                                width: 16,
-                                height: 16,
-                                decoration: const BoxDecoration(
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0x3F000000),
-                                      blurRadius: 5,
-                                      offset: Offset(0, 1),
+                                memCacheWidth: 160,
+                                // placeholder: (_, __) => Container(
+                                //   width: 80,
+                                //   height: 80,
+                                //   color: const Color(0xFFF2F2F2),
+                                // ),
+                                placeholder:
+                                    (_, __) => const SizedBox(
+                                      width: 80,
+                                      height: 80,
+                                      child: ProductImageLoading(),
                                     ),
-                                  ],
+                                errorWidget:
+                                    (_, __, ___) =>
+                                        const Icon(Icons.fastfood, size: 40),
+                              ),
+                            )
+                          else
+                            const Icon(Icons.fastfood, size: 40),
+
+                          const SizedBox(width: 8),
+
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: true,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
                                 ),
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      width: 20,
-                                      height: 20,
-                                      decoration: ShapeDecoration(
-                                        color: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            2,
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$_currency${item.price.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // 🌱 VEG / NON-VEG STRIP
+                      Positioned(
+                        top: 6,
+                        right: 8,
+                        child:
+                            item.isVeg == null
+                                ? const SizedBox.shrink()
+                                : Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: const BoxDecoration(
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Color(0x3F000000),
+                                        blurRadius: 5,
+                                        offset: Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: 20,
+                                        height: 20,
+                                        decoration: ShapeDecoration(
+                                          color: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              2,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    Positioned(
-                                      left: 4,
-                                      top: 4,
-                                      child: Container(
-                                        width: 8,
-                                        height: 8,
-                                        decoration: BoxDecoration(
-                                          color:
-                                              item.isVeg!
-                                                  ? const Color(0xFF34C759)
-                                                  : const Color(0xFFFF0404),
-                                          shape: BoxShape.circle,
+                                      Positioned(
+                                        left: 4,
+                                        top: 4,
+                                        child: Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                item.isVeg!
+                                                    ? const Color(0xFF34C759)
+                                                    : const Color(0xFFFF0404),
+                                            shape: BoxShape.circle,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                ),
+                      ),
+                      // 🔹 VARIANT ICON
+                      if (item.isVariantProduct)
+                        Positioned(
+                          top: 65,
+                          right: 12,
+                          child: Image.asset(
+                            'assets/variant_icon.png',
+                            width: 14,
+                            height: 14,
+                          ),
+                        ),
+                      // OUT OF STOCK OVERLAY
+                      if (!item.inStock)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.20),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'OUT OF STOCK',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                    ),
-                    // 🔹 VARIANT ICON
-                    if (item.isVariantProduct)
-                      Positioned(
-                        top: 65,
-                        right: 12,
-                        child: Image.asset(
-                          'assets/variant_icon.png',
-                          width: 14,
-                          height: 14,
+                            ),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-
             // 🔥 VIEW MORE (ONLY FOR COMBO)
             if (isComboItem(item))
               Padding(

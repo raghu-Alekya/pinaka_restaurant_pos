@@ -10,7 +10,9 @@ class AppConstants {
 
   static String get baseApiPath =>
       '$baseDomain/wp-json/pinaka-restaurant-pos/v1';
-
+  // products status in stock or out of stock
+  static String get updateProductStatusEndpoint =>
+      '$baseApiPath/products/status';
   // Authentication
   static String get authTokenEndpoint =>
       '$baseApiPath/token';

@@ -21,7 +21,8 @@ class VoidItemsDialog extends StatefulWidget {
   final int zoneId;
   final String token;
   final int parentOrderId;
-
+  final String storedPinNumber;
+  final String role;
   final int kotId;
 
   final void Function(String value) onRemark;
@@ -39,6 +40,8 @@ class VoidItemsDialog extends StatefulWidget {
     required this.zoneId, // ✅ now required properly
     required this.onRemark,
     required this.item,
+    required this.storedPinNumber,
+    required this.role,
   }) : super(key: key);
 
   @override
@@ -940,64 +943,92 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                         width: 150,
                         height: 40,
                         child: ElevatedButton(
-                          onPressed:
-                              canSave
-                                  ? () {
-                                    //  Validate void reason
-                                    if (selectedReason == null ||
-                                        selectedReason!.trim().isEmpty) {
-                                      setState(() {
-                                        _showReasonError = true;
-                                      });
-                                      return; // Don't show SnackBar, just highlight the error
-                                    }
+                          onPressed: canSave
+                              ? () {
+                            if (selectedReason == null ||
+                                selectedReason!.trim().isEmpty) {
+                              setState(() {
+                                _showReasonError = true;
+                              });
+                              return;
+                            }
 
-                                    // Clear error state if valid
-                                    setState(() {
-                                      _showReasonError = false;
-                                    });
+                            setState(() {
+                              _showReasonError = false;
+                            });
 
-                                    debugPrint(" Save clicked");
-                                    debugPrint("kotId = ${widget.kotId}");
-                                    debugPrint("token = ${widget.token}");
-                                    debugPrint(
-                                      "selectedReason = $selectedReason",
-                                    );
+                            final modifiedAt = DateTime.now();
 
-                                    final selectedItems = itemsNotifier.value;
+                            final selectedItems = itemsNotifier.value;
 
-                                    debugPrint(
-                                      "selectedItems count = ${selectedItems.length}",
-                                    );
+                            final modifiedItems = <Map<String, dynamic>>[];
 
-                                    final request = UpdatekotRequest(
-                                      lineItems:
-                                          selectedItems
-                                              .map(
-                                                (e) => LineItemUpdate(
-                                                  id: e.id,
-                                                  productId: e.productId,
-                                                  quantity: e.quantity,
-                                                ),
-                                              )
-                                              .toList(),
-                                      metaData: [
-                                        MetaDataItem(
-                                          key: "kot_remarks",
-                                          value: selectedReason ?? "",
-                                        ),
-                                      ],
-                                    );
+                            for (int i = 0; i < originalKotItems.length; i++) {
+                              final originalItem = originalKotItems[i];
+                              final modifiedItem = selectedItems[i];
 
-                                    context.read<UpdatekotBloc>().add(
-                                      UpdatekotPressed(
-                                        token: widget.token,
-                                        kotId: widget.kotId,
-                                        request: request,
-                                      ),
-                                    );
-                                  }
-                                  : null,
+                              if (originalItem.quantity != modifiedItem.quantity) {
+                                modifiedItems.add({
+                                  "itemId": modifiedItem.id,
+                                  "productId": modifiedItem.productId,
+                                  "itemName": modifiedItem.productName,
+                                  "originalQuantity": originalItem.quantity,
+                                  "modifiedQuantity": modifiedItem.quantity,
+                                  "voidQuantity":
+                                  originalItem.quantity - modifiedItem.quantity,
+                                  "amount": modifiedItem.amount,
+                                });
+                              }
+                            }
+
+                            final auditData = {
+                              "pinNumber": widget.storedPinNumber,
+                              "role": widget.role,
+                              "modifiedAt": modifiedAt.toIso8601String(),
+                              "tableNo": widget.tableNo,
+                              "kotNo": widget.kotNo,
+                              "kotId": widget.kotId,
+                              "reason": selectedReason,
+                              "items": modifiedItems,
+                            };
+
+                            debugPrint("========== VOID ITEM AUDIT ==========");
+                            debugPrint("PIN: ${widget.storedPinNumber}");
+                            debugPrint("Role: ${widget.role}");
+                            debugPrint("Time: $modifiedAt");
+                            debugPrint("Table: ${widget.tableNo}");
+                            debugPrint("KOT: ${widget.kotNo}");
+                            debugPrint("Reason: $selectedReason");
+                            debugPrint("Modified Items: $modifiedItems");
+                            debugPrint("=====================================");
+
+                            final request = UpdatekotRequest(
+                              lineItems: selectedItems
+                                  .map(
+                                    (e) => LineItemUpdate(
+                                  id: e.id,
+                                  productId: e.productId,
+                                  quantity: e.quantity,
+                                ),
+                              )
+                                  .toList(),
+                              metaData: [
+                                MetaDataItem(
+                                  key: "kot_remarks",
+                                  value: selectedReason ?? "",
+                                ),
+                              ],
+                            );
+
+                            context.read<UpdatekotBloc>().add(
+                              UpdatekotPressed(
+                                token: widget.token,
+                                kotId: widget.kotId,
+                                request: request,
+                              ),
+                            );
+                          }
+                              : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
                                 canSave

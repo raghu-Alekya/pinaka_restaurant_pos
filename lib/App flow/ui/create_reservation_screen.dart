@@ -136,48 +136,6 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
         _hasUnsavedChanges = true;
       });
     }
-    if (widget.isEditMode && widget.reservationData != null) {
-      final data = widget.reservationData!;
-      _peopleController.text = data['people'] ?? '';
-      _nameController.text = data['name'] ?? '';
-      _contactController.text = data['phone'] ?? '';
-      _priorityController.text = data['priority'] ?? '';
-
-      selectedSlot = data['time'] ?? '';
-      _originalSelectedSlot = selectedSlot;
-      _originalSelectedTable = data['table'] ?? '';
-
-      try {
-        selectedDate = DateFormat('yyyy-MM-dd').parse(data['date'] ?? '');
-      } catch (_) {
-        selectedDate = DateTime.now();
-      }
-
-      selectedTables = {_originalSelectedTable};
-      selectedArea = data['area'] ?? selectedArea;
-    } else {
-      _originalSelectedSlot = '';
-      _originalSelectedTable = '';
-    }
-
-    _priorityFocusNode.addListener(() {
-      if (_priorityFocusNode.hasFocus) {
-        _showOverlay(context);
-      } else {
-        _removeOverlay();
-      }
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusManager.instance.addListener(() {
-        if (!_priorityFocusNode.hasFocus) {
-          _removeOverlay();
-        }
-      });
-    });
-    _loadZones();
-    _fetchSlotsAndMeals().then((_) {
-      _fetchTables();
-    });
   }
 
   Future<void> _loadPermissions() async {

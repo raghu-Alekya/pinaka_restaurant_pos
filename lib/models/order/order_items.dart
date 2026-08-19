@@ -2,6 +2,7 @@ import '../sidebar/category_model_.dart';
 
 class OrderItems {
   final int? id;
+  final bool isVeg;
   final int productId;        // ✅ always required
   final int? variationId;     // ✅ optional (null if not applicable)
   final String name;
@@ -23,6 +24,7 @@ class OrderItems {
 
   OrderItems({
     this.id,
+
     required this.productId,
     this.variationId, // ✅ optional
     required this.name,
@@ -35,6 +37,7 @@ class OrderItems {
     this.taxClass,
     this.hasOptions = false,
     required this.amount,
+    this.isVeg = false,
     this.isCancelled = 'no', // ✅ Added with default value
   });
 
@@ -56,65 +59,246 @@ class OrderItems {
   }
 
   factory OrderItems.fromJson(Map<String, dynamic> json) {
-    // Safe parsing of addOns
-    final addOnsData = json['addOns'];
+
+    // ==========================================================
+    // ADD-ONS
+    // ==========================================================
+
     final addOns = <String, Map<String, dynamic>>{};
-    if (addOnsData != null && addOnsData is Map) {
-      addOnsData.forEach((key, value) {
-        addOns[key] = {
-          'quantity': value?['quantity'] ?? 0,
-          'price': (value?['price'] as num?)?.toDouble() ?? 0.0,
-        };
+
+    // First try direct addOns
+    final directAddOns =
+        json['addOns'] ?? json['addons'] ?? json['add_ons'];
+
+    if (directAddOns is Map) {
+      directAddOns.forEach((key, value) {
+        if (value is Map) {
+          addOns[key.toString()] = {
+            'quantity': value['quantity'] ?? value['qty'] ?? 1,
+            'price': (value['price'] as num?)?.toDouble() ?? 0.0,
+          };
+        }
       });
     }
 
-    // Safe parsing of modifiers
-    final modifiers = (json['modifiers'] as List?)?.map((e) => e.toString()).toList() ?? [];
+    // If direct addOns are empty, check meta_data
+    if (addOns.isEmpty) {
+      final metaData = json['meta_data'];
 
-    // Safe parsing of section
-    final section = (json['section'] != null && json['section'] is Map<String, dynamic>)
+      if (metaData is List) {
+        for (final meta in metaData) {
+          if (meta is Map &&
+              meta['key']?.toString() == '_addons') {
+
+            final value = meta['value'];
+
+            if (value is List) {
+              for (final addon in value) {
+                if (addon is Map) {
+                  final name =
+                      addon['name']?.toString() ?? '';
+
+                  if (name.isNotEmpty) {
+                    addOns[name] = {
+                      'quantity':
+                      addon['quantity'] ?? 1,
+                      'price':
+                      (addon['price'] as num?)
+                          ?.toDouble() ??
+                          0.0,
+                    };
+                  }
+                }
+              }
+            }
+
+            break;
+          }
+        }
+      }
+    }
+
+    // ==========================================================
+    // MODIFIERS
+    // ==========================================================
+
+    List<String> parsedModifiers = [];
+
+    // Direct modifiers
+    if (json['modifiers'] is List) {
+      parsedModifiers = (json['modifiers'] as List)
+          .map((e) {
+        if (e is Map) {
+          return e['name']?.toString() ??
+              e['modifier_name']?.toString() ??
+              '';
+        }
+
+        return e.toString();
+      })
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
+    // Meta-data modifiers
+    if (parsedModifiers.isEmpty) {
+      final metaData = json['meta_data'];
+
+      if (metaData is List) {
+        for (final meta in metaData) {
+          if (meta is Map &&
+              meta['key']?.toString() == '_modifiers') {
+
+            final value = meta['value'];
+
+            if (value is List) {
+              parsedModifiers = value
+                  .map((e) {
+                if (e is Map) {
+                  return e['name']?.toString() ??
+                      e['modifier_name']?.toString() ??
+                      '';
+                }
+
+                return e.toString();
+              })
+                  .where((e) => e.isNotEmpty)
+                  .toList();
+            }
+
+            break;
+          }
+        }
+      }
+    }
+
+    // ==========================================================
+    // NOTE
+    // ==========================================================
+
+    String parsedNote =
+        json['note']?.toString() ??
+            json['notes']?.toString() ??
+            '';
+
+    if (parsedNote.trim().isEmpty) {
+      final metaData = json['meta_data'];
+
+      if (metaData is List) {
+        for (final meta in metaData) {
+          if (meta is Map &&
+              meta['key']?.toString() == '_modifier_notes') {
+
+            parsedNote =
+                meta['value']?.toString() ?? '';
+
+            break;
+          }
+        }
+      }
+    }
+
+    // ==========================================================
+    // VEG / NON-VEG
+    // ==========================================================
+
+    final dynamic vegValue =
+        json['is_veg'] ??
+            json['isVeg'] ??
+            json['is_vegetarian'] ??
+            json['veg'];
+
+    final bool parsedIsVeg =
+        vegValue == true ||
+            vegValue == 1 ||
+            vegValue
+                ?.toString()
+                .trim()
+                .toLowerCase() ==
+                'true' ||
+            vegValue?.toString().trim() == '1';
+
+    // ==========================================================
+    // SECTION
+    // ==========================================================
+
+    final section =
+    (json['section'] != null &&
+        json['section'] is Map<String, dynamic>)
         ? Category.fromJson(json['section'])
         : Category(
-      id: '0', // ✅ fallback as String
+      id: '0',
       name: 'Unknown',
       imagepath: '',
       subCategories: [],
     );
 
-    /// 🔹 tax class from WooCommerce Tax API
-    final taxClass = (json['class'] as String?)?.trim();
+    // ==========================================================
+    // TAX
+    // ==========================================================
 
-    // ✅ Parse isCancelled from JSON
-    final isCancelled = json['is_cancelled']?.toString() ?? 'no';
+    final taxClass =
+    (json['class'] as String?)?.trim();
+
+    // ==========================================================
+    // CANCELLED
+    // ==========================================================
+
+    final isCancelled =
+        json['is_cancelled']?.toString() ?? 'no';
+
+    // ==========================================================
+    // RETURN
+    // ==========================================================
 
     return OrderItems(
       id: (json['id'] as num?)?.toInt(),
 
-      productId: (json['productId'] ??
+      productId:
+      (json['productId'] ??
           json['product_id'] ??
           0) as int,
 
-      variationId: json['variationId'],
+      variationId:
+      json['variationId'] ??
+          json['variation_id'],
 
-      name: json['name']?.toString() ??
+      name:
+      json['name']?.toString() ??
           json['item_name']?.toString() ??
           json['product_name']?.toString() ??
           'Unknown',
 
-      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      isVeg: parsedIsVeg,
 
-      price: (json['price'] as num?)?.toDouble() ?? 0,
+      quantity:
+      (json['quantity'] as num?)?.toInt() ??
+          1,
 
-      amount: (json['amount'] as num?)?.toDouble() ??
+      price:
+      (json['price'] as num?)?.toDouble() ??
+          0,
+
+      amount:
+      (json['amount'] as num?)?.toDouble() ??
           (((json['price'] as num?)?.toDouble() ?? 0) *
               ((json['quantity'] as num?)?.toInt() ?? 1)),
 
-      modifiers: modifiers,
+      modifiers: parsedModifiers,
+
       addOns: addOns,
-      note: json['note']?.toString() ?? '',
+
+      note: parsedNote,
+
       section: section,
+
       taxClass: taxClass,
-      hasOptions: json['hasOptions'] ?? false,
+
+      hasOptions:
+      json['hasOptions'] ??
+          json['has_options'] ??
+          false,
+
       isCancelled: isCancelled,
     );
   }
@@ -131,6 +315,7 @@ class OrderItems {
       if (variationId != null) 'variationId': variationId, // ✅ only if exists
       'name': name,
       'quantity': quantity,
+      'is_veg': isVeg,
       'price': price,
       'modifiers': modifiers,
       'addOns': serializedAddOns,
@@ -157,7 +342,8 @@ class OrderItems {
     Category? section,
     String? taxClass,
     bool? hasOptions,
-    String? isCancelled, // ✅ Added
+    bool? isVeg,             // ✅ ADD THIS
+    String? isCancelled,
   }) {
     return OrderItems(
       id: id ?? this.id,
@@ -168,12 +354,17 @@ class OrderItems {
       amount: amount ?? this.amount,
       price: price ?? this.price,
       modifiers: modifiers ?? List<String>.from(this.modifiers),
-      addOns: addOns ?? Map<String, Map<String, dynamic>>.from(this.addOns),
+      addOns: addOns ??
+          Map<String, Map<String, dynamic>>.from(this.addOns),
       note: note ?? this.note,
       section: section ?? this.section,
       taxClass: taxClass ?? this.taxClass,
       hasOptions: hasOptions ?? this.hasOptions,
-      isCancelled: isCancelled ?? this.isCancelled, // ✅ Added
+
+      // ✅ Preserve Veg / Non-Veg value
+      isVeg: isVeg ?? this.isVeg,
+
+      isCancelled: isCancelled ?? this.isCancelled,
     );
   }
 }
