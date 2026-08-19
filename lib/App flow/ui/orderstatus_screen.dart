@@ -40,6 +40,7 @@ class OrdersListTable extends StatefulWidget {
   final String restaurantName;
   final UserPermissions? userPermissions;
   final List<Map<String, dynamic>> loadedTables;
+  final String? initialOrderType;
 
   const OrdersListTable({
     super.key,
@@ -50,6 +51,7 @@ class OrdersListTable extends StatefulWidget {
     required this.restaurantName,
     this.userPermissions,
     required this.loadedTables,
+    this.initialOrderType,
   });
 
   @override
@@ -60,6 +62,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   UserPermissions? _userPermissions;
   int _selectedIndex = 4;
   String? _selectedStatus;
+  String? _selectedOrderType;
   String? _selectedDate;
   Timer? _searchDebounce;
   String _currency = "₹";
@@ -68,6 +71,12 @@ class _OrdersListTableState extends State<OrdersListTable> {
     'Completed',
     'Processing',
     'cancelled',
+  ];
+  final List<String> orderTypeOptions = [
+    'All Types',
+    'Dine In',
+    'Takeaway',
+    'Online Orders',
   ];
   DateTime? selectedDate;
 
@@ -101,6 +110,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   void initState() {
     super.initState();
     _userPermissions = widget.userPermissions;
+    _selectedOrderType = widget.initialOrderType ?? 'All Types';
     _loadPermissions();
     _loadCurrency();
     final today = DateTime.now();
@@ -164,15 +174,24 @@ class _OrdersListTableState extends State<OrdersListTable> {
   DateTime? _parseOrderDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return null;
     final parsed = DateTime.tryParse(dateStr);
-    if (parsed != null) return parsed;
+    if (parsed != null) return parsed.toLocal();
     try {
-      return DateFormat("d MMMM, yyyy").parse(dateStr);
+      return DateFormat("yyyy-MM-dd HH:mm:ss").parse(dateStr).toLocal();
     } catch (_) {}
     try {
-      return DateFormat("d MMM, yyyy").parse(dateStr);
+      return DateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(dateStr).toLocal();
     } catch (_) {}
     try {
-      return DateFormat("dd/MM/yyyy").parse(dateStr);
+      return DateFormat("yyyy-MM-dd").parse(dateStr).toLocal();
+    } catch (_) {}
+    try {
+      return DateFormat("d MMMM, yyyy").parse(dateStr).toLocal();
+    } catch (_) {}
+    try {
+      return DateFormat("d MMM, yyyy").parse(dateStr).toLocal();
+    } catch (_) {}
+    try {
+      return DateFormat("dd/MM/yyyy").parse(dateStr).toLocal();
     } catch (_) {}
     return null;
   }
@@ -197,12 +216,38 @@ class _OrdersListTableState extends State<OrdersListTable> {
             _selectedStatus!.toLowerCase();
       }
 
+      bool matchesOrderType = true;
+      if (_selectedOrderType != null && _selectedOrderType != 'All Types') {
+        final typeLower = (order.orderType ?? '').toLowerCase();
+        final selLower = _selectedOrderType!.toLowerCase();
+        if (selLower.contains('online')) {
+          matchesOrderType = typeLower.contains('online') ||
+              typeLower.contains('delivery') ||
+              typeLower.contains('doordash') ||
+              typeLower.contains('ubereats') ||
+              typeLower.contains('grubhub') ||
+              typeLower.contains('wc') ||
+              typeLower.contains('synced') ||
+              typeLower.contains('shop') ||
+              typeLower.contains('processing') ||
+              typeLower.contains('pending') ||
+              typeLower.isEmpty ||
+              ((order.tableId == null || order.tableId == 0) &&
+                  !typeLower.contains('takeaway'));
+        } else if (selLower.contains('takeaway')) {
+          matchesOrderType = typeLower.contains('takeaway');
+        } else if (selLower.contains('dine')) {
+          matchesOrderType = typeLower.contains('dine') ||
+              (order.tableId != null && order.tableId! > 0);
+        } else {
+          matchesOrderType = typeLower.contains(selLower);
+        }
+      }
+
       bool matchesDate = true;
       if (selectedDate != null) {
         final orderDate = _parseOrderDate(order.date);
-        if (orderDate == null) {
-          matchesDate = false;
-        } else {
+        if (orderDate != null) {
           matchesDate =
               orderDate.year == selectedDate!.year &&
               orderDate.month == selectedDate!.month &&
@@ -210,7 +255,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
         }
       }
 
-      return matchesSearch && matchesStatus && matchesDate;
+      return matchesSearch && matchesStatus && matchesOrderType && matchesDate;
     }).toList();
   }
 
@@ -225,6 +270,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   bool _isResetEnabled() {
     return _searchQuery.isNotEmpty ||
         (_selectedStatus != null && _selectedStatus != 'All') ||
+        (_selectedOrderType != null && _selectedOrderType != 'All Types') ||
         selectedDate != null;
   }
 
@@ -598,6 +644,64 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
                             const SizedBox(width: 12),
 
+                            //  Order Type dropdown
+                            Container(
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color:
+                                    isDark
+                                        ? const Color(0xFF34384F)
+                                        : const Color(0xFF4C81F1),
+                                border: Border.all(
+                                  color:
+                                      isDark
+                                          ? Colors.white24
+                                          : const Color(0xFF4C81F1),
+                                ),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _selectedOrderType,
+                                  dropdownColor:
+                                      isDark
+                                          ? const Color(0xFF34384F)
+                                          : const Color(0xFF4C81F1),
+                                  iconEnabledColor: Colors.white,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                  items:
+                                      orderTypeOptions
+                                          .map(
+                                            (e) => DropdownMenuItem<String>(
+                                              value: e,
+                                              child: Text(
+                                                e,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedOrderType = val;
+                                      _currentPage = 0;
+                                      _updateFilteredOrders();
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+
                             //  status dropdown
                             Container(
                               height: 36,
@@ -700,6 +804,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
                                             // 🔹 Status
                                             _selectedStatus = 'All';
+
+                                            // 🔹 Order Type
+                                            _selectedOrderType = 'All Types';
 
                                             // 🔹 Date
                                             selectedDate = null;
@@ -828,12 +935,17 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                               ),
                                               DataCell(
                                                 Text(
-                                                  order.orderType ?? '-',
+                                                  (order.orderType != null &&
+                                                          order.orderType!.trim().isNotEmpty &&
+                                                          order.orderType != '-')
+                                                      ? order.orderType!
+                                                      : (isTakeAwayType ? 'Online Order' : 'Dine In'),
                                                   style: TextStyle(
                                                     color:
                                                         isDark
                                                             ? Colors.white
                                                             : Colors.black,
+                                                    fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
                                               ),
@@ -889,7 +1001,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                               ),
                                               DataCell(
                                                 Text(
-                                                  "$_currency${order.netPayable?.toStringAsFixed(2) ?? '0.00'}",
+                                                  "$_currency${order.displayTotal.toStringAsFixed(2)}",
                                                   style: TextStyle(
                                                     color:
                                                         isDark
@@ -958,27 +1070,14 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                                                 context,
                                                                 MaterialPageRoute(
                                                                   builder:
-                                                                      (
-                                                                        _,
-                                                                      ) => OrdersDetailsScreen(
-                                                                        token:
-                                                                            widget
-                                                                                .token,
-                                                                        pin:
-                                                                            widget
-                                                                                .pin,
-                                                                        restaurantId:
-                                                                            widget
-                                                                                .restaurantId,
-                                                                        restaurantName:
-                                                                            widget
-                                                                                .restaurantName,
-                                                                        userPermissions:
-                                                                            _userPermissions,
-                                                                        orderId:
-                                                                            order
-                                                                                .orderId ??
-                                                                            0,
+                                                                      (_) => OrdersDetailsScreen(
+                                                                        token: widget.token,
+                                                                        pin: widget.pin,
+                                                                        restaurantId: widget.restaurantId,
+                                                                        restaurantName: widget.restaurantName,
+                                                                        userPermissions: _userPermissions,
+                                                                        orderId: order.orderId ?? 0,
+                                                                        initialOrder: order,
                                                                       ),
                                                                 ),
                                                               );

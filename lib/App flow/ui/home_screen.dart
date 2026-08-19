@@ -82,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int totalTables = 0;
   int totalKotOrders = 0;
   int todayVendorPaymentsCount = 0;
+  int onlineOrdersCount = 0;
   @override
   void initState() {
     super.initState();
@@ -134,11 +135,33 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-      await OrderstatusRepository().fetchOrders(
+      final allOrders = await OrderstatusRepository().fetchOrders(
         widget.token,
         date: todayStr,
         restaurantId: widget.restaurantId,
       );
+
+      final onlineOrders = allOrders.where((order) {
+        final typeLower = (order.orderType ?? '').toLowerCase();
+        final createdVia = (order.createdVia ?? '').toLowerCase();
+        return typeLower.contains('online') ||
+            typeLower.contains('delivery') ||
+            typeLower.contains('doordash') ||
+            typeLower.contains('ubereats') ||
+            typeLower.contains('grubhub') ||
+            typeLower.contains('wc') ||
+            typeLower.contains('synced') ||
+            typeLower.contains('shop') ||
+            createdVia == 'online' ||
+            createdVia == 'rest-api' ||
+            (order.externalOrderId != null && order.externalOrderId!.isNotEmpty);
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          onlineOrdersCount = onlineOrders.length;
+        });
+      }
 
       final kitchenRepo = KitchenRepository(token: widget.token);
       final zoneRepo = ZoneRepository();
@@ -256,6 +279,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  int _autoRefreshCounter = 0;
+
   void _startClock() {
     _updateTime();
     _clockTimer = Timer.periodic(
@@ -269,6 +294,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _currentTime = DateFormat('hh:mm:ss a').format(DateTime.now());
     });
+    _autoRefreshCounter++;
+    if (_autoRefreshCounter >= 15) {
+      _autoRefreshCounter = 0;
+      loadStatusCount();
+      _preFetchOrders();
+    }
   }
 
   final VendorPaymentRepository _repository = VendorPaymentRepository();
@@ -680,16 +711,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 state.tableId == 0 &&
                                                 state.tableName.isEmpty;
                                             final activeOrderCount =
-<<<<<<< HEAD
                                                 (state.orderItems.isNotEmpty &&
                                                         isTakeAwayOrder)
                                                     ? "1"
                                                     : "0";
-=======
-                                            state.orderItems.isNotEmpty
-                                                ? "1"
-                                                : "0";
->>>>>>> 1475e96ef9396877b9273eabcd3232d8c754025e
 
                                             return SizedBox(
                                               width: 250,
@@ -776,7 +801,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           child: _moduleCard(
                                             title: "Online Orders",
                                             subtitle: "Delivery",
-                                            count: "0",
+                                            count: onlineOrdersCount.toString(),
                                             countLabel: "Pending",
                                             color: const Color(0xff9B7AE7),
                                             icon: Icons.language,
@@ -800,6 +825,39 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 offset: Offset(0, 6),
                                               ),
                                             ],
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder:
+                                                      (_) => BlocProvider(
+                                                    create:
+                                                        (
+                                                        context,
+                                                        ) => OrderstatusBloc(
+                                                      OrderstatusRepository(),
+                                                    ),
+                                                    child: OrdersListTable(
+                                                      token: widget.token,
+                                                      pin: widget.pin,
+                                                      restaurantId:
+                                                          widget.restaurantId,
+                                                      restaurantName:
+                                                          widget.restaurantName,
+                                                      userPermissions:
+                                                          _userPermissions,
+                                                      orders: const [],
+                                                      loadedTables: const [],
+                                                      initialOrderType:
+                                                          "Online Orders",
+                                                    ),
+                                                  ),
+                                                ),
+                                              ).then((_) {
+                                                _preFetchOrders();
+                                                loadStatusCount();
+                                              });
+                                            },
                                           ),
                                         ),
                                       ],
@@ -1528,9 +1586,42 @@ class _HomeScreenState extends State<HomeScreen> {
             const Color(0xFFF2EDFF),
             Colors.deepPurple,
             "Online Orders",
-            "0",
+            onlineOrdersCount.toString(),
             isDark,
             showDivider: false,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (_) => BlocProvider(
+                    create:
+                        (
+                        context,
+                        ) => OrderstatusBloc(
+                      OrderstatusRepository(),
+                    ),
+                    child: OrdersListTable(
+                      token: widget.token,
+                      pin: widget.pin,
+                      restaurantId:
+                          widget.restaurantId,
+                      restaurantName:
+                          widget.restaurantName,
+                      userPermissions:
+                          _userPermissions,
+                      orders: const [],
+                      loadedTables: const [],
+                      initialOrderType:
+                          "Online Orders",
+                    ),
+                  ),
+                ),
+              ).then((_) {
+                _preFetchOrders();
+                loadStatusCount();
+              });
+            },
           ),
         ],
       ),
@@ -1545,19 +1636,22 @@ class _HomeScreenState extends State<HomeScreen> {
       String value,
       bool isDark, {
         bool showDivider = true,
+        VoidCallback? onTap,
       }) {
-    return Container(
-      decoration: BoxDecoration(
-        border:
-        showDivider
-            ? Border(
-          bottom: BorderSide(
-            color:
-            isDark ? Colors.grey.shade800 : const Color(0xFFE5E7EB),
-          ),
-        )
-            : null,
-      ),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          border:
+          showDivider
+              ? Border(
+            bottom: BorderSide(
+              color:
+              isDark ? Colors.grey.shade800 : const Color(0xFFE5E7EB),
+            ),
+          )
+              : null,
+        ),
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
@@ -1593,6 +1687,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 

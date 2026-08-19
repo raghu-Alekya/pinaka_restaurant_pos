@@ -34,6 +34,8 @@ class OrderlistModel {
 
   String? status;
   bool? isParent;
+  String? createdVia;
+  String? externalOrderId;
 
   List<KotOrder>? kotOrders;
   num? serviceChargeValue;
@@ -70,6 +72,8 @@ class OrderlistModel {
     this.tableName,
     this.status,
     this.isParent,
+    this.createdVia,
+    this.externalOrderId,
     this.kotOrders,
     this.serviceChargeValue,
     this.serviceChargePercentage,
@@ -78,46 +82,188 @@ class OrderlistModel {
   });
 
   factory OrderlistModel.fromJson(Map<String, dynamic> json) {
+    String? parsedOrderType = json['order_type'] ?? json['type'];
+    final createdViaStr = json['created_via']?.toString().toLowerCase() ?? '';
+    final isOnlineFlag = json['_online_order']?.toString().toLowerCase() == 'yes' ||
+        json['is_pos_online']?.toString().toLowerCase() == 'yes';
+
+    if (parsedOrderType == null || parsedOrderType.isEmpty) {
+      if (json['external_order_id'] != null ||
+          json['pos_system_type'] != null ||
+          createdViaStr == 'online' ||
+          createdViaStr == 'rest-api' ||
+          isOnlineFlag) {
+        parsedOrderType = 'Online Order';
+      }
+    }
+
+    // ===== DEBUG: Print all keys for any order that looks like an online/woocommerce order =====
+    final isOnlineLike = (parsedOrderType?.toLowerCase().contains('online') == true)
+        || json['created_via']?.toString().toLowerCase() == 'rest-api'
+        || json['pos_system_type'] != null
+        || json['external_order_id'] != null;
+    if (isOnlineLike) {
+      print('🟡 [ONLINE ORDER RAW JSON KEYS]: ${json.keys.toList()}');
+      print('🟡 order_id=${json["order_id"]} id=${json["id"]} status=${json["status"]} created_via=${json["created_via"]}');
+      print('🟡 total=${json["total"]} order_total=${json["order_total"]} net_payable=${json["net_payable"]} amount=${json["amount"]} gross_total=${json["gross_total"]}');
+      print('🟡 kot_orders=${json["kot_orders"]?.runtimeType} => ${json["kot_orders"]}');
+      print('🟡 line_items=${json["line_items"]?.runtimeType} => ${json["line_items"]}');
+      print('🟡 items=${json["items"]?.runtimeType} => ${json["items"]}');
+    }
+    // ============================================================================================
+
+
+    String? parsedCustomerName = json['customer_name'];
+    if ((parsedCustomerName == null || parsedCustomerName.isEmpty) && json['billing'] is Map) {
+      final billing = json['billing'] as Map;
+      final firstName = billing['first_name']?.toString() ?? '';
+      final lastName = billing['last_name']?.toString() ?? '';
+      parsedCustomerName = '$firstName $lastName'.trim();
+    }
+    if (parsedCustomerName == null || parsedCustomerName.isEmpty) {
+      parsedCustomerName = json['external_order_id']?.toString();
+    }
+
+    String? parsedCustomerPhone = json['customer_phone'];
+    if ((parsedCustomerPhone == null || parsedCustomerPhone.isEmpty) && json['billing'] is Map) {
+      parsedCustomerPhone = (json['billing'] as Map)['phone']?.toString();
+    }
+
+    num parseAmount(dynamic val) {
+      if (val == null) return 0;
+      if (val is num) return val;
+      final str = val.toString().trim();
+      if (str.isEmpty) return 0;
+      final cleaned = str.replaceAll(RegExp(r'[^0-9.]'), '');
+      return num.tryParse(cleaned) ?? 0;
+    }
+
+    num parseFirstPositive(List<dynamic> candidates) {
+      for (final item in candidates) {
+        final parsed = parseAmount(item);
+        if (parsed > 0) return parsed;
+      }
+      return 0;
+    }
+
+    final rawTotal = parseFirstPositive([
+      json['total'],
+      json['order_total'],
+      json['total_amount'],
+      json['grand_total'],
+      json['net_payable'],
+      json['net_total'],
+      json['gross_total'],
+      json['sub_total'],
+      json['amount'],
+      json['price'],
+    ]);
+
+    num itemsSum = 0;
+    if (rawTotal == 0 && json['kot_orders'] is List) {
+      for (final kot in json['kot_orders']) {
+        if (kot is Map) {
+          itemsSum += parseAmount(kot['total']);
+        }
+      }
+    }
+
+    num lineItemsSum = 0;
+    if (rawTotal == 0 && itemsSum == 0) {
+      final itemsList = json['line_items'] ?? json['items'] ?? json['initial_kot_items'];
+      if (itemsList is List) {
+        for (final item in itemsList) {
+          if (item is Map) {
+            lineItemsSum += parseAmount(
+              item['total'] ??
+              item['total_with_tax'] ??
+              item['amount'] ??
+              item['price'] ??
+              item['line_total'] ??
+              item['subtotal']
+            );
+          }
+        }
+      }
+    }
+
+    final effectiveAmount = rawTotal > 0 ? rawTotal : (itemsSum > 0 ? itemsSum : lineItemsSum);
+
     return OrderlistModel(
       completedByUserId: json['completed_by_user_id']?.toString(),
-      orderId: json['order_id'],
-      orderType: json['order_type'],
-      date: json['date'],
-      customerName: json['customer_name'],
-      customerPhone: json['customer_phone'],
-      paymentType: json['payment_type'],
-      kotOrderId: json['kot_order_id'],
+      orderId: json['order_id'] is int ? json['order_id'] : int.tryParse(json['order_id']?.toString() ?? json['id']?.toString() ?? ''),
+      orderType: parsedOrderType,
+      date: json['date'] ?? json['date_created'] ?? json['created_at'],
+      customerName: parsedCustomerName,
+      customerPhone: parsedCustomerPhone,
+      paymentType: json['payment_type'] ?? json['payment_method_title'],
+      kotOrderId: json['kot_order_id'] is int ? json['kot_order_id'] : int.tryParse(json['kot_order_id']?.toString() ?? json['id']?.toString() ?? ''),
 
-      grossTotal: num.tryParse(json['gross_total']?.toString() ?? "0") ?? 0,
-      subTotal: num.tryParse(json['sub_total']?.toString() ?? "0") ?? 0,
-      totalTax: num.tryParse(json['total_tax']?.toString() ?? "0") ?? 0,
-      netTotal: num.tryParse(json['net_total']?.toString() ?? "0") ?? 0,
-      merchantDiscount: num.tryParse(json['merchant_discount']?.toString() ?? "0") ?? 0,
-      netPayable: num.tryParse(json['net_payable']?.toString() ?? "0") ?? 0,
-      roundOff: num.tryParse(json['round_off']?.toString() ?? "0") ?? 0,
+      grossTotal: parseFirstPositive([json['gross_total'], effectiveAmount]),
+      subTotal: parseFirstPositive([json['sub_total'], effectiveAmount]),
+      totalTax: parseAmount(json['total_tax']),
+      netTotal: parseFirstPositive([json['net_total'], effectiveAmount]),
+      merchantDiscount: parseAmount(json['merchant_discount']),
+      netPayable: effectiveAmount,
+      roundOff: parseAmount(json['round_off']),
 
-      amount: num.tryParse(json['amount']?.toString() ?? "0") ?? 0,
-      discount: num.tryParse(json['discount']?.toString() ?? "0") ?? 0,
-      total: num.tryParse(json['total']?.toString() ?? "0") ?? 0,
+      amount: effectiveAmount,
+      discount: parseAmount(json['discount']),
+      total: effectiveAmount,
 
-      orderPrevTotal: num.tryParse(json['order_prev_total']?.toString() ?? "0") ?? 0,
+      orderPrevTotal: parseAmount(json['order_prev_total']),
 
       isUpdated: json['is_updated']?.toString(),
       updated_remarks: json['updated_remarks']?.toString(),
 
-      restaurantId: json['restaurant_id'],
-      zoneId: json['zone_id'],
-      tableId: json['table_id'],
-      tableStatus: json['table_status'],
-      zoneName: json['zone_name'],
-      tableName: json['table_name'],
+      restaurantId: json['restaurant_id'] is int ? json['restaurant_id'] : int.tryParse(json['restaurant_id']?.toString() ?? ''),
+      zoneId: json['zone_id'] is int ? json['zone_id'] : int.tryParse(json['zone_id']?.toString() ?? ''),
+      tableId: json['table_id'] is int ? json['table_id'] : int.tryParse(json['table_id']?.toString() ?? ''),
+      tableStatus: json['table_status']?.toString(),
+      zoneName: json['zone_name']?.toString(),
+      tableName: json['table_name']?.toString(),
 
-      status: json['status'],
-      isParent: json['is_parent'],
+      status: json['status']?.toString(),
+      isParent: json['is_parent'] is bool ? json['is_parent'] : true,
+      createdVia: json['created_via']?.toString(),
+      externalOrderId: json['external_order_id']?.toString(),
 
-      kotOrders: (json['kot_orders'] as List?)
-          ?.map((v) => KotOrder.fromJson(v))
-          .toList(),
+      kotOrders: () {
+        List<KotOrder>? list = (json['kot_orders'] as List?)
+            ?.map((v) => KotOrder.fromJson(v))
+            .toList();
+        if (list == null || list.isEmpty) {
+          final rawItems = json['line_items'] ?? json['items'] ?? json['initial_kot_items'];
+          if (rawItems is List && rawItems.isNotEmpty) {
+            final lineItems = rawItems.map((itemJson) {
+              if (itemJson is Map<String, dynamic>) {
+                return LineItem.fromJson(itemJson);
+              } else if (itemJson is Map) {
+                return LineItem.fromJson(Map<String, dynamic>.from(itemJson));
+              }
+              return null;
+            }).whereType<LineItem>().toList();
+
+            if (lineItems.isNotEmpty) {
+              final parentOrderId = json['order_id'] is int 
+                  ? json['order_id'] 
+                  : int.tryParse(json['order_id']?.toString() ?? json['id']?.toString() ?? '');
+
+              list = [
+                KotOrder(
+                  kotOrderId: parentOrderId,
+                  status: json['status']?.toString() ?? 'processing',
+                  total: effectiveAmount,
+                  createdAt: json['date']?.toString() ?? json['created_at']?.toString(),
+                  isParent: false,
+                  lineItems: lineItems,
+                )
+              ];
+            }
+          }
+        }
+        return list;
+      }(),
       serviceChargeValue:
       num.tryParse(json['service_charge_value']?.toString() ?? "0") ?? 0,
 
@@ -132,6 +278,16 @@ class OrderlistModel {
   }
 
 // 👇 Add here
+  num get displayTotal {
+    if (netPayable != null && netPayable! > 0) return netPayable!;
+    if (total != null && total! > 0) return total!;
+    if (netTotal != null && netTotal! > 0) return netTotal!;
+    if (amount != null && amount! > 0) return amount!;
+    if (grossTotal != null && grossTotal! > 0) return grossTotal!;
+    if (subTotal != null && subTotal! > 0) return subTotal!;
+    return 0;
+  }
+
   num get totalCouponDiscount {
     if (couponDetails == null || couponDetails!.isEmpty) {
       return 0;
@@ -242,17 +398,21 @@ class LineItem {
       }
     }
 
+    final qty = num.tryParse(json['quantity']?.toString() ?? json['qty']?.toString() ?? "0") ?? 0;
+    final itemTotal = num.tryParse(json['total']?.toString() ?? json['amount']?.toString() ?? json['price']?.toString() ?? "0") ?? 0;
+    final unitPrice = num.tryParse(json['item_price']?.toString() ?? json['price']?.toString() ?? "0") ?? 0;
+
     return LineItem(
-      lineItemId: json['line_item_id'],
-      itemId: json['product_id'] ?? json['item_id'],
-      name: json['name'],
-      quantity: num.tryParse(json['quantity']?.toString() ?? "0") ?? 0,
-      amount: num.tryParse(json['amount']?.toString() ?? "0") ?? 0,
-      total: num.tryParse(json['total']?.toString() ?? "0") ?? 0,
+      lineItemId: json['line_item_id'] ?? json['id'],
+      itemId: json['product_id'] ?? json['item_id'] ?? json['id'],
+      name: json['name'] ?? json['product_name'] ?? 'Item',
+      quantity: qty,
+      amount: itemTotal,
+      total: itemTotal,
       modifierAmount: num.tryParse(json['modifier_amount']?.toString() ?? "0") ?? 0,
-      itemPrice: num.tryParse(json['item_price']?.toString() ?? "0") ?? 0,
+      itemPrice: unitPrice > 0 ? unitPrice : (qty > 0 ? itemTotal / qty : itemTotal),
       modifiers: parsedModifiers,
-      totalWoTax: num.tryParse(json['total_wo_tax']?.toString() ?? "0") ?? 0,
+      totalWoTax: num.tryParse(json['total_wo_tax']?.toString() ?? itemTotal.toString()) ?? itemTotal,
     );
   }
 
@@ -265,9 +425,9 @@ extension OrderModelMapping on OrderlistModel {
     return {
       "id": orderId,
       "timestamp": date,
-      "price": amount,
+      "price": displayTotal,
       "paymentType": paymentType,
-      "orderType": orderType ?? "Shop Order",
+      "orderType": orderType ?? "Online Order",
       "customerName": customerName,
       "customerContact": customerPhone,
       "status": status,
@@ -282,7 +442,7 @@ extension KotOrderMapping on KotOrder {
   Map<String, dynamic> toMapForView() {
     final parts = (createdAt ?? "").split(" ");
     return {
-      "kotNo": kotOrderId,
+      "kotNo": kotOrderId ?? 1,
       "date": parts.isNotEmpty ? parts[0] : "-",
       "time": parts.length > 1 ? parts[1] : "-",
       "items": lineItems?.map((l) => l.toMapForView()).toList() ?? [],
@@ -292,13 +452,21 @@ extension KotOrderMapping on KotOrder {
 
 extension LineItemMapping on LineItem {
   Map<String, dynamic> toMapForView() {
+    final effectiveItemAmount = (amount != null && amount! > 0)
+        ? amount!
+        : ((total != null && total! > 0)
+            ? total!
+            : ((itemPrice != null && quantity != null && itemPrice! > 0 && quantity! > 0)
+                ? itemPrice! * quantity!
+                : 0));
+
     return {
-      "name": name,
-      "qty": quantity,
-      "amount": amount,
+      "name": name ?? 'Item',
+      "qty": quantity ?? 1,
+      "amount": effectiveItemAmount,
       "modifiers": modifiers ?? [],
-      "item_price": itemPrice,
-      "total_wo_tax": totalWoTax,
+      "item_price": (itemPrice != null && itemPrice! > 0) ? itemPrice! : (quantity != null && quantity! > 0 ? effectiveItemAmount / quantity! : effectiveItemAmount),
+      "total_wo_tax": (totalWoTax != null && totalWoTax! > 0) ? totalWoTax! : effectiveItemAmount,
     };
   }
 }

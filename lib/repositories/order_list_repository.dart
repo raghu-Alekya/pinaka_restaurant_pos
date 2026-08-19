@@ -38,6 +38,16 @@ class OrderstatusRepository {
     return _cache[cacheKey];
   }
 
+  OrderlistModel? findCachedOrder(int orderId) {
+    if (orderId == 0) return null;
+    for (final list in _cache.values) {
+      for (final o in list) {
+        if (o.orderId == orderId) return o;
+      }
+    }
+    return null;
+  }
+
   /// Fetch all orders with detailed KOT and line item info
   Future<List<OrderlistModel>> fetchOrders(
     String token, {
@@ -48,7 +58,7 @@ class OrderstatusRepository {
     final cacheKey = "${restaurantId ?? ''}_${date ?? ''}";
 
     // ---------------- CACHE-FIRST CHECK ----------------
-    if (!forceRefresh && _cache.containsKey(cacheKey)) {
+    if (!forceRefresh && _cache.containsKey(cacheKey) && _cache[cacheKey]!.isNotEmpty) {
       final cachedAt = _cacheTimestamps[cacheKey];
       final isFresh =
           cachedAt != null &&
@@ -117,7 +127,96 @@ class OrderstatusRepository {
       AppLogger.info('Order API Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final orders = await compute(_parseOrdersJson, response.body);
+        List<OrderlistModel> orders = await compute(_parseOrdersJson, response.body);
+
+        // ── ONLINE ORDER ENRICHMENT ──────────────────────────────────────────
+        // For WooCommerce online orders (created via REST API), the Pinaka POS
+        // custom endpoint returns empty kot_orders and no line_items.
+        // We identify genuine online orders and enrich them in PARALLEL.
+        const ck = 'ck_74739e5d026eb9c45628548c65dfa35a057cf0bb';
+        const cs = 'cs_41bccfc9f218445664eca0ba008294959f14af49';
+        final basicAuth = 'Basic ${base64Encode(utf8.encode('$ck:$cs'))}';
+        final baseDomain = AppConstants.baseDomain;
+
+        // Only enrich orders that are genuine online orders (no KOTs, valid ID, and
+        // order type or created_via indicates online/WooCommerce origin).
+        final enrichIndexes = <int>[];
+        for (int i = 0; i < orders.length; i++) {
+          final o = orders[i];
+          if (o.orderId == null) continue;
+          if (o.kotOrders != null && o.kotOrders!.isNotEmpty) continue;
+
+          final ot = (o.orderType ?? '').toLowerCase();
+          final createdVia = (o.createdVia ?? '').toLowerCase();
+
+          final isOnline = ot.contains('online') ||
+              ot.contains('shop') ||
+              ot.contains('woo') ||
+              ot.contains('doordash') ||
+              ot.contains('ubereats') ||
+              ot.contains('delivery') ||
+              createdVia == 'online' ||
+              createdVia == 'rest-api' ||
+              (o.externalOrderId != null && o.externalOrderId!.isNotEmpty);
+
+          if (isOnline) enrichIndexes.add(i);
+        }
+
+        // Limit to max 10 most recent online orders to ensure fetch time stays under 1.5 seconds
+        final limitedEnrichIndexes = enrichIndexes.take(10).toList();
+
+        if (limitedEnrichIndexes.isNotEmpty) {
+          AppLogger.info('Enriching ${limitedEnrichIndexes.length} online orders in parallel...');
+
+          await Future.wait(
+            limitedEnrichIndexes.map((i) async {
+              final order = orders[i];
+              try {
+                final wcUrl = Uri.parse('$baseDomain/wp-json/wc/v3/orders/${order.orderId}');
+                final wcResp = await http.get(wcUrl, headers: {
+                  'Authorization': basicAuth,
+                  'Content-Type': 'application/json',
+                }).timeout(const Duration(seconds: 2));
+
+                if (wcResp.statusCode == 200) {
+                  final wcJson = jsonDecode(wcResp.body) as Map<String, dynamic>;
+                  final rawLineItems = wcJson['line_items'] as List?;
+
+                  if (rawLineItems != null && rawLineItems.isNotEmpty) {
+                    final mergedJson = <String, dynamic>{
+                      'order_id': order.orderId,
+                      'order_type': order.orderType?.isNotEmpty == true ? order.orderType : 'Online Order',
+                      'status': wcJson['status'] ?? order.status,
+                      'date': order.date,
+                      'customer_name': order.customerName,
+                      'customer_phone': order.customerPhone,
+                      'payment_type': order.paymentType,
+                      'total': wcJson['total'],
+                      'net_payable': wcJson['total'],
+                      'gross_total': wcJson['total'],
+                      'sub_total': wcJson['total'],
+                      'total_tax': wcJson['total_tax'],
+                      'restaurant_id': order.restaurantId,
+                      'zone_id': order.zoneId,
+                      'table_id': order.tableId,
+                      'is_parent': true,
+                      'kot_orders': [],
+                      'line_items': rawLineItems,
+                      'billing': wcJson['billing'],
+                      'created_via': wcJson['created_via'],
+                    };
+                    orders[i] = OrderlistModel.fromJson(mergedJson);
+                    AppLogger.info('✅ Enriched order #${order.orderId}: total=${wcJson["total"]}, items=${rawLineItems.length}');
+                  }
+                }
+              } catch (e) {
+                AppLogger.error('⚠️ Enrich order #${order.orderId} failed (skipping): $e');
+              }
+            }),
+          );
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         _cache[cacheKey] = orders;
         _cacheTimestamps[cacheKey] = DateTime.now();
         AppLogger.info('Fetched ${orders.length} orders successfully');

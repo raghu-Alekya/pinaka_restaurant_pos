@@ -47,6 +47,7 @@ class OrdersDetailsScreen extends StatefulWidget {
   final String restaurantId;
   final String restaurantName;
   final int orderId; //  Pass selected order ID
+  final OrderlistModel? initialOrder; // Pass clicked order for instant load
   final UserPermissions? userPermissions;
   final Function(UserPermissions)? onPermissionsReceived;
 
@@ -57,6 +58,7 @@ class OrdersDetailsScreen extends StatefulWidget {
     required this.restaurantId,
     required this.restaurantName,
     required this.orderId,
+    this.initialOrder,
     this.userPermissions,
     this.onPermissionsReceived,
     Map<String, dynamic>? selectedUser,
@@ -102,10 +104,20 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   }
 
   Future<List<OrderlistModel>> _getOrdersFuture() async {
+    if (widget.initialOrder != null) {
+      return [widget.initialOrder!];
+    }
+    final cached = _orderRepo.findCachedOrder(widget.orderId);
+    if (cached != null) {
+      return [cached];
+    }
     if (_OrdersCache.isValid(widget.token)) {
       return _OrdersCache.cachedOrders!;
     }
-    final orders = await _orderRepo.fetchOrders(widget.token);
+    final orders = await _orderRepo.fetchOrders(
+      widget.token,
+      restaurantId: widget.restaurantId,
+    );
     _OrdersCache.cachedOrders = orders;
     _OrdersCache.cachedAt = DateTime.now();
     _OrdersCache.cachedToken = widget.token;
@@ -1654,7 +1666,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
                                             paymentRow(
                                               "Net Payable",
-                                              "$_currency${(orderModel.netPayable ?? 0).toDouble().toStringAsFixed(2)}",
+                                              "$_currency${orderModel.displayTotal.toDouble().toStringAsFixed(2)}",
                                               fontWeight: FontWeight.bold,
                                               fontSize: 15,
                                             ),
@@ -2288,7 +2300,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
     final selectedKot = kots.cast<Map<String, dynamic>?>().firstWhere(
       (kot) => kot?["kotNo"] == selectedKotId,
-      orElse: () => null,
+      orElse: () => kots.isNotEmpty ? kots.first : null,
     );
 
     if (selectedKot == null) {
