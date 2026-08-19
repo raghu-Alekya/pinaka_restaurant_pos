@@ -3416,7 +3416,17 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
               },
             ),
           ),
-          _buildCartBar(),
+
+          // SafeArea(
+          //   top: false,
+          //   child: _buildCartBar(),
+          // ),
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).padding.bottom,
+            ),
+            child: _buildCartBar(),
+          )
         ],
       ),
     );
@@ -3948,6 +3958,25 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                     onIncrement: _incrementCartItem,
                     onDecrement: _decrementCartItem,
                     onClearCart: _clearCart,
+                    onAddItems: (items) {
+                      // Add items to the cart (merge with existing)
+                      setState(() {
+                        for (final item in items) {
+                          final existing = _cartItems[item.key];
+                          if (existing != null) {
+                            existing.quantity += item.quantity;
+                          } else {
+                            _cartItems[item.key] = item;
+                          }
+                        }
+                      });
+                    },
+                    onEditItem: (oldItem, newItem) {
+                      setState(() {
+                        _cartItems.remove(oldItem.key);
+                        _cartItems[newItem.key] = newItem;
+                      });
+                    },
                   ),
                 ),
               );

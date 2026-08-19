@@ -860,12 +860,14 @@ class AllTablesListWidget extends StatefulWidget {
   final ScrollController scrollController;
   final ZoneSectionKeyBuilder sectionKeyBuilder;
   final ValueChanged<String>? onZoneVisible;
+  final String statusFilter;
 
   const AllTablesListWidget({
     Key? key,
     required this.scrollController,
     required this.sectionKeyBuilder,
     this.onZoneVisible,
+    required this.statusFilter,
   }) : super(key: key);
 
   @override
@@ -877,7 +879,7 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
   List<dynamic> _orderedZones = [];
   List<dynamic> _cachedTables = [];
   bool _isSilentRefresh = false;
-  String _currencySymbol = ''; // 👈 default
+  String _currencySymbol = '';
 
   @override
   void initState() {
@@ -935,7 +937,6 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
     }
   }
 
-  // ─── Silent Refresh ───
   void _refreshSilently() {
     _isSilentRefresh = true;
     context.read<AllTablesBloc>().add(FetchAllTables());
@@ -964,14 +965,48 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
             }
           },
           builder: (context, tableState) {
-            // If silent refresh is in progress, use cached tables
             final allTables = (tableState is AllTablesLoaded)
                 ? tableState.tables
                 : _cachedTables;
 
+            // ─── Apply status filter ──────────────────────────────────────
+            final filteredTables = widget.statusFilter == 'All'
+                ? allTables
+                : allTables.where((table) {
+              final status = (table.status ?? '').toLowerCase();
+              final filter = widget.statusFilter.toLowerCase();
+              if (filter == 'available') return status == 'available';
+              if (filter == 'occupied') return status == 'occupied';
+              if (filter == 'running') return status == 'dine in' || status == 'running';
+              if (filter == 'ready to pay') return status == 'ready to pay' || status == 'ready to settle';
+              return true;
+            }).toList();
+
+            // ─── If no tables after filter, show empty state ────────────
+            if (filteredTables.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.filter_alt_off, size: 48, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text(
+                        'No tables match the selected filter.',
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            // ─── Group filtered tables by zone ───────────────────────────
             if (allTables.isNotEmpty && zones.isNotEmpty) {
               final Map<String, List<dynamic>> tablesByZone = {};
-              for (final table in allTables) {
+              for (final table in filteredTables) { // 👈 now uses filteredTables
                 final key = (table.zoneId ?? '').toString();
                 tablesByZone.putIfAbsent(key, () => []).add(table);
               }
@@ -1032,9 +1067,6 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
                               final guestCount = _tryDynamic<int>(
                                     () => table.guestCount as int,
                               );
-                              final orderTotal = _tryDynamic<double>(
-                                    () => (table.orderTotal as num).toDouble(),
-                              );
                               final orderStartedAt = _tryDynamic<DateTime>(
                                     () => table.orderStartedAt as DateTime,
                               );
@@ -1046,7 +1078,6 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
                                   table.orderAmount.toString().replaceAll(',', ''),
                                 );
                               }
-
 
                               return _TableCard(
                                 tableId: table.tableId ?? 0,
@@ -1072,7 +1103,7 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
               );
             }
 
-            // Show loading only if not silent refresh and no cached data
+            // ─── Loading / error states ──────────────────────────────────
             if (tableState is AllTablesLoading && !_isSilentRefresh) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -1102,7 +1133,7 @@ T? _tryDynamic<T>(T Function() getter) {
   }
 }
 
-// ─── Status handling ───
+// ─── Status handling (unchanged) ──────────────────────────────────────
 enum _TableStatusKind { available, running, readyToSettle, occupied }
 
 _TableStatusKind _statusKind(String rawStatus) {
@@ -1110,7 +1141,7 @@ _TableStatusKind _statusKind(String rawStatus) {
   if (s == 'dine in' || s == 'dine-in' || s == 'running') {
     return _TableStatusKind.running;
   }
-  if (s == 'ready to pay' || s == 'ready to pay') {
+  if (s == 'ready to pay' || s == 'ready to settle') {
     return _TableStatusKind.readyToSettle;
   }
   if (s == 'occupied') {
@@ -1156,7 +1187,7 @@ String _formatElapsed(DateTime start) {
   return 'Just now';
 }
 
-// ─── Dashed border painter ───
+// ─── Dashed border painter (unchanged) ──────────────────────────────
 class _DashedBorderPainter extends CustomPainter {
   final Color color;
   final double radius;
@@ -1218,6 +1249,7 @@ class _DashedBorderPainter extends CustomPainter {
         oldDelegate.radius != radius;
   }
 }
+
 
 class _TableCard extends StatelessWidget {
   final int tableId;
@@ -1450,6 +1482,8 @@ class _TableCard extends StatelessWidget {
             onIncrement: (_) {},
             onDecrement: (_) {},
             onClearCart: () {},
+            onAddItems: (items) {},
+
           ),
         ),
       );
@@ -1492,6 +1526,9 @@ class _TableCard extends StatelessWidget {
               onIncrement: (_) {},
               onDecrement: (_) {},
               onClearCart: () {},
+              onAddItems: (items) {
+
+              },
             ),
           ),
         );

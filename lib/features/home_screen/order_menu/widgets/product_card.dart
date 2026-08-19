@@ -514,7 +514,7 @@ class _ProductCardState extends State<ProductCard> {
                               SizedBox(width: s(8)),
                               if (isVariant)
                                 quantity == 0
-                                    ? _VariantIndicatorIcon(size: s(30)) // 👈 NEW image
+                                    ? _VariantIndicatorIcon(size: s(20))
                                     : Container(
                                   padding: EdgeInsets.symmetric(
                                     horizontal: s(8),

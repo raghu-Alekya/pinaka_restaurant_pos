@@ -846,12 +846,17 @@ import 'package:restaurant_captain_app/constants/color_constants.dart';
 
 import '../ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
 import '../ merchant_login/merchant_login_data_layer/merchant_local_storage.dart';
+import '../addons/addons_domin/addon_entity.dart';
+import '../addons/addons_domin/fetch_addons_usecase.dart';
 import '../bill_summary/bill_summary_screen.dart';
 import '../kots_list/kots_list_bloc/kots_list_bloc.dart';
 import '../kots_list/kots_list_bloc/kots_list_event.dart';
 import '../kots_list/kots_list_bloc/kots_list_state.dart';
+import '../kots_list/kots_list_domin/kots_list_entity.dart';
 import '../kots_list/kots_list_widget.dart';
 import '../printer/printer_service.dart';
+import '../kots_list/kots_list_bloc/kds_seivices.dart';
+import 'order_menu/entities/product_entity.dart';
 import 'order_menu/order_menu_screen.dart';
 
 // ─── Table refresh and navigation imports ────────────────────────────
@@ -859,7 +864,7 @@ import '../home_screen/All_tables_list/All_tables_list_bloc/all_tables_list_bloc
 import '../home_screen/All_tables_list/All_tables_list_bloc/all_tables_list_event.dart';
 import '../home_screen/Zones/Zones_bloc/zone_event.dart';
 import '../home_screen/Zones/Zones_bloc/zones_bloc.dart';
-import '../home_screen/TableManagement_Screen.dart'; // 👈 added
+import '../home_screen/TableManagement_Screen.dart';
 
 class CartScreen extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -871,6 +876,8 @@ class CartScreen extends StatefulWidget {
   final void Function(CartItem item) onIncrement;
   final void Function(CartItem item) onDecrement;
   final VoidCallback onClearCart;
+  final void Function(List<CartItem> items) onAddItems;
+  final void Function(CartItem oldItem, CartItem newItem)? onEditItem; // 👈 new
 
   const CartScreen({
     super.key,
@@ -883,6 +890,9 @@ class CartScreen extends StatefulWidget {
     required this.onIncrement,
     required this.onDecrement,
     required this.onClearCart,
+    required this.onAddItems,
+    this.onEditItem,
+
   });
 
   @override
@@ -899,6 +909,7 @@ class _CartScreenState extends State<CartScreen> {
   bool _initialAutoExpandDone = false;
   late final StreamSubscription<KotsListState> _kotsSubscription;
   final ValueNotifier<String> _currencySymbolNotifier = ValueNotifier<String>('\$');
+  bool _isEditSheetOpen = false;
 
   @override
   void initState() {
@@ -1000,6 +1011,188 @@ class _CartScreenState extends State<CartScreen> {
     }).toList();
   }
 
+  Future<void> _showEditAddOnsSheet(CartItem oldItem) async {
+    // 👇 Prevent multiple sheets from opening
+    if (_isEditSheetOpen) return;
+    // 👇 Only show if the item actually has add-ons to edit
+    if (oldItem.addOns.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No add-ons to edit.')),
+      );
+      return;
+    }
+
+    setState(() => _isEditSheetOpen = true);
+
+    try {
+      final addOns = await context.read<FetchAddOnsUseCase>()(oldItem.product.id);
+
+      // If the API returns no add-ons, inform the user and unlock
+      if (addOns.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No add-ons available for this item.')),
+        );
+        if (mounted) setState(() => _isEditSheetOpen = false);
+        return;
+      }
+
+      // ─── Pre-select the item's current add-ons ──────────────────────
+      final selectedAddOns = <AddOnEntity>{};
+      for (final currentAddOn in oldItem.addOns) {
+        final name = currentAddOn['name'] as String;
+        final price = currentAddOn['price'] as double;
+        final matching = addOns.firstWhere(
+              (a) => a.name == name && a.price == price,
+          orElse: () => AddOnEntity(
+            name: name,
+            price: price,
+            id: 0,
+            restaurantId: 0,
+            type: '',
+          ),
+        );
+        // If we found a matching add-on (i.e., it's not the dummy), select it.
+        if (matching.id != 0 || matching.name == name) {
+          selectedAddOns.add(matching);
+        }
+      }
+
+      final currencySymbol = _currencySymbolNotifier.value;
+
+      // ─── Show the bottom sheet ──────────────────────────────────────
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (sheetContext) {
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Header ──
+                    Row(
+                      children: [
+                        const Text(
+                          'Edit Add-ons',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(sheetContext),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFFFFEAEA),
+                            ),
+                            child: const Icon(Icons.close, size: 18, color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Add‑on list ──
+                    ...addOns.map((addOn) {
+                      final isChecked = selectedAddOns.contains(addOn);
+                      return CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        value: isChecked,
+                        title: Text(addOn.name),
+                        secondary: Text(
+                          '+ $currencySymbol${addOn.price.toStringAsFixed(2)}',
+                        ),
+                        onChanged: (checked) {
+                          setSheetState(() {
+                            if (checked == true) {
+                              selectedAddOns.add(addOn);
+                            } else {
+                              selectedAddOns.remove(addOn);
+                            }
+                          });
+                        },
+                      );
+                    }),
+                    const SizedBox(height: 16),
+
+                    // ── Save button ──
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final newAddOns = selectedAddOns.map((a) {
+                            return {'name': a.name, 'price': a.price};
+                          }).toList();
+                          final newItem = CartItem(
+                            product: oldItem.product,
+                            addOns: newAddOns,
+                            quantity: oldItem.quantity,
+                          );
+                          // Notify parent and update local list
+                          widget.onEditItem?.call(oldItem, newItem);
+                          setState(() {
+                            final index = cartItems.indexOf(oldItem);
+                            if (index != -1) {
+                              cartItems[index] = newItem;
+                            }
+                          });
+                          Navigator.pop(sheetContext);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Add-ons updated successfully'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ColorConstants.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'Save Changes',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ).whenComplete(() {
+        // 👇 Unlock when the sheet is dismissed
+        if (mounted) setState(() => _isEditSheetOpen = false);
+      });
+    } catch (e) {
+      // ─── Error handling ──────────────────────────────────────────────
+      if (mounted) setState(() => _isEditSheetOpen = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load add-ons: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   // ─── KOT Print ────────────────────────────────────────────────────────────
   Future<void> _printKot() async {
     if (cartItems.isEmpty || _isPrintingKot) return;
@@ -1049,6 +1242,59 @@ class _CartScreenState extends State<CartScreen> {
         throw Exception('KOT print failed (${response.statusCode}): ${response.body}');
       }
 
+      // ─── Parse response for real KOT data ──────────────────────────────
+      final responseData = jsonDecode(response.body);
+      final int kotId = responseData['kot_id'] ?? 0;
+      final String kotNumber = responseData['kot_number'] ?? 'KOT-${widget.orderId}';
+      final double kotTotal = (responseData['kot_total'] as num?)?.toDouble() ?? totalPrice;
+      final List<dynamic> itemsJson = responseData['items'] ?? [];
+
+      // Build line items from the API response
+      final List<LineItem> kotLineItems = itemsJson.map((item) {
+        return LineItem(
+          id: item['id'] ?? 0,
+          productId: item['product_id'] ?? 0,
+          itemName: item['product_name'] ?? '',
+          quantity: item['quantity'] ?? 0,
+          price: (item['price'] as num?)?.toDouble() ?? 0.0,
+          amount: (item['amount'] as num?)?.toDouble() ?? 0.0,
+          modifiers: item['modifiers'] ?? [],
+          combos: [],
+          isCancelled: 'no',
+        );
+      }).toList();
+
+      // Get zone name if available (fallback to empty string)
+      final String zoneName = responseData['zone_name'] ?? '';
+
+      // ─── Notify KDS via MQTT with real data ──────────────────────────
+      try {
+        final kotOrder = KotOrder(
+          id: kotId,
+          time: DateTime.now().toIso8601String(),
+          status: 'pending',
+          total: kotTotal,
+          kotNumber: kotNumber,
+          orderBy: captainName,
+          lineItems: kotLineItems,
+        );
+
+        await KdsMqttPublisher.notifyKotCreated(
+          restaurantId: widget.restaurantId.toString(),
+          parentOrderId: widget.orderId,
+          zoneId: widget.zoneId,
+          zoneName: zoneName,
+          orderType: widget.orderType,
+          kot: kotOrder,
+          tableName: widget.tableName,
+          tableId: widget.tableName,
+        );
+      } catch (mqttError) {
+        // Non-blocking – printing already succeeded
+        print('MQTT notify failed (non-blocking): $mqttError');
+      }
+
+      // ─── Print KOT (unchanged) ──────────────────────────────────────────
       final printItems = cartItems.map((item) {
         final addOnNames = item.addOns.map((a) => a['name'].toString()).toList();
         return {
@@ -1088,31 +1334,15 @@ class _CartScreenState extends State<CartScreen> {
       context.read<ZoneBloc>().add(FetchZones());
 
       // ─── Return to the existing TableManagementScreen ───────────────
-      // 👈 popUntil reuses the screen already on the stack instead of
-      // pushAndRemoveUntil building a brand-new one — so it just
-      // updates via the blocs above instead of showing a full reload.
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
-
-      // // ─── Navigate to TableManagementScreen ─────────────────────────
-      // if (mounted) {
-      //   Navigator.of(context).pushAndRemoveUntil(
-      //     MaterialPageRoute(
-      //       builder: (_) => TableManagementScreen(
-      //         captainName: captainName,
-      //         captainRole: captainRole,
-      //       ),
-      //     ),
-      //         (route) => false,
-      //   );
-      // }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to print KOT: $e'), backgroundColor: Colors.red),
       );
-      // Still navigate back on error? Maybe not – but we'll pop to avoid stuck screen.
+      // Still navigate back on error
       Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _isPrintingKot = false);
@@ -1247,23 +1477,75 @@ class _CartScreenState extends State<CartScreen> {
         throw Exception('Captain token not found.');
       }
 
+      final url = '$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/repeat-kot-order';
+
+      final requestBody = {
+        'order_id': widget.orderId,
+        'restaurant_id': widget.restaurantId,
+        'zone_id': widget.zoneId,
+      };
+
       final response = await http.post(
-        Uri.parse('$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/repeat-kot-order'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'order_id': widget.orderId,
-          'restaurant_id': widget.restaurantId,
-          'zone_id': widget.zoneId,
-        }),
+        body: jsonEncode(requestBody),
       );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('Repeat KOT failed (${response.statusCode}): ${response.body}');
+        throw Exception(
+          'Repeat KOT failed (${response.statusCode}): ${response.body}',
+        );
       }
 
+      // ─── Parse response and add items to cart via callback ──────────
+      final responseData = jsonDecode(response.body);
+      final List<dynamic> lineItems = responseData['line_items'] ?? [];
+
+      // Build CartItem list from the response
+      final List<CartItem> newItems = [];
+      for (final itemJson in lineItems) {
+        final productId = itemJson['product_id'] ?? 0;
+        final productName = itemJson['product_name'] ?? 'Unknown Product';
+        final String priceStr = itemJson['product_price']?.toString() ?? '0';
+        final int quantity = itemJson['quantity'] ?? 1;
+
+        if (productId > 0) {
+          final product = ProductEntity(
+            id: productId,
+            name: productName,
+            price: priceStr,
+            inStock: true,
+            isVariant: 'No',
+          );
+          newItems.add(CartItem(product: product, quantity: quantity));
+        }
+      }
+
+      if (newItems.isNotEmpty) {
+        // Add items to the parent cart via callback
+        widget.onAddItems(newItems);
+        // Update local cartItems list so the UI reflects changes
+        setState(() {
+          // Merge new items with existing ones
+          for (final newItem in newItems) {
+            final existingIndex = cartItems.indexWhere(
+                  (item) => item.product.id == newItem.product.id,
+            );
+            if (existingIndex != -1) {
+              cartItems[existingIndex].quantity += newItem.quantity;
+            } else {
+              cartItems.add(newItem);
+            }
+          }
+          // 👇 Collapse KOT list so items are visible
+          _showAllKots = false;
+        });
+      }
+
+      // ─── Refresh KOT list and tables ────────────────────────────────────
       context.read<KotsListBloc>().add(
         FetchKotsList(
           parentOrderId: widget.orderId,
@@ -1272,22 +1554,35 @@ class _CartScreenState extends State<CartScreen> {
         ),
       );
 
-      // ─── Refresh tables instantly ──────────────────────────
       context.read<AllTablesBloc>().add(FetchAllTables());
       context.read<ZoneBloc>().add(FetchZones());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('KOT repeated successfully'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('KOT repeated successfully. Items added to cart.'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('════════════ REPEAT KOT ERROR ═════════════');
+      debugPrint('Error: $e');
+      debugPrint('StackTrace: $stackTrace');
+      debugPrint('════════════════════════════════════════════');
+
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to repeat KOT: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Failed to repeat KOT: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
-      if (mounted) setState(() => _isRepeatingKot = false);
+      if (mounted) {
+        setState(() => _isRepeatingKot = false);
+      }
     }
   }
 
@@ -1343,14 +1638,24 @@ class _CartScreenState extends State<CartScreen> {
                   child: Column(
                     children: [
                       _buildKotListSection(),
-                      if (cartItems.isNotEmpty || !_showAllKots)
+                      if (!_showAllKots)
                         _itemsCard(currencySymbol),
                     ],
                   ),
                 ),
               ),
-              _bottomKotBar(currencySymbol),
-              _buildCheckoutFooter(currencySymbol),
+              // _bottomKotBar(currencySymbol),
+              // _buildCheckoutFooter(currencySymbol),
+              SafeArea(
+                top: false,          // only protect the bottom
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _bottomKotBar(currencySymbol),
+                    _buildCheckoutFooter(currencySymbol),
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -1682,64 +1987,99 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _itemRow(CartItem item, String currencySymbol) {
-    final subtitle = item.addOns.isNotEmpty ? item.addOns.map((a) => a['name'].toString()).join(', ') : 'Customize';
+    final subtitle = item.addOns.isNotEmpty
+        ? item.addOns.map((a) => a['name'].toString()).join(', ')
+        : 'Customize';
+
+    final bool hasAddOns = item.addOns.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            flex: 4,
-            child: Row(
-              children: [
-                _itemThumbnail(),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item.product.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-                          const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
-                            child: const Icon(Icons.edit, size: 8, color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ],
+      child: GestureDetector(
+        onTap: () => _showEditAddOnsSheet(item),
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 4,
+              child: Row(
+                children: [
+                  _itemThumbnail(),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.product.name,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(
+                              subtitle,
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                            ),
+                            const SizedBox(width: 4),
+                            if (hasAddOns)
+                              GestureDetector(
+                                onTap: () => _showEditAddOnsSheet(item),
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.orange,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.edit, size: 8, color: Colors.white),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _qtyButton(icon: Icons.remove, bgColor: const Color(0xFFD8F0DE), iconColor: const Color(0xFF2E7D42), onTap: () => _decrement(item)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('${item.quantity}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                ),
-                _qtyButton(icon: Icons.add, bgColor: const Color(0xFF2E7D42), iconColor: Colors.white, onTap: () => _increment(item)),
-              ],
+            Expanded(
+              flex: 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _qtyButton(
+                    icon: Icons.remove,
+                    bgColor: const Color(0xFFD8F0DE),
+                    iconColor: const Color(0xFF2E7D42),
+                    onTap: () => _decrement(item),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      '${item.quantity}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  _qtyButton(
+                    icon: Icons.add,
+                    bgColor: const Color(0xFF2E7D42),
+                    iconColor: Colors.white,
+                    onTap: () => _increment(item),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              '$currencySymbol${item.totalPrice.toStringAsFixed(2)}',
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            Expanded(
+              flex: 2,
+              child: Text(
+                '$currencySymbol${item.totalPrice.toStringAsFixed(2)}',
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1841,7 +2181,7 @@ class _CartScreenState extends State<CartScreen> {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Check Out', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text('Check Out', style: TextStyle(fontWeight: FontWeight.w600,fontSize:18)),
                 SizedBox(width: 4),
                 Icon(Icons.arrow_forward, size: 16),
               ],

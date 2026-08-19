@@ -38,7 +38,7 @@ class KotsListResponse {
       tableId: parent['table_id'] ?? 0,
       tableName: parent['table_name'] ?? '',
       kotOrders: (parent['kot_orders'] as List?)
-          ?.map((e) => KotOrder.fromJson(e))
+          ?.map((e) => KotOrderFromJson.fromJson(e))
           .toList() ??
           [],
     );
@@ -53,9 +53,9 @@ extension KotOrderFromJson on KotOrder {
       status: json['status'] ?? '',
       total: (json['total'] ?? 0).toDouble(),
       kotNumber: json['kot_number'] ?? '',
-      // orderBy: json['order_by'],      // ✅ Now works
+      // orderBy: json['order_by'],
       lineItems: (json['line_items'] as List?)
-          ?.map((e) => LineItem.fromJson(e))
+          ?.map((e) => LineItemFromJson.fromJson(e))
           .toList() ??
           [],
     );
@@ -71,9 +71,10 @@ extension LineItemFromJson on LineItem {
       quantity: json['quantity'] ?? 0,
       price: (json['price'] ?? 0).toDouble(),
       amount: (json['amount'] ?? 0).toDouble(),
+      originalPrice: (json['original_price'] ?? 0).toDouble(),
       modifiers: json['modifiers'] ?? [],
       combos: json['combos'] ?? [],
-      // isCancelled: json['is_cancelled'] ?? 'no',  // ✅ Now works
+      isCancelled: (json['is_cancelled'] ?? 'no').toString(),
     );
   }
 }

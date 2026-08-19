@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import '../../../../utils/api_exception_handler.dart';
 import 'kots_list_model.dart';
@@ -25,6 +26,7 @@ class KotsListRemoteDataSourceImpl implements KotsListRemoteDataSource {
     try {
       final url = '$baseUrl/wp-json/pinaka-restaurant-pos/v1/kot/get-parent-kot-orders'
           '?parent_order_id=$parentOrderId&restaurant_id=$restaurantId&zone_id=$zoneId';
+      debugPrint('KOT List URL: $url');
 
       final response = await http.get(
         Uri.parse(url),

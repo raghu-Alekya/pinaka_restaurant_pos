@@ -3,13 +3,17 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart'; // ✅ needed for Provider.of
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:restaurant_captain_app/features/printer/printer_db_helper.dart';
 import 'package:restaurant_captain_app/features/printer/printer_setup_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:thermal_printer/thermal_printer.dart';
 
-// Printer selection model
+// ✅ Import CaptainLocalStorage
+import '../ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
+
+// Printer selection model (unchanged)
 class PrinterSelection {
   final String name;
   final String address;
@@ -69,19 +73,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadConnectedPrinters();
   }
 
-  // ==================== LOAD USER DETAILS ====================
+  // ==================== LOAD USER DETAILS (from CaptainLocalStorage) ====================
   Future<void> _loadUserDetails() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      setState(() {
-        _token = prefs.getString('auth_token') ?? '';
-        _userId = prefs.getString('user_id') ?? '';
-        _displayName = prefs.getString('display_name') ?? '';
-        _role = prefs.getString('user_role') ?? '';
-      });
-      debugPrint('Loaded user details: displayName=$_displayName');
+      // ✅ Use Provider to get the concrete CaptainLocalStorage instance
+      final captainStorage = Provider.of<CaptainLocalStorage>(context, listen: false);
+      final captainData = await captainStorage.getCaptainData();
+
+      if (captainData != null && captainData.data != null) {
+        final data = captainData.data!;
+        setState(() {
+          _displayName = data.displayName ?? '';
+          _role = data.role ?? '';
+          _userId = data.id?.toString() ?? '';
+          _token = data.token ?? '';
+        });
+
+        // ─── Print to console ──────────────────────────────────────────
+        print('══════════════ CAPTAIN DETAILS ══════════════');
+        print('Display Name: ${data.displayName}');
+        print('Role: ${data.role}');
+        print('ID: ${data.id}');
+        print('Token: ${data.token}');
+        print('Restaurant Name: ${data.restaurantName}');
+        print('Currency Symbol: ${data.currencySymbol}');
+        print('══════════════════════════════════════════════');
+      } else {
+        // Fallback: SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        setState(() {
+          _displayName = prefs.getString('display_name') ?? '';
+          _role = prefs.getString('user_role') ?? '';
+          _userId = prefs.getString('user_id') ?? '';
+          _token = prefs.getString('auth_token') ?? '';
+        });
+        print('⚠️ No captain data found, using SharedPreferences fallback.');
+      }
     } catch (e) {
-      debugPrint('Error loading user details: $e');
+      debugPrint('Error loading captain details: $e');
+      // Final fallback
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        setState(() {
+          _displayName = prefs.getString('display_name') ?? '';
+          _role = prefs.getString('user_role') ?? '';
+          _userId = prefs.getString('user_id') ?? '';
+          _token = prefs.getString('auth_token') ?? '';
+        });
+      } catch (_) {}
     }
   }
 
@@ -281,6 +320,189 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ─── ✨ polished custom dialog for Help & Support ──────────
+  void _showHelpSupportDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFCDD2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.help_outline_rounded,
+                  color: Color(0xFFC62828),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Help & Support',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Contact us for any assistance or inquiries.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF737373),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.email_outlined, color: Color(0xFF1A1A1A), size: 18),
+                    SizedBox(width: 12),
+                    Text(
+                      'support@restaurantapp.com',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6B00),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Got it',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── ✨ polished custom dialog for About App ──────────────
+  void _showAboutAppDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB2EBF2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: Color(0xFF00838F),
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'About App',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    return Column(
+                      children: [
+                        Text(
+                          '${snapshot.data!.appName}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Version ${snapshot.data!.version}+${snapshot.data!.buildNumber}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF737373),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return const CircularProgressIndicator();
+                },
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6B00),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ==================== BUILD ====================
   @override
   Widget build(BuildContext context) {
@@ -289,13 +511,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     const Color cardColor = Colors.white;
     const Color primaryTextColor = Color(0xFF1A1A1A);
     const Color secondaryTextColor = Color(0xFF8A8A8A);
-    const Color sectionHeaderColor = Color(0xFF9E9E9E);
-    const Color switchActiveColor = Color(0xFFFF6B00); // Orange like screenshot
-    const Color dividerColor = Color(0xFFF0F0F0);
+    const Color switchActiveColor = Color(0xFFFF6B00);
 
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, size: 20),
+          onPressed: () => Navigator.pop(context),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+        ),
         title: const Text(
           'Settings',
           style: TextStyle(
@@ -449,8 +675,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Notifications',
                   trailing: const Icon(Icons.chevron_right, color: secondaryTextColor),
                   onTap: () {
-                    // You can open a detailed notifications screen here if needed
-                    // For now just toggle
                     setState(() => _notificationsEnabled = !_notificationsEnabled);
                     _saveSettings();
                   },
@@ -470,21 +694,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   iconColor: const Color(0xFFC62828),
                   title: 'Help & Support',
                   trailing: const Icon(Icons.chevron_right, color: secondaryTextColor),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Help & Support'),
-                        content: const Text('Contact support at support@example.com'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                  onTap: _showHelpSupportDialog,
                 ),
                 _buildDivider(),
                 _buildSettingTile(
@@ -493,38 +703,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   iconColor: const Color(0xFF00838F),
                   title: 'About App',
                   trailing: const Icon(Icons.chevron_right, color: secondaryTextColor),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('About App'),
-                        content: FutureBuilder<PackageInfo>(
-                          future: PackageInfo.fromPlatform(),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData) {
-                              return Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('App Name: ${snapshot.data!.appName}'),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                      'Version: ${snapshot.data!.version}+${snapshot.data!.buildNumber}'),
-                                ],
-                              );
-                            }
-                            return const Text('Loading...');
-                          },
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                  onTap: _showAboutAppDialog,
                 ),
               ],
             ),

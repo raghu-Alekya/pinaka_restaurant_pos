@@ -231,8 +231,17 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
     );
   }
 
-  // ---------- Item card with currency symbol ----------
+// ─── Item card with currency symbol + original price display ──────────
   Widget _buildItemCard(LineItem item, String currencySymbol) {
+    final bool isCancelled = item.isCancelled.toLowerCase() == 'yes';
+    final bool isZeroPrice = item.amount == 0;
+    final bool shouldStrike = isCancelled || isZeroPrice;
+
+    // ─── Calculate display price ──────────────────────────────────────
+    // Use original_price × quantity, fallback to price × quantity
+    final double unitPrice = item.originalPrice > 0 ? item.originalPrice : item.price;
+    final double displayPrice = unitPrice * item.quantity;
+
     // Build modifier / combo subtitle
     String subtitle = '';
     if (item.modifiers.isNotEmpty) {
@@ -249,34 +258,44 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: shouldStrike ? Colors.red.shade50 : Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: shouldStrike ? Colors.red.shade200 : Colors.grey.shade200,
+        ),
       ),
       child: Row(
         children: [
-          // Food image (placeholder)
+          // ── Image ──
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
               width: 52,
               height: 52,
               color: Colors.grey.shade200,
-              child: Icon(Icons.restaurant, size: 24, color: Colors.grey.shade400),
+              child: Icon(
+                Icons.restaurant,
+                size: 24,
+                color: shouldStrike ? Colors.red.shade300 : Colors.grey.shade400,
+              ),
             ),
           ),
           const SizedBox(width: 12),
 
-          // Name + modifier
+          // ── Name + modifier + qty × original price ──
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   item.itemName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
+                    color: shouldStrike ? Colors.red.shade700 : Colors.black87,
+                    decoration: shouldStrike ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.red.shade700,
+                    decorationThickness: 1.5,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -287,30 +306,40 @@ class _KotExpansionTileState extends State<_KotExpansionTile> {
                     subtitle,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey.shade600,
+                      color: shouldStrike ? Colors.red.shade400 : Colors.grey.shade600,
+                      decoration: shouldStrike ? TextDecoration.lineThrough : null,
+                      decorationColor: Colors.red.shade400,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 const SizedBox(height: 4),
+                // ── Show: Qty × Original Price ──
                 Text(
-                  '${item.quantity} ×',
-                  style: const TextStyle(
+                  '${item.quantity} × $currencySymbol${unitPrice.toStringAsFixed(2)}',
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
+                    color: shouldStrike ? Colors.red.shade700 : Colors.grey.shade700,
+                    decoration: shouldStrike ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.red.shade700,
                   ),
                 ),
               ],
             ),
           ),
 
-          // Price with currency symbol
+          // ── Total amount ──
           Text(
-            '$currencySymbol${item.amount.toStringAsFixed(2)}',
-            style: const TextStyle(
+            '$currencySymbol${displayPrice.toStringAsFixed(2)}',
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
+              color: shouldStrike ? Colors.red.shade700 : Colors.black87,
+              decoration: shouldStrike ? TextDecoration.lineThrough : null,
+              decorationColor: Colors.red.shade700,
+              decorationThickness: 1.5,
             ),
           ),
         ],

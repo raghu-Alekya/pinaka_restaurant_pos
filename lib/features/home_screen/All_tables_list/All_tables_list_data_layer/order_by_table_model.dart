@@ -1,4 +1,5 @@
 // lib/features/home_screen/order_by_table/data/models/order_by_table_model.dart
+
 class OrderByTableResponse {
   final int restaurantId;
   final int orderId;
@@ -81,6 +82,8 @@ class LineItem {
   final double amount;
   final List<dynamic> modifiers;
   final List<dynamic> combos;
+  final String isCancelled;
+  final double originalPrice;
 
   LineItem({
     required this.id,
@@ -91,6 +94,8 @@ class LineItem {
     required this.amount,
     required this.modifiers,
     required this.combos,
+    this.isCancelled = 'no', // ✅ Default value
+    this.originalPrice = 0.0,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
@@ -103,6 +108,8 @@ class LineItem {
       amount: (json['amount'] ?? 0).toDouble(),
       modifiers: json['modifiers'] ?? [],
       combos: json['combos'] ?? [],
+      isCancelled: (json['is_cancelled'] ?? 'no').toString(),
+      originalPrice: (json['original_price'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
