@@ -20,6 +20,11 @@ class OrderProvider extends ChangeNotifier {
 
   Timer? _servedCleanupTimer;
   final Map<String, _OptimisticStatus> _optimisticStatuses = {};
+  // Map<String, String> get productCategoryById =>
+  //     _apiService.productCategoryById;
+  //
+  // Map<String, String> get productCategoryByName =>
+  //     _apiService.productCategoryByName;
 
   OrderProvider(this._mqttService, this._apiService) {
     KdsDebugLog.info('OrderProvider created');
@@ -765,8 +770,30 @@ class OrderProvider extends ChangeNotifier {
 
   Map<String, dynamic> _enrichMqttMessageWithCategories(
       Map<String, dynamic> message) {
+
+    debugPrint('==========================================');
+    debugPrint('MQTT CATEGORY MAP BEFORE ENRICHMENT');
+    debugPrint(
+      'MAP COUNT: ${_productCategoryMap.length}',
+    );
+    debugPrint(
+      'NAME MAP COUNT: ${_productCategoryNameMap.length}',
+    );
+    debugPrint(
+      '5823 => ${_productCategoryMap['5823']}',
+    );
+    debugPrint(
+      '14147 => ${_productCategoryMap['14147']}',
+    );
+    debugPrint(
+      '13847 => ${_productCategoryMap['13847']}',
+    );
+    debugPrint('==========================================');
+
     final copy = _deepCopyMap(message);
+
     _enrichMapRecursively(copy);
+
     return copy;
   }
 
@@ -1425,6 +1452,49 @@ class OrderProvider extends ChangeNotifier {
       // ----------------------------------------------------------
 
       _buildCategoryMapsFromApiOrders(apiOrders);
+
+      debugPrint('==========================================');
+      debugPrint('🔥 PROVIDER CATEGORY MAP AFTER API');
+      debugPrint(
+        'MAP COUNT: ${_productCategoryMap.length}',
+      );
+      debugPrint(
+        'NAME MAP COUNT: ${_productCategoryNameMap.length}',
+      );
+      debugPrint(
+        '5823 => ${_productCategoryMap['5823']}',
+      );
+      debugPrint(
+        '14147 => ${_productCategoryMap['14147']}',
+      );
+      debugPrint(
+        '13847 => ${_productCategoryMap['13847']}',
+      );
+      debugPrint(
+        'chicken curry => '
+            '${_productCategoryNameMap['chicken curry']}',
+      );
+      debugPrint('==========================================');
+
+
+      // ==========================================================
+// SYNC CATEGORY MAPS FROM API SERVICE
+// These maps are used by newly-created MQTT KOTs.
+// ==========================================================
+
+      _productCategoryMap
+        ..clear()
+        ..addAll(_apiService.productCategoryById);
+
+      _productCategoryNameMap
+        ..clear()
+        ..addAll(_apiService.productCategoryByName);
+
+      debugPrint(
+        'SYNCED API CATEGORY MAPS → '
+            'IDs=${_productCategoryMap.length}, '
+            'NAMES=${_productCategoryNameMap.length}',
+      );
 
       // ----------------------------------------------------------
       // KEEP CURRENT LOCAL ORDERS

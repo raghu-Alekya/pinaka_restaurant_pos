@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 class OrderItem {
   final int? lineItemId;
   final String name;
+  final String? productId;
   final int qty;
   String status;
 
@@ -21,6 +22,7 @@ class OrderItem {
   OrderItem({
     this.lineItemId,
     required this.name,
+    this.productId,
     required this.qty,
     this.status = 'New',
     this.note = '',
@@ -99,31 +101,134 @@ class OrderItem {
 
     debugPrint('RAW IS VEG => $rawIsVeg');
     debugPrint('PARSED IS VEG => $isVeg');
+
+
+    final productId =
+        json['productId']
+            ?.toString()
+            .trim() ??
+            json['product_id']
+                ?.toString()
+                .trim();
+
+    debugPrint(
+      'PRODUCT ID FROM MODEL => $productId',
+    );
     // ==========================================================
     // CATEGORY
     // ==========================================================
 
-    String parsedCategory = 'OTHER';
+    String parsedCategory = '';
 
-    final categoryValues = [
-      json['categoryName'],
-      json['category_name'],
-      json['category'],
-      json['sectionName'],
-      json['section_name'],
-      json['section'],
-    ];
+// ----------------------------------------------------------
+// 1. categoryName
+// ----------------------------------------------------------
 
-    for (final value in categoryValues) {
-      final categoryValue =
-          value?.toString().trim() ?? '';
+    final categoryName =
+        json['categoryName']
+            ?.toString()
+            .trim() ??
+            '';
 
-      if (categoryValue.isNotEmpty) {
-        parsedCategory = categoryValue;
-        break;
+    if (categoryName.isNotEmpty &&
+        categoryName.toLowerCase() != 'unknown' &&
+        categoryName.toUpperCase() != 'OTHER') {
+      parsedCategory = categoryName;
+    }
+
+// ----------------------------------------------------------
+// 2. category_name
+// ----------------------------------------------------------
+
+    if (parsedCategory.isEmpty) {
+      final categoryNameSnake =
+          json['category_name']
+              ?.toString()
+              .trim() ??
+              '';
+
+      if (categoryNameSnake.isNotEmpty &&
+          categoryNameSnake.toLowerCase() != 'unknown' &&
+          categoryNameSnake.toUpperCase() != 'OTHER') {
+        parsedCategory = categoryNameSnake;
       }
     }
 
+// ----------------------------------------------------------
+// 3. CATEGORY
+// ----------------------------------------------------------
+
+    if (parsedCategory.isEmpty) {
+      final rawCategory =
+      json['category'];
+
+      if (rawCategory is Map) {
+        final categoryObjectName =
+            rawCategory['name']
+                ?.toString()
+                .trim() ??
+                '';
+
+        if (categoryObjectName.isNotEmpty &&
+            categoryObjectName.toLowerCase() != 'unknown' &&
+            categoryObjectName.toUpperCase() != 'OTHER') {
+          parsedCategory = categoryObjectName;
+        }
+      } else if (rawCategory is String) {
+        final categoryString =
+        rawCategory.trim();
+
+        if (categoryString.isNotEmpty &&
+            categoryString.toLowerCase() != 'unknown' &&
+            categoryString.toUpperCase() != 'OTHER') {
+          parsedCategory = categoryString;
+        }
+      }
+    }
+
+// ----------------------------------------------------------
+// 4. SECTION
+// ----------------------------------------------------------
+
+    if (parsedCategory.isEmpty) {
+      final rawSection =
+      json['section'];
+
+      if (rawSection is Map) {
+        final sectionName =
+            rawSection['name']
+                ?.toString()
+                .trim() ??
+                '';
+
+        if (sectionName.isNotEmpty &&
+            sectionName.toLowerCase() != 'unknown' &&
+            sectionName.toUpperCase() != 'OTHER') {
+          parsedCategory = sectionName;
+        }
+      } else if (rawSection is String) {
+        final sectionName =
+        rawSection.trim();
+
+        if (sectionName.isNotEmpty &&
+            sectionName.toLowerCase() != 'unknown' &&
+            sectionName.toUpperCase() != 'OTHER') {
+          parsedCategory = sectionName;
+        }
+      }
+    }
+
+// ----------------------------------------------------------
+// 5. FINAL FALLBACK
+// ----------------------------------------------------------
+
+    if (parsedCategory.isEmpty) {
+      parsedCategory = 'OTHER';
+    }
+
+    debugPrint(
+      'PARSED CATEGORY => $parsedCategory',
+    );
     debugPrint(
       'PARSED CATEGORY => $parsedCategory',
     );
@@ -408,12 +513,14 @@ class OrderItem {
     final orderItem = OrderItem(
       lineItemId:
       (json['id'] as num?)?.toInt(),
+      productId: productId,
 
       name:
       json['name']?.toString() ??
           json['item_name']?.toString() ??
           json['product_name']?.toString() ??
           'Unknown',
+
 
       qty:
       (json['qty'] as num?)?.toInt() ??
@@ -471,6 +578,7 @@ class OrderItem {
   Map<String, dynamic> toJson() => {
     'id': lineItemId,
     'name': name,
+    'productId': productId,
     'qty': qty,
     'status': status,
     'note': note,
@@ -659,29 +767,144 @@ class KitchenOrder {
       // CATEGORY
       // ========================================================
 
-      String category = 'OTHER';
+      // ========================================================
+// CATEGORY
+// ========================================================
+//
+// IMPORTANT:
+// MQTT can send:
+// section: {
+//   id: 0,
+//   name: Unknown
+// }
+//
+// Do NOT convert the complete Map to String.
+// Also do NOT use "Unknown" as the category.
+//
+// The Item Queue will resolve the real category later
+// using productId/productCategoryMap.
+// ========================================================
 
-      final categoryValues = [
-        item['categoryName'],
-        item['category_name'],
-        item['category'],
-        item['sectionName'],
-        item['section_name'],
-        item['section'],
-      ];
+      String category = '';
 
-      for (final value in categoryValues) {
-        final valueString =
-            value?.toString().trim() ?? '';
+// --------------------------------------------------------
+// 1. Direct categoryName
+// --------------------------------------------------------
 
-        if (valueString.isNotEmpty) {
-          category = valueString;
-          break;
+      final categoryName =
+          item['categoryName']
+              ?.toString()
+              .trim() ??
+              '';
+
+      if (categoryName.isNotEmpty &&
+          categoryName.toLowerCase() != 'unknown' &&
+          categoryName.toUpperCase() != 'OTHER') {
+        category = categoryName;
+      }
+
+// --------------------------------------------------------
+// 2. Direct category_name
+// --------------------------------------------------------
+
+      if (category.isEmpty) {
+        final categoryNameSnake =
+            item['category_name']
+                ?.toString()
+                .trim() ??
+                '';
+
+        if (categoryNameSnake.isNotEmpty &&
+            categoryNameSnake.toLowerCase() != 'unknown' &&
+            categoryNameSnake.toUpperCase() != 'OTHER') {
+          category = categoryNameSnake;
         }
+      }
+
+// --------------------------------------------------------
+// 3. CATEGORY OBJECT
+// --------------------------------------------------------
+
+      if (category.isEmpty) {
+        final rawCategory =
+        item['category'];
+
+        if (rawCategory is Map) {
+          final categoryObjectName =
+              rawCategory['name']
+                  ?.toString()
+                  .trim() ??
+                  '';
+
+          if (categoryObjectName.isNotEmpty &&
+              categoryObjectName.toLowerCase() != 'unknown' &&
+              categoryObjectName.toUpperCase() != 'OTHER') {
+            category = categoryObjectName;
+          }
+        } else if (rawCategory is String) {
+          final categoryString =
+          rawCategory.trim();
+
+          if (categoryString.isNotEmpty &&
+              categoryString.toLowerCase() != 'unknown' &&
+              categoryString.toUpperCase() != 'OTHER') {
+            category = categoryString;
+          }
+        }
+      }
+
+// --------------------------------------------------------
+// 4. SECTION NAME
+// --------------------------------------------------------
+
+      if (category.isEmpty) {
+        final rawSection =
+        item['section'];
+
+        if (rawSection is Map) {
+          final sectionName =
+              rawSection['name']
+                  ?.toString()
+                  .trim() ??
+                  '';
+
+          if (sectionName.isNotEmpty &&
+              sectionName.toLowerCase() != 'unknown' &&
+              sectionName.toUpperCase() != 'OTHER') {
+            category = sectionName;
+          }
+        } else if (rawSection is String) {
+          final sectionName =
+          rawSection.trim();
+
+          if (sectionName.isNotEmpty &&
+              sectionName.toLowerCase() != 'unknown' &&
+              sectionName.toUpperCase() != 'OTHER') {
+            category = sectionName;
+          }
+        }
+      }
+
+// --------------------------------------------------------
+// IMPORTANT
+// --------------------------------------------------------
+//
+// If category is still empty, DON'T put Unknown.
+// Keep it empty so Item Queue can resolve it from:
+// productId -> productCategoryMap
+// productName -> productCategoryNameMap
+// --------------------------------------------------------
+
+      if (category.isEmpty) {
+        category = '';
       }
 
       item['category'] = category;
 
+      debugPrint(
+        'KOT CATEGORY AFTER MQTT PARSING => '
+            '${category.isEmpty ? 'NOT AVAILABLE - WILL RESOLVE FROM MAP' : category}',
+      );
       // ========================================================
       // VEG DEBUG - BEFORE MODEL
       // ========================================================
@@ -957,15 +1180,16 @@ class KitchenOrder {
     'zoneId': zoneId,
     'zoneName': zoneName,
     'type': type,
-    // 'status': status,
+
     // Overall UI status
     'status': status,
 
     // KOT preparation status
     'kot_status': kotStatus,
 
-    // KOT order status: New / Running
+    // KOT order status
     'kot_order_status': kotOrderStatus,
+
     // KOT ordered by / captain name
     'kot_order_by': kotOrderBy,
 
@@ -984,28 +1208,60 @@ class KitchenOrder {
           (item) {
         return {
           'id': item.lineItemId,
+
           'lineItemId':
           item.lineItemId,
 
-          'name': item.name,
+          // ==================================================
+          // PRODUCT ID
+          // ==================================================
 
-          'qty': item.qty,
-          'quantity': item.qty,
+          'productId':
+          item.productId,
 
-          'status': item.status,
+          'product_id':
+          item.productId,
+
+          // ==================================================
+          // ITEM NAME
+          // ==================================================
+
+          'name':
+          item.name,
+
+          // ==================================================
+          // QUANTITY
+          // ==================================================
+
+          'qty':
+          item.qty,
+
+          'quantity':
+          item.qty,
+
+          // ==================================================
+          // STATUS
+          // ==================================================
+
+          'status':
+          item.status,
 
           // ==================================================
           // NOTE
           // ==================================================
 
-          'note': item.note,
+          'note':
+          item.note,
 
           // ==================================================
           // VEG / NON-VEG
           // ==================================================
 
-          'is_veg': item.isVeg,
-          'isVeg': item.isVeg,
+          'is_veg':
+          item.isVeg,
+
+          'isVeg':
+          item.isVeg,
 
           // ==================================================
           // CATEGORY

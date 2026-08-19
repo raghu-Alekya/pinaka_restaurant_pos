@@ -44,10 +44,12 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
   String searchText = '';
   String? selectedDuration;
   int currentPage = 1;
-  int rowsPerPage = 8;
+  int rowsPerPage = 10;
   String selectedStatus = 'All Status';
 
   List<CompletedOrderModel> paginatedOrders = [];
+  final TextEditingController searchController =
+  TextEditingController();
 
   List<CompletedOrderModel> orders = [];
   bool isLoading = true;
@@ -84,6 +86,34 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
               order.status.toLowerCase() == 'cancelled',
         )
         .length;
+  }
+  Future<void> _refreshAndClearFilters() async {
+    // Clear search
+    searchController.clear();
+
+    setState(() {
+      searchText = '';
+
+      // Clear date
+      selectedDate = null;
+      _dateController.clear();
+
+      // Clear duration
+      selectedDuration = null;
+
+      // Clear status
+      selectedStatus = 'All Status';
+
+      // Clear order type
+      selectedOrderType = 'All';
+      selectedFilter = OrderTypeFilter.all;
+
+      // Reset pagination
+      currentPage = 1;
+    });
+
+    // Reload all orders
+    await loadOrders();
   }
 
   bool _matchAllFiltersExceptStatus(CompletedOrderModel order) {
@@ -158,6 +188,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
   @override
   void dispose() {
     _dateController.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
@@ -247,89 +278,138 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
     debugPrint("--- CompletedOrdersScreen: applyFilters ---");
     debugPrint("Total orders fetched from API: ${allOrders.length}");
 
-    filteredOrders =
-        allOrders.where((order) {
-          // Search Filter
-          final matchSearch =
-              searchText.isEmpty ||
-              order.orderId.toString().contains(searchText) ||
-              order.kotNumber.toLowerCase().contains(searchText.toLowerCase());
+    final query = searchText.trim().toLowerCase();
 
-          // Order Type Filter
-          bool matchType = false;
-          final selType = selectedOrderType.toLowerCase();
-          final ordType = order.orderType.toLowerCase();
-          if (selType == 'all') {
-            matchType = true;
-          } else if (selType.contains('dine')) {
-            matchType = ordType.contains('dine');
-          } else if (selType.contains('take')) {
-            matchType = ordType.contains('take');
-          } else if (selType.contains('online')) {
-            matchType = ordType.contains('online');
-          } else {
-            matchType = ordType.contains(selType);
-          }
+    filteredOrders = allOrders.where((order) {
+      // ==========================================================
+      // SEARCH FILTER
+      // ==========================================================
 
-          // Status Filter
-          bool matchStatus = true;
-          if (selectedStatus != 'All Status') {
-            matchStatus =
-                order.status.toLowerCase() == selectedStatus.toLowerCase();
-          }
+      final orderId =
+      order.orderId.toString().trim().toLowerCase();
 
-          // Date Filter
-          bool matchDate = true;
-          if (selectedDate != null) {
-            if (order.kotDateTime != null) {
-              final orderDate = order.kotDateTime!;
-              matchDate =
-                  orderDate.year == selectedDate!.year &&
+      final kotNumber =
+      order.kotNumber.trim().toLowerCase();
+
+      final matchSearch =
+          query.isEmpty ||
+              orderId.contains(query) ||
+              kotNumber.contains(query);
+
+      debugPrint(
+        'SEARCH => query="$query" | '
+            'orderId="$orderId" | '
+            'kotNumber="$kotNumber" | '
+            'match=$matchSearch',
+      );
+
+      // ==========================================================
+      // ORDER TYPE FILTER
+      // ==========================================================
+
+      bool matchType = false;
+
+      final selType =
+      selectedOrderType.trim().toLowerCase();
+
+      final ordType =
+      order.orderType.trim().toLowerCase();
+
+      if (selType == 'all') {
+        matchType = true;
+      } else if (selType.contains('dine')) {
+        matchType = ordType.contains('dine');
+      } else if (selType.contains('take')) {
+        matchType = ordType.contains('take');
+      } else if (selType.contains('online')) {
+        matchType = ordType.contains('online');
+      } else {
+        matchType = ordType.contains(selType);
+      }
+
+      // ==========================================================
+      // STATUS FILTER
+      // ==========================================================
+
+      bool matchStatus = true;
+
+      if (selectedStatus != 'All Status') {
+        matchStatus =
+            order.status.trim().toLowerCase() ==
+                selectedStatus.trim().toLowerCase();
+      }
+
+      // ==========================================================
+      // DATE FILTER
+      // ==========================================================
+
+      bool matchDate = true;
+
+      if (selectedDate != null) {
+        if (order.kotDateTime != null) {
+          final orderDate = order.kotDateTime!;
+
+          matchDate =
+              orderDate.year == selectedDate!.year &&
                   orderDate.month == selectedDate!.month &&
                   orderDate.day == selectedDate!.day;
-            } else {
-              matchDate = false;
-            }
+        } else {
+          matchDate = false;
+        }
+      }
+
+      // ==========================================================
+      // DURATION FILTER
+      // ==========================================================
+
+      bool matchDuration = true;
+
+      if (selectedDuration != null &&
+          order.prepTime.isNotEmpty) {
+        final prepMinutes =
+        _parsePrepTimeToMinutes(order.prepTime);
+
+        if (prepMinutes != null) {
+          switch (selectedDuration) {
+            case '30 Min':
+              matchDuration = prepMinutes <= 30;
+              break;
+
+            case '60 Min':
+              matchDuration = prepMinutes <= 60;
+              break;
+
+            case '5 Hours':
+              matchDuration = prepMinutes <= 300;
+              break;
+
+            case '24 Hours':
+              matchDuration = prepMinutes <= 1440;
+              break;
           }
+        }
+      }
 
-          // Duration Filter (filters by actual prep time of the order)
-          bool matchDuration = true;
-          if (selectedDuration != null && order.prepTime.isNotEmpty) {
-            final prepMinutes = _parsePrepTimeToMinutes(order.prepTime);
-            if (prepMinutes != null) {
-              switch (selectedDuration) {
-                case '30 Min':
-                  matchDuration = prepMinutes <= 30;
-                  break;
-                case '60 Min':
-                  matchDuration = prepMinutes <= 60;
-                  break;
-                case '5 Hours':
-                  matchDuration = prepMinutes <= 300;
-                  break;
-                case '24 Hours':
-                  matchDuration = prepMinutes <= 1440;
-                  break;
-              }
-            }
-          }
+      return matchSearch &&
+          matchType &&
+          matchStatus &&
+          matchDate &&
+          matchDuration;
+    }).toList();
 
-          return matchSearch &&
-              matchType &&
-              matchStatus &&
-              matchDate &&
-              matchDuration;
-        }).toList();
-
-    debugPrint("Orders after applying filters: ${filteredOrders.length}");
-    for (var o in filteredOrders) {
-      debugPrint(
-        " - KOT #${o.kotNumber} | Received Time (parsed kotDateTime): ${o.kotDateTime} (Original string: ${o.kotTime})",
-      );
-    }
+    debugPrint(
+      "Orders after applying filters: "
+          "${filteredOrders.length}",
+    );
 
     currentPage = 1;
+
     applyPagination();
+
+    // IMPORTANT
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   /// Parses a prepTime string like "90 mins", "90", "45 min" into total minutes.
@@ -509,25 +589,63 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                   child: SizedBox(
                     height: 42,
                     child: TextField(
+                      controller: searchController,
                       onChanged: (value) {
-                        searchText = value;
+                        searchText = value.trim();
                         applyFilters();
                       },
                       decoration: InputDecoration(
                         hintText: "Search Order ID or KOT ID...",
-                        prefixIcon: const Icon(Icons.search, size: 20),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          size: 20,
+                        ),
+
+                        // CLEAR BUTTON ON RIGHT
+                        suffixIcon: searchText.isNotEmpty
+                            ? IconButton(
+                          icon: const Icon(
+                            Icons.clear,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            searchController.clear();
+
+                            setState(() {
+                              searchText = '';
+                            });
+
+                            applyFilters();
+                          },
+                        )
+                            : null,
+
                         filled: true,
                         fillColor: const Color(0xfff8fafc),
+
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                         ),
+
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade300,
+                          ),
                         ),
+
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade300,
+                          ),
+                        ),
+
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide(
+                            color: Colors.grey.shade400,
+                          ),
                         ),
                       ),
                     ),
@@ -715,14 +833,19 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: loadOrders,
-                icon: const Icon(Icons.refresh, size: 16),
+                onPressed: _refreshAndClearFilters,
+                icon: const Icon(
+                  Icons.refresh,
+                  size: 16,
+                ),
                 label: const Text(
                   "Refresh",
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-
               const Spacer(),
 
               // Stats
@@ -1132,53 +1255,88 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
         const SizedBox(height: 2),
 
         Padding(
-          padding: const EdgeInsets.only(right: 12, bottom: 4, top: 2),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                InkWell(
-                  onTap:
-                      currentPage > 1
-                          ? () {
-                            setState(() {
-                              currentPage--;
-                              applyPagination();
-                            });
-                          }
-                          : null,
-                  child: paginationButton("Previous", currentPage > 1),
+          padding: const EdgeInsets.only(
+            left: 12,
+            right: 12,
+            bottom: 4,
+            top: 2,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // =====================================================
+              // TOTAL KOT COUNT - LEFT
+              // =====================================================
+
+              Text(
+                'Total KOTs: ${filteredOrders.length}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xff475467),
                 ),
+              ),
 
-                ...List.generate(totalPages, (index) {
-                  final page = index + 1;
+              // =====================================================
+              // PAGINATION - RIGHT
+              // =====================================================
 
-                  return InkWell(
-                    onTap: () {
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: currentPage > 1
+                        ? () {
                       setState(() {
-                        currentPage = page;
+                        currentPage--;
                         applyPagination();
                       });
-                    },
-                    child: pageButton(page.toString(), currentPage == page),
-                  );
-                }),
+                    }
+                        : null,
+                    child: paginationButton(
+                      "Previous",
+                      currentPage > 1,
+                    ),
+                  ),
 
-                InkWell(
-                  onTap:
-                      currentPage < totalPages
-                          ? () {
-                            setState(() {
-                              currentPage++;
-                              applyPagination();
-                            });
-                          }
-                          : null,
-                  child: paginationButton("Next", currentPage < totalPages),
-                ),
-              ],
-            ),
+                  ...List.generate(
+                    totalPages,
+                        (index) {
+                      final page = index + 1;
+
+                      return InkWell(
+                        onTap: () {
+                          setState(() {
+                            currentPage = page;
+                            applyPagination();
+                          });
+                        },
+                        child: pageButton(
+                          page.toString(),
+                          currentPage == page,
+                        ),
+                      );
+                    },
+                  ),
+
+                  InkWell(
+                    onTap: currentPage < totalPages
+                        ? () {
+                      setState(() {
+                        currentPage++;
+                        applyPagination();
+                      });
+                    }
+                        : null,
+                    child: paginationButton(
+                      "Next",
+                      currentPage < totalPages,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ],

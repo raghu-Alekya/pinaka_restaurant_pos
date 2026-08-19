@@ -72,8 +72,42 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final orderProvider = context.read<OrderProvider>();
 
-      // Load existing KOTs once. New KOTs should arrive through MQTT via OrderProvider.
       await orderProvider.loadExistingOrders();
+
+      if (!mounted) return;
+
+      setState(() {
+        productCategoryMap =
+        Map<String, String>.from(
+          orderProvider.productCategoryMap,
+        );
+
+        productCategoryNameMap =
+        Map<String, String>.from(
+          orderProvider.productCategoryNameMap,
+        );
+
+        _categoryMapLoaded = true;
+      });
+
+      debugPrint('==========================================');
+      debugPrint('CATEGORY MAP LOADED INTO DASHBOARD');
+      debugPrint(
+        'TOTAL ID MAP: ${productCategoryMap.length}',
+      );
+      debugPrint(
+        'TOTAL NAME MAP: ${productCategoryNameMap.length}',
+      );
+      debugPrint(
+        '5823 => ${productCategoryMap['5823']}',
+      );
+      debugPrint(
+        '14147 => ${productCategoryMap['14147']}',
+      );
+      debugPrint(
+        '13847 => ${productCategoryMap['13847']}',
+      );
+      debugPrint('==========================================');
     });
   }
   bool _isKotFullyServed(Map<String, dynamic> order) {
@@ -1347,33 +1381,87 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             )
                 : LayoutBuilder(
               builder: (context, constraints) {
-                const double spacing = 10;
+                const double horizontalSpacing = 5;
+                const double verticalSpacing = 5;
 
-                final cardWidth =
-                    (constraints.maxWidth - spacing) / 2;
+                // Split entries into two columns
+                final leftEntries = <MapEntry<String, dynamic>>[];
+                final rightEntries = <MapEntry<String, dynamic>>[];
+
+                for (int i = 0; i < entries.length; i++) {
+                  if (i.isEven) {
+                    leftEntries.add(entries[i]);
+                  } else {
+                    rightEntries.add(entries[i]);
+                  }
+                }
 
                 return SingleChildScrollView(
                   physics:
                   const AlwaysScrollableScrollPhysics(),
-                  child: Wrap(
-                    spacing: spacing,
-                    runSpacing: 10,
-                    children: List.generate(
-                      entries.length,
-                          (index) {
-                        final entry = entries[index];
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // =====================================================
+                      // LEFT COLUMN
+                      // =====================================================
 
-                        return SizedBox(
-                          width: cardWidth,
-                          child: _buildQueueCategory(
-                            entry.key,
-                            entry.value,
-                            index,
-                            itemVegMap,
-                          ),
-                        );
-                      },
-                    ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                          CrossAxisAlignment.stretch,
+                          children: [
+                            for (int i = 0;
+                            i < leftEntries.length;
+                            i++) ...[
+                              _buildQueueCategory(
+                                leftEntries[i].key,
+                                leftEntries[i].value,
+                                i * 2,
+                                itemVegMap,
+                              ),
+
+                              if (i < leftEntries.length - 1)
+                                const SizedBox(
+                                  height: verticalSpacing,
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(
+                        width: horizontalSpacing,
+                      ),
+
+                      // =====================================================
+                      // RIGHT COLUMN
+                      // =====================================================
+
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                          CrossAxisAlignment.stretch,
+                          children: [
+                            for (int i = 0;
+                            i < rightEntries.length;
+                            i++) ...[
+                              _buildQueueCategory(
+                                rightEntries[i].key,
+                                rightEntries[i].value,
+                                i * 2 + 1,
+                                itemVegMap,
+                              ),
+
+                              if (i < rightEntries.length - 1)
+                                const SizedBox(
+                                  height: verticalSpacing,
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -1601,6 +1689,11 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     productCategoryMap.clear();
     productCategoryNameMap.clear();
 
+    debugPrint('==========================================');
+    debugPrint('BUILDING PRODUCT CATEGORY MAP');
+    debugPrint('CATEGORY PRODUCTS: $categoryProducts');
+    debugPrint('==========================================');
+
     if (categoryProducts is! List) {
       debugPrint(
         'category_products is not a List: $categoryProducts',
@@ -1620,6 +1713,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         continue;
       }
 
+      // ======================================================
+      // CATEGORY NAME
+      // ======================================================
+
       final category =
           categoryData['category_name']
               ?.toString()
@@ -1627,37 +1724,55 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               categoryData['categoryName']
                   ?.toString()
                   .trim() ??
+              categoryData['name']
+                  ?.toString()
+                  .trim() ??
               '';
 
       if (category.isEmpty) {
+        debugPrint(
+          'SKIPPING CATEGORY: category name is empty',
+        );
         continue;
       }
+
+      // ======================================================
+      // PRODUCTS
+      // ======================================================
 
       final products = categoryData['products'];
 
       if (products is! List) {
+        debugPrint(
+          'NO PRODUCTS FOUND FOR CATEGORY: $category',
+        );
         continue;
       }
+
+      // ======================================================
+      // LOOP PRODUCTS
+      // ======================================================
 
       for (final product in products) {
         if (product is! Map) {
           continue;
         }
 
-        // ======================================================
+        // ====================================================
         // PRODUCT ID
-        // ======================================================
+        // ====================================================
 
         final productId =
             product['product_id'] ??
-                product['productId'];
+                product['productId'] ??
+                product['id'];
 
         final productIdString =
             productId?.toString().trim() ?? '';
 
-        // ======================================================
+        // ====================================================
         // PRODUCT NAME
-        // ======================================================
+        // ====================================================
 
         final productName =
             product['item_name']
@@ -1669,34 +1784,43 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 product['product_name']
                     ?.toString()
                     .trim() ??
+                product['itemName']
+                    ?.toString()
+                    .trim() ??
                 '';
 
-        // ======================================================
+        // ====================================================
         // PRODUCT ID → CATEGORY
-        // ======================================================
+        // ====================================================
 
-        if (category.isNotEmpty &&
-            productIdString.isNotEmpty) {
-          productCategoryMap[
-          productIdString
-          ] = category;
+        if (productIdString.isNotEmpty) {
+          productCategoryMap[productIdString] =
+              category;
         }
 
-        // ======================================================
+        // ====================================================
         // PRODUCT NAME → CATEGORY
-        // IMPORTANT FOR VARIANTS
-        // ======================================================
+        // ====================================================
 
-        if (category.isNotEmpty &&
-            productName.isNotEmpty) {
+        if (productName.isNotEmpty) {
+          final normalizedName =
+          _normalizeProductName(productName);
+
+          if (normalizedName.isNotEmpty) {
+            productCategoryNameMap[
+            normalizedName
+            ] = category;
+          }
+
+          // Also store exact lowercase name.
           productCategoryNameMap[
-          _normalizeProductName(productName)
+          productName.toLowerCase()
           ] = category;
         }
 
-        // ======================================================
+        // ====================================================
         // DEBUG
-        // ======================================================
+        // ====================================================
 
         debugPrint(
           'CATEGORY MAP: '
@@ -1707,15 +1831,28 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       }
     }
 
+    // ==========================================================
+    // CATEGORY MAP READY
+    // ==========================================================
+
     _categoryMapLoaded = true;
 
+    debugPrint('==========================================');
+    debugPrint('CATEGORY MAP LOADED');
     debugPrint(
-      'CATEGORY MAP LOADED: '
-          '${productCategoryMap.length} products',
+      'PRODUCT ID MAP COUNT: '
+          '${productCategoryMap.length}',
     );
+    debugPrint(
+      'PRODUCT NAME MAP COUNT: '
+          '${productCategoryNameMap.length}',
+    );
+    debugPrint('==========================================');
 
-    // IMPORTANT:
-    // Rebuild Item Queue after category map is ready.
+    // ==========================================================
+    // REBUILD ITEM QUEUE
+    // ==========================================================
+
     if (mounted) {
       setState(() {});
     }
@@ -1851,24 +1988,113 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 '';
 
         // ==========================================================
-        // CATEGORY
-        //
-        // PRIORITY:
-        //
-        // 1. category_name from API
-        // 2. categoryName
-        // 3. product ID map
-        // 4. PRODUCT NAME map   <-- IMPORTANT
-        // 5. section
-        // 6. category
-        // 7. OTHER
-        // ==========================================================
+// CATEGORY RESOLUTION
+// ==========================================================
+//
+// PRIORITY:
+//
+// 1. category_name
+// 2. categoryName
+// 3. product ID → category map
+// 4. exact product name → category map
+// 5. normalized product name → category map
+// 6. valid section name
+// 7. valid category value
+// 8. OTHER
+//
+// IMPORTANT:
+//
+// New MQTT KOT can contain:
+//
+// section: {
+//   id: 0,
+//   name: Unknown
+// }
+//
+// "Unknown" must NEVER become the final category.
+// ==========================================================
 
         String category = '';
 
-        // ----------------------------------------------------------
-        // 1. API category_name
-        // ----------------------------------------------------------
+// ==========================================================
+// GET PRODUCT ID
+// ==========================================================
+
+        final resolvedProductId =
+        item['productId']
+            ?.toString()
+            .trim()
+            .isNotEmpty ==
+            true
+            ? item['productId']
+            .toString()
+            .trim()
+            : item['product_id']
+            ?.toString()
+            .trim() ??
+            '';
+
+        debugPrint(
+          'RESOLVED PRODUCT ID: $resolvedProductId',
+        );
+
+// ==========================================================
+// GET PRODUCT NAME
+// ==========================================================
+
+        final resolvedName =
+        item['name']
+            ?.toString()
+            .trim()
+            .isNotEmpty ==
+            true
+            ? item['name']
+            .toString()
+            .trim()
+            : item['item_name']
+            ?.toString()
+            .trim() ??
+            '';
+
+        debugPrint(
+          'RESOLVED PRODUCT NAME: $resolvedName',
+        );
+
+// ==========================================================
+// HELPER - VALID CATEGORY
+// ==========================================================
+
+        bool isValidCategory(String value) {
+          final cleaned = value.trim();
+
+          if (cleaned.isEmpty) {
+            return false;
+          }
+
+          final upper = cleaned.toUpperCase();
+
+          if (upper == 'OTHER' ||
+              upper == 'UNKNOWN' ||
+              upper == 'NULL' ||
+              upper == 'UNDEFINED') {
+            return false;
+          }
+
+          // Prevent this type of value from becoming a category:
+          //
+          // {id: 0, name: Unknown, imagepath: ...}
+          //
+          if (cleaned.startsWith('{') &&
+              cleaned.endsWith('}')) {
+            return false;
+          }
+
+          return true;
+        }
+
+// ==========================================================
+// 1. API category_name
+// ==========================================================
 
         final apiCategory =
             item['category_name']
@@ -1876,15 +2102,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 .trim() ??
                 '';
 
-        // Don't accept OTHER from API as the final answer yet.
-        if (apiCategory.isNotEmpty &&
-            apiCategory.toUpperCase() != 'OTHER') {
+        if (isValidCategory(apiCategory)) {
           category = apiCategory;
+
+          debugPrint(
+            'CATEGORY SOURCE: category_name',
+          );
         }
 
-        // ----------------------------------------------------------
-        // 2. categoryName
-        // ----------------------------------------------------------
+// ==========================================================
+// 2. categoryName
+// ==========================================================
 
         if (category.isEmpty) {
           final categoryName =
@@ -1893,162 +2121,284 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   .trim() ??
                   '';
 
-          if (categoryName.isNotEmpty &&
-              categoryName.toUpperCase() != 'OTHER') {
+          if (isValidCategory(categoryName)) {
             category = categoryName;
+
+            debugPrint(
+              'CATEGORY SOURCE: categoryName',
+            );
           }
         }
 
-        // ----------------------------------------------------------
-        // 3. PRODUCT ID → CATEGORY
-        // ----------------------------------------------------------
-
-        if (category.isEmpty && productId.isNotEmpty) {
-          category = productCategoryMap[productId] ?? '';
-        }
-
-        // ----------------------------------------------------------
-        // 4. PRODUCT NAME → CATEGORY
-        // ----------------------------------------------------------
-
-        if (category.isEmpty && name.isNotEmpty) {
-
-          // First try exact product name
-          category =
-              productCategoryNameMap[
-              name.toLowerCase()] ??
-                  '';
-        }
-
-// ----------------------------------------------------------
-// 4A. NORMALIZED PRODUCT NAME → CATEGORY
-// ----------------------------------------------------------
+// ==========================================================
+// 3. PRODUCT ID → CATEGORY MAP
+// ==========================================================
+//
+// THIS IS THE MOST IMPORTANT PART FOR NEW MQTT KOT.
+//
 // Example:
 //
-// Fish Biryani - Jumbo
-// Fish Biryani - Single
-// Fish Biryani - Family
-// Fish Biryani - full
+// productId = 14147
 //
-// All become:
+// productCategoryMap:
 //
-// fish biryani
+// 14147 → Starters
 //
-// Then lookup:
-//
-// fish biryani → Main Course
-// ----------------------------------------------------------
-
-        if (category.isEmpty && name.isNotEmpty) {
-
-          final normalizedName =
-          _normalizeProductName(name);
-
-          category =
-              productCategoryNameMap[
-              normalizedName] ??
-                  '';
-
-          debugPrint(
-            'NORMALIZED NAME : $normalizedName',
-          );
-
-          debugPrint(
-            'NORMALIZED CATEGORY : $category',
-          );
-        }
-
-        // ----------------------------------------------------------
-        // 4. PRODUCT NAME → CATEGORY
-        // ----------------------------------------------------------
-        // This fixes:
-        //
-        // KOT:
-        // 2043 -> Fish Biryani - Single
-        //
-        // Category API:
-        // 1908 -> Fish Biryani - Single -> Main Course
-        // ----------------------------------------------------------
+// ==========================================================
 
         if (category.isEmpty &&
-            name.isNotEmpty) {
-          category =
-              productCategoryNameMap[
-              name.toLowerCase()] ??
+            resolvedProductId.isNotEmpty) {
+          final mappedCategory =
+              productCategoryMap[
+              resolvedProductId
+              ]?.trim() ??
                   '';
-        }
 
-        // ----------------------------------------------------------
-        // 5. SECTION MAP
-        // ----------------------------------------------------------
+          debugPrint(
+            'PRODUCT ID LOOKUP: '
+                '$resolvedProductId → $mappedCategory',
+          );
 
-        if (category.isEmpty) {
-          final section =
-          item['section'];
+          if (isValidCategory(mappedCategory)) {
+            category = mappedCategory;
 
-          if (section is Map) {
-            category =
-                section['name']
-                    ?.toString()
-                    .trim() ??
-                    section['category_name']
-                        ?.toString()
-                        .trim() ??
-                    '';
+            debugPrint(
+              'CATEGORY SOURCE: PRODUCT ID MAP',
+            );
           }
         }
 
-        // ----------------------------------------------------------
-        // 6. CATEGORY STRING
-        // ----------------------------------------------------------
+// ==========================================================
+// 4. EXACT PRODUCT NAME → CATEGORY MAP
+// ==========================================================
+
+        if (category.isEmpty &&
+            resolvedName.isNotEmpty) {
+          final exactName =
+          resolvedName.toLowerCase().trim();
+
+          final mappedCategory =
+              productCategoryNameMap[
+              exactName
+              ]?.trim() ??
+                  '';
+
+          debugPrint(
+            'EXACT NAME LOOKUP: '
+                '$exactName → $mappedCategory',
+          );
+
+          if (isValidCategory(mappedCategory)) {
+            category = mappedCategory;
+
+            debugPrint(
+              'CATEGORY SOURCE: EXACT NAME MAP',
+            );
+          }
+        }
+
+// ==========================================================
+// 5. NORMALIZED PRODUCT NAME → CATEGORY MAP
+// ==========================================================
+//
+// Example:
+//
+// Fish Biryani - Single
+// Fish Biryani - Family
+// Fish Biryani - Jumbo
+//
+// → fish biryani
+//
+// → Main Course
+//
+// ==========================================================
+
+        if (category.isEmpty &&
+            resolvedName.isNotEmpty) {
+          final normalizedName =
+          _normalizeProductName(
+            resolvedName,
+          );
+
+          final mappedCategory =
+              productCategoryNameMap[
+              normalizedName
+              ]?.trim() ??
+                  '';
+
+          debugPrint(
+            'NORMALIZED NAME: '
+                '$normalizedName',
+          );
+
+          debugPrint(
+            'NORMALIZED LOOKUP: '
+                '$mappedCategory',
+          );
+
+          if (isValidCategory(mappedCategory)) {
+            category = mappedCategory;
+
+            debugPrint(
+              'CATEGORY SOURCE: NORMALIZED NAME MAP',
+            );
+          }
+        }
+
+// ==========================================================
+// 6. SECTION MAP
+// ==========================================================
+//
+// Only use section if it contains a REAL category.
+//
+// Do NOT use:
+//
+// {id: 0, name: Unknown}
+//
+// ==========================================================
+
+        if (category.isEmpty) {
+          final rawSection =
+          item['section'];
+
+          String sectionName = '';
+
+          if (rawSection is Map) {
+            sectionName =
+                rawSection['name']
+                    ?.toString()
+                    .trim() ??
+                    '';
+
+            if (!isValidCategory(sectionName)) {
+              sectionName = '';
+
+              final sectionCategory =
+                  rawSection['category_name']
+                      ?.toString()
+                      .trim() ??
+                      rawSection['categoryName']
+                          ?.toString()
+                          .trim() ??
+                      '';
+
+              if (isValidCategory(
+                sectionCategory,
+              )) {
+                sectionName =
+                    sectionCategory;
+              }
+            }
+          } else if (rawSection is String) {
+            sectionName =
+                rawSection.trim();
+          }
+
+          if (isValidCategory(sectionName)) {
+            category = sectionName;
+
+            debugPrint(
+              'CATEGORY SOURCE: SECTION',
+            );
+          }
+        }
+
+// ==========================================================
+// 7. CATEGORY FIELD
+// ==========================================================
 
         if (category.isEmpty) {
           final rawCategory =
           item['category'];
 
-          if (rawCategory is String) {
-            category =
+          String categoryValue = '';
+
+          if (rawCategory is Map) {
+            categoryValue =
+                rawCategory['name']
+                    ?.toString()
+                    .trim() ??
+                    rawCategory['category_name']
+                        ?.toString()
+                        .trim() ??
+                    rawCategory['categoryName']
+                        ?.toString()
+                        .trim() ??
+                    '';
+          } else if (rawCategory is String) {
+            categoryValue =
                 rawCategory.trim();
+          }
+
+          if (isValidCategory(categoryValue)) {
+            category = categoryValue;
+
+            debugPrint(
+              'CATEGORY SOURCE: CATEGORY FIELD',
+            );
           }
         }
 
-        // ----------------------------------------------------------
-        // 7. FINAL FALLBACK
-        // ----------------------------------------------------------
+// ==========================================================
+// 8. FINAL FALLBACK
+// ==========================================================
 
-        if (category.isEmpty ||
-            category.toUpperCase() == 'OTHER') {
+        if (!isValidCategory(category)) {
           category = 'OTHER';
+
+          debugPrint(
+            'CATEGORY SOURCE: FALLBACK OTHER',
+          );
         }
 
-        // ==========================================================
-        // DEBUG
-        // ==========================================================
+// ==========================================================
+// FINAL DEBUG
+// ==========================================================
 
         debugPrint(
-            '========== QUEUE CATEGORY DEBUG =========='
+          '==========================================',
         );
 
         debugPrint(
-          'ITEM          : $name',
+          'QUEUE CATEGORY DEBUG',
         );
 
         debugPrint(
-          'PRODUCT ID    : $productId',
+          'ITEM: $resolvedName',
         );
 
         debugPrint(
-          'API CATEGORY  : ${item['category_name']}',
+          'PRODUCT ID: $resolvedProductId',
         );
 
         debugPrint(
-          'ID MAP        : '
-              '${productCategoryMap[productId]}',
+          'API CATEGORY: '
+              '${item['category_name']}',
         );
 
         debugPrint(
-          'NAME MAP      : '
-              '${productCategoryNameMap[name.toLowerCase()]}',
+          'CATEGORY NAME: '
+              '${item['categoryName']}',
+        );
+
+        debugPrint(
+          'PRODUCT ID MAP: '
+              '${productCategoryMap[resolvedProductId]}',
+        );
+
+        debugPrint(
+          'EXACT NAME MAP: '
+              '${productCategoryNameMap[resolvedName.toLowerCase()]}',
+        );
+
+        debugPrint(
+          'NORMALIZED NAME MAP: '
+              '${productCategoryNameMap[_normalizeProductName(resolvedName)]}',
+        );
+
+        debugPrint(
+          'SECTION: '
+              '${item['section']}',
         );
 
         debugPrint(
@@ -2056,9 +2406,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         );
 
         debugPrint(
-            '=========================================='
+          '==========================================',
         );
-
         // ==========================================================
         // QUANTITY
         // ==========================================================
@@ -2266,11 +2615,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     }).length;
   }
 
-  Widget _buildReferenceFilter(String title,
+  Widget _buildReferenceFilter(
+      String title,
       int count,
       OrderTypeFilter filter,
-      Color activeColor,) {
+      Color activeColor,
+      ) {
     final selected = selectedFilter == filter;
+
+    final Color countColor = selected
+        ? activeColor
+        : const Color(0xffE4E7EC);
 
     return InkWell(
       onTap: () {
@@ -2302,20 +2657,21 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               title,
               style: GoogleFonts.montserrat(
                 fontSize: 12,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight:
+                selected ? FontWeight.w700 : FontWeight.w500,
                 color: const Color(0xff475467),
               ),
             ),
+
             const SizedBox(width: 4),
+
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: 4,
                 vertical: 2,
               ),
               decoration: BoxDecoration(
-                color: selected
-                    ? activeColor
-                    : const Color(0xffE4E7EC),
+                color: countColor,
                 borderRadius: BorderRadius.circular(7),
               ),
               child: Text(
@@ -2334,7 +2690,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       ),
     );
   }
-
   // ---------------------------------------------------------------------------
   // KOT CARD
   // ---------------------------------------------------------------------------
@@ -2502,7 +2857,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           // 1. HEADER — reference: about 32 px
           // =============================================================
           SizedBox(
-            height: 38,
+            height: 48,
             child: Container(
               color: headerColor,
               padding: const EdgeInsets.symmetric(
@@ -2516,7 +2871,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   // ==========================================================
                   if (table.isNotEmpty)
                     Container(
-                      height: 18,
+                      height: 28,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
                       ),
@@ -2531,9 +2886,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: headerColor,
-                          fontSize: 10,
+                          fontSize: 14,
                           height: 1.0,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -2545,7 +2900,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   // TIME
                   // ==========================================================
                   Container(
-                    height: 18,
+                    height: 28,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
                     ),
@@ -2572,9 +2927,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: headerColor,
-                            fontSize: 10,
+                            fontSize: 14,
                             height: 1.0,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -2587,7 +2942,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   // ORDER TYPE
                   // ==========================================================
                   Container(
-                    height: 18,
+                    height: 28,
                     constraints: const BoxConstraints(
                       maxWidth: 100,
                     ),
@@ -2605,9 +2960,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: headerColor,
-                        fontSize: 10,
+                        fontSize: 13,
                         height: 1.0,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -3201,7 +3556,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                         padding: const EdgeInsets.only(top: 2),
                                         child: _buildCompactItemToggle(
                                           value: currentValue,
-                                          activeColor: headerColor,
+                        activeColor: const Color(0xff3B923F),
                                           onChanged: isCancelled
                                               ? (_) {}
                                               : (value) async {
@@ -3493,7 +3848,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           // 4. FOOTER — existing status flow preserved
           // =============================================================
           Container(
-            height: 39,
+            height: 49,
             decoration: const BoxDecoration(
               border: Border(
                 top: BorderSide(
@@ -3540,7 +3895,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       label: Text(
                         isCancelMode ? 'Undo' : 'Cancel',
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -3565,9 +3920,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 const SizedBox(width: 10),
 
                 Expanded(
-                  flex: 2,
+                  flex: 1,
                   child: SizedBox(
-                    height: 28,
+                    height: 48,
                     child: ElevatedButton(
                       onPressed: () async {
                         if (kotId.isEmpty) return;
@@ -3673,7 +4028,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 ? 'Cancel KOT'
                                 : buttonText,
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                           ),

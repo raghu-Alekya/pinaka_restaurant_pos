@@ -63,6 +63,10 @@ class OrderApiService {
   final int restaurantId;
   // final String baseUrl;
   final http.Client _client;
+  final Map<String, String> productCategoryById = {};
+
+  final Map<String, String> productCategoryByName = {};
+
 
   static const _flagUpdateKotStatus = 'update_kot_order_status';
 
@@ -346,9 +350,15 @@ class OrderApiService {
 
     final Map<String, bool?> vegByProductId = {};
 
-    final Map<String, String> productCategoryById = {};
-
-    final Map<String, String> productCategoryByName = {};
+    productCategoryById.clear();
+    productCategoryByName.clear();
+    // Map<String, String> productCategoryById = {};
+    //
+    // Map<String, String> productCategoryByName = {};
+    //
+    // final Map<String, String> productCategoryById = {};
+    //
+    // final Map<String, String> productCategoryByName = {};
     // ==========================================================
     // CATEGORY PRODUCTS
     // ==========================================================
