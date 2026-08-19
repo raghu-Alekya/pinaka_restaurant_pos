@@ -51,6 +51,7 @@ class LineItemEntity {
   final int qty;
   final double total;
   final double price;
+  final double? originalPrice; // 👈 nullable
   final double tax;
   final String taxClass;
   final List<dynamic> modifiers;
@@ -64,6 +65,7 @@ class LineItemEntity {
     required this.qty,
     required this.total,
     required this.price,
+    this.originalPrice, // 👈 optional
     required this.tax,
     required this.taxClass,
     required this.modifiers,

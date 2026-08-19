@@ -877,11 +877,25 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
   List<dynamic> _orderedZones = [];
   List<dynamic> _cachedTables = [];
   bool _isSilentRefresh = false;
+  String _currencySymbol = ''; // 👈 default
 
   @override
   void initState() {
     super.initState();
+    _loadCurrencySymbol();
     widget.scrollController.addListener(_handleScroll);
+  }
+
+  Future<void> _loadCurrencySymbol() async {
+    try {
+      final symbol = await context.read<CaptainLocalStorage>().getCurrencySymbol();
+      if (symbol != null && mounted) {
+        setState(() {
+          _currencySymbol = symbol;
+        });
+        print('🪙 KotsListWidget currency symbol: $symbol');
+      }
+    } catch (_) {}
   }
 
   @override
@@ -1025,6 +1039,15 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
                                     () => table.orderStartedAt as DateTime,
                               );
 
+                              double? orderAmountDouble;
+                              if (table.orderAmount != null &&
+                                  table.orderAmount.toString().isNotEmpty) {
+                                orderAmountDouble = double.tryParse(
+                                  table.orderAmount.toString().replaceAll(',', ''),
+                                );
+                              }
+
+
                               return _TableCard(
                                 tableId: table.tableId ?? 0,
                                 tableName: table.tableName ?? 'Unnamed',
@@ -1034,9 +1057,10 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
                                 status: status,
                                 orderId: table.orderId,
                                 guestCount: guestCount,
-                                orderTotal: orderTotal,
+                                orderTotal: orderAmountDouble,
                                 orderStartedAt: orderStartedAt,
                                 onOrderAction: _refreshSilently,
+                                currencySymbol: _currencySymbol,
                               );
                             },
                           ),
@@ -1086,7 +1110,7 @@ _TableStatusKind _statusKind(String rawStatus) {
   if (s == 'dine in' || s == 'dine-in' || s == 'running') {
     return _TableStatusKind.running;
   }
-  if (s == 'ready to pay' || s == 'ready to settle') {
+  if (s == 'ready to pay' || s == 'ready to pay') {
     return _TableStatusKind.readyToSettle;
   }
   if (s == 'occupied') {
@@ -1100,7 +1124,7 @@ String _statusLabel(_TableStatusKind kind) {
     case _TableStatusKind.running:
       return 'Running';
     case _TableStatusKind.readyToSettle:
-      return 'Ready to Settle';
+      return 'Ready to pay';
     case _TableStatusKind.occupied:
       return 'Occupied';
     case _TableStatusKind.available:
@@ -1207,6 +1231,7 @@ class _TableCard extends StatelessWidget {
   final double? orderTotal;
   final DateTime? orderStartedAt;
   final VoidCallback onOrderAction;
+  final String currencySymbol; // 👈 new
 
   const _TableCard({
     required this.tableId,
@@ -1220,9 +1245,11 @@ class _TableCard extends StatelessWidget {
     this.orderTotal,
     this.orderStartedAt,
     required this.onOrderAction,
+    required this.currencySymbol,
   });
 
-  bool get _isAvailable => _statusKind(status) == _TableStatusKind.available;
+  bool get _isAvailable =>
+      _statusKind(status) == _TableStatusKind.available;
 
   @override
   Widget build(BuildContext context) {
@@ -1230,7 +1257,10 @@ class _TableCard extends StatelessWidget {
     final isAvailable = kind == _TableStatusKind.available;
     final color = _statusColor(kind);
     final label = _statusLabel(kind);
-    final elapsed = orderStartedAt != null ? _formatElapsed(orderStartedAt!) : null;
+
+    final elapsed =
+    orderStartedAt != null ? _formatElapsed(orderStartedAt!) : null;
+    final hasOrderAmount = orderTotal != null && orderTotal! > 0;
 
     return GestureDetector(
       onTap: () => _handleTap(context),
@@ -1240,155 +1270,172 @@ class _TableCard extends StatelessWidget {
         HapticFeedback.mediumImpact();
         _showTableActionsSheet(context);
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: isAvailable ? Border.all(color: color.withOpacity(0.5)) : null,
-        ),
-        child: CustomPaint(
-          painter: isAvailable ? null : _DashedBorderPainter(color: color),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              // children: [
-              //   Row(
-              //     mainAxisAlignment:
-              //     isAvailable ? MainAxisAlignment.end : MainAxisAlignment.start,
-              //     children: [
-              //       if (!isAvailable) ...[
-              //         Icon(Icons.person_outline, size: 13, color: color),
-              //         const SizedBox(width: 2),
-              //       ],
-              //       Text(
-              //         tableName,
-              //         style: TextStyle(
-              //           color: color,
-              //           fontWeight: FontWeight.bold,
-              //           fontSize: 14,
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              //   const SizedBox(height: 4),
-              //   if (isAvailable)
-              //     Icon(Icons.table_restaurant_outlined, color: color, size: 34)
-              //   else if (orderTotal != null)
-              //     Text(
-              //       '\$${orderTotal!.toStringAsFixed(2)}',
-              //       style: TextStyle(
-              //         color: color,
-              //         fontWeight: FontWeight.bold,
-              //         fontSize: 14,
-              //       ),
-              //     )
-              //   else
-              //     Icon(Icons.table_restaurant, color: color, size: 28),
-              //   if (!isAvailable && elapsed != null) ...[
-              //     const SizedBox(height: 2),
-              //     Text(
-              //       elapsed,
-              //       style: TextStyle(fontSize: 10, color: color.withOpacity(0.85)),
-              //     ),
-              //   ],
-              //   const SizedBox(height: 4),
-              //   Text(
-              //     label,
-              //     style: TextStyle(
-              //       color: color,
-              //       fontSize: 12,
-              //       fontWeight: FontWeight.w500,
-              //     ),
-              //   ),
-              // ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Responsive image size based on actual card width.
+          final cardWidth = constraints.maxWidth;
 
-              // ─── Inside the Column of _TableCard ───
-              children: [
-                Row(
-                  mainAxisAlignment:
-                  isAvailable ? MainAxisAlignment.end : MainAxisAlignment.start,
+          final imageSize = (cardWidth * 0.25).clamp(
+            28.0,
+            42.0,
+          );
+
+          final smallImageSize = (cardWidth * 0.20).clamp(
+            24.0,
+            34.0,
+          );
+
+          return Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: isAvailable
+                  ? Border.all(
+                color: color.withOpacity(0.5),
+              )
+                  : null,
+            ),
+            child: CustomPaint(
+              painter: isAvailable
+                  ? null
+                  : _DashedBorderPainter(
+                color: color,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 8,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (!isAvailable) ...[
-                      Icon(Icons.person_outline, size: 13, color: color),
-                      const SizedBox(width: 2),
+                    // ─────────────────────────────────────
+                    // Table name
+                    // ─────────────────────────────────────
+                    Row(
+                      mainAxisAlignment: isAvailable
+                          ? MainAxisAlignment.end
+                          : MainAxisAlignment.start,
+                      children: [
+                        if (!isAvailable) ...[
+                          Icon(
+                            Icons.person_outline,
+                            size: 13,
+                            color: color,
+                          ),
+                          const SizedBox(width: 2),
+                        ],
+                        Flexible(
+                          child: Text(
+                            tableName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    // ─────────────────────────────────────
+                    // Table image / Order total
+                    // ─────────────────────────────────────
+                    if (hasOrderAmount)
+                      Text(
+                        '$currencySymbol${orderTotal!.toStringAsFixed(2)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      )
+                    else if (isAvailable)
+                      Image.asset(
+                        'assets/images/Table_img.png',
+                        width: imageSize,
+                        height: imageSize,
+                        fit: BoxFit.contain,
+                        color: color,
+                        errorBuilder: (_, __, ___) {
+                          return Icon(
+                            Icons.table_restaurant_outlined,
+                            color: color,
+                            size: imageSize,
+                          );
+                        },
+                      )
+                    else
+                      Image.asset(
+                        'assets/images/Table_img.png',
+                        width: smallImageSize,
+                        height: smallImageSize,
+                        fit: BoxFit.contain,
+                        color: color,
+                        errorBuilder: (_, __, ___) {
+                          return Icon(
+                            Icons.table_restaurant,
+                            color: color,
+                            size: smallImageSize,
+                          );
+                        },
+                      ),
+
+                    // ─────────────────────────────────────
+                    // Elapsed time
+                    // ─────────────────────────────────────
+                    if (!isAvailable && elapsed != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        elapsed,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: color.withOpacity(0.85),
+                        ),
+                      ),
                     ],
+
+                    const SizedBox(height: 4),
+
+                    // ─────────────────────────────────────
+                    // Status
+                    // ─────────────────────────────────────
                     Text(
-                      tableName,
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-
-                // ─── Table image instead of icon ───
-                if (isAvailable)
-                  Image.asset(
-                    'assets/images/Table_img.png',
-                    width: 34,
-                    height: 34,
-                    color: color, // tints the image with status color
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.table_restaurant_outlined,
-                      color: color,
-                      size: 34,
-                    ),
-                  )
-                else if (orderTotal != null)
-                  Text(
-                    '\$${orderTotal!.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  )
-                else
-                  Image.asset(
-                    'assets/images/Table_img.png',
-                    width: 28,
-                    height: 28,
-                    color: color,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.table_restaurant,
-                      color: color,
-                      size: 28,
-                    ),
-                  ),
-
-                if (!isAvailable && elapsed != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    elapsed,
-                    style: TextStyle(fontSize: 10, color: color.withOpacity(0.85)),
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-// ─── Navigate to Cart (View KOT's) ──────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // Navigate to Cart / View KOT's
+  // ─────────────────────────────────────────────────────────────
+
   Future<void> _navigateToCart(BuildContext context) async {
     int? activeOrderId = orderId;
 
-    // If we already have an orderId, navigate instantly
+    // If orderId already exists, navigate immediately.
     if (activeOrderId != null && activeOrderId > 0) {
       Navigator.push(
         context,
@@ -1409,7 +1456,7 @@ class _TableCard extends StatelessWidget {
       return;
     }
 
-    // If no orderId, fetch it (with loading indicator)
+    // Otherwise fetch order ID.
     try {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1418,12 +1465,15 @@ class _TableCard extends StatelessWidget {
         ),
       );
 
-      final orderUseCase = context.read<GetOrderByTableUseCase>();
+      final orderUseCase =
+      context.read<GetOrderByTableUseCase>();
+
       final orderData = await orderUseCase(
         restaurantId: restaurantId,
         tableId: tableId,
         zoneId: zoneId,
       );
+
       activeOrderId = orderData.orderId;
 
       if (!context.mounted) return;
@@ -1448,45 +1498,66 @@ class _TableCard extends StatelessWidget {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('No active order found for this table.'),
+            content: Text(
+              'No active order found for this table.',
+            ),
             backgroundColor: Colors.orange,
           ),
         );
       }
     } catch (e) {
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to fetch order details: $e'),
+          content: Text(
+            'Failed to fetch order details: $e',
+          ),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  // ─── Tap Handler ─────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // Tap Handler
+  // ─────────────────────────────────────────────────────────────
+
   Future<void> _handleTap(BuildContext context) async {
+    // Available table
     if (_isAvailable) {
-      final captainStorage = context.read<CaptainLocalStorage>();
-      captainStorage.getCaptainData().then((captainData) async {
-        final restaurantName =
-            captainData?.data?.restaurantName ?? 'My Restaurant';
-        if (!context.mounted) return;
-        await _showGuestBottomSheet(
-          context,
-          tableId: tableId,
-          tableName: tableName,
-          zoneId: zoneId,
-          zoneName: zoneName,
-          restaurantId: restaurantId,
-          restaurantName: restaurantName,
-        );
-        // After guest count bottom sheet (new order created), refresh tables
-        if (context.mounted) onOrderAction.call();
-      });
+      final captainStorage =
+      context.read<CaptainLocalStorage>();
+
+      captainStorage.getCaptainData().then(
+            (captainData) async {
+          final restaurantName =
+              captainData?.data?.restaurantName ??
+                  'My Restaurant';
+
+          if (!context.mounted) return;
+
+          await _showGuestBottomSheet(
+            context,
+            tableId: tableId,
+            tableName: tableName,
+            zoneId: zoneId,
+            zoneName: zoneName,
+            restaurantId: restaurantId,
+            restaurantName: restaurantName,
+          );
+
+          // Refresh tables after creating the order.
+          if (context.mounted) {
+            onOrderAction.call();
+          }
+        },
+      );
+
       return;
     }
 
+    // Occupied / other status
     try {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1495,7 +1566,9 @@ class _TableCard extends StatelessWidget {
         ),
       );
 
-      final useCase = context.read<GetOrderByTableUseCase>();
+      final useCase =
+      context.read<GetOrderByTableUseCase>();
+
       final orderData = await useCase(
         restaurantId: restaurantId,
         tableId: tableId,
@@ -1504,7 +1577,7 @@ class _TableCard extends StatelessWidget {
 
       if (!context.mounted) return;
 
-      // Navigate to OrderMenuScreen and wait for a result.
+      // Navigate to OrderMenuScreen.
       final result = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -1518,22 +1591,28 @@ class _TableCard extends StatelessWidget {
         ),
       );
 
-      // Only refresh if the order was modified (result == true)
+      // Refresh only when order was modified.
       if (context.mounted && result == true) {
         onOrderAction.call();
       }
     } catch (e) {
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to load order: ${e.toString()}'),
+          content: Text(
+            'Failed to load order: ${e.toString()}',
+          ),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  // ─── Long-press bottom sheet ────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // Long Press Bottom Sheet
+  // ─────────────────────────────────────────────────────────────
+
   void _showTableActionsSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -1541,14 +1620,24 @@ class _TableCard extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return Container(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          padding: const EdgeInsets.fromLTRB(
+            20,
+            20,
+            20,
+            28,
+          ),
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // ─────────────────────────────────
+              // Header
+              // ─────────────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -1562,7 +1651,9 @@ class _TableCard extends StatelessWidget {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => Navigator.of(sheetContext).pop(),
+                    onTap: () {
+                      Navigator.of(sheetContext).pop();
+                    },
                     child: Container(
                       width: 26,
                       height: 26,
@@ -1570,12 +1661,21 @@ class _TableCard extends StatelessWidget {
                         color: Color(0xFFE64545),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.close, size: 16, color: Colors.white),
+                      child: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
               ),
+
               const SizedBox(height: 20),
+
+              // ─────────────────────────────────
+              // View KOT + Transfer KOT
+              // ─────────────────────────────────
               Row(
                 children: [
                   Expanded(
@@ -1585,11 +1685,13 @@ class _TableCard extends StatelessWidget {
                       color: const Color(0xFF2E7D42),
                       onTap: () {
                         Navigator.of(sheetContext).pop();
-                        _navigateToCart(context); // 👈 now goes to Cart
+                        _navigateToCart(context);
                       },
                     ),
                   ),
+
                   const SizedBox(width: 12),
+
                   Expanded(
                     child: _sheetActionTile(
                       icon: Icons.compare_arrows_rounded,
@@ -1603,7 +1705,12 @@ class _TableCard extends StatelessWidget {
                   ),
                 ],
               ),
+
               const SizedBox(height: 12),
+
+              // ─────────────────────────────────
+              // Print Bill
+              // ─────────────────────────────────
               _sheetActionTile(
                 icon: Icons.print_outlined,
                 label: 'Print Bill',
@@ -1621,38 +1728,54 @@ class _TableCard extends StatelessWidget {
     );
   }
 
-  // ─── Print Bill ───
+  // ─────────────────────────────────────────────────────────────
+  // Print Bill
+  // ─────────────────────────────────────────────────────────────
+
   Future<void> _printBill(BuildContext context) async {
     int? activeOrderId = orderId;
 
+    // Fetch order ID if necessary.
     if (activeOrderId == null || activeOrderId == 0) {
       try {
-        final orderUseCase = context.read<GetOrderByTableUseCase>();
+        final orderUseCase =
+        context.read<GetOrderByTableUseCase>();
+
         final orderData = await orderUseCase(
           restaurantId: restaurantId,
           tableId: tableId,
           zoneId: zoneId,
         );
+
         activeOrderId = orderData.orderId;
       } catch (e) {
         if (!context.mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to fetch order details: ${e.toString()}'),
+            content: Text(
+              'Failed to fetch order details: ${e.toString()}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
+
         return;
       }
     }
 
     if (activeOrderId == null || activeOrderId == 0) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No active order found for this table.'),
+          content: Text(
+            'No active order found for this table.',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
+
       return;
     }
 
@@ -1664,7 +1787,9 @@ class _TableCard extends StatelessWidget {
         ),
       );
 
-      final useCase = context.read<BillSummaryUseCase>();
+      final useCase =
+      context.read<BillSummaryUseCase>();
+
       final billData = await useCase(
         orderId: activeOrderId,
         restaurantId: restaurantId,
@@ -1680,7 +1805,9 @@ class _TableCard extends StatelessWidget {
           'qty': item.qty,
           'price': item.price,
           'amount': item.total,
-          'modifiers': item.modifiers.map((m) => m.toString()).toList(),
+          'modifiers': item.modifiers
+              .map((m) => m.toString())
+              .toList(),
         };
       }).toList();
 
@@ -1702,14 +1829,21 @@ class _TableCard extends StatelessWidget {
       if (!context.mounted) return;
     } catch (e) {
       if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to print bill: ${e.toString()}'),
+          content: Text(
+            'Failed to print bill: ${e.toString()}',
+          ),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // Sheet Action Tile
+  // ─────────────────────────────────────────────────────────────
 
   Widget _sheetActionTile({
     required IconData icon,
@@ -1722,19 +1856,31 @@ class _TableCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: fullWidth ? double.infinity : null,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          vertical: 16,
+        ),
         decoration: BoxDecoration(
           color: color.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(
+            color: color.withOpacity(0.4),
+          ),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 22),
+            Icon(
+              icon,
+              color: color,
+              size: 22,
+            ),
             const SizedBox(height: 6),
             Text(
               label,
-              style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13),
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ],
         ),
@@ -1742,7 +1888,10 @@ class _TableCard extends StatelessWidget {
     );
   }
 
-  // ─── Guest count bottom sheet ──────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // Guest Count Bottom Sheet
+  // ─────────────────────────────────────────────────────────────
+
   Future<void> _showGuestBottomSheet(
       BuildContext context, {
         required int tableId,
@@ -1756,7 +1905,9 @@ class _TableCard extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
       ),
       builder: (context) => GuestCountBottomSheet(
         tableId: tableId,
@@ -1769,38 +1920,56 @@ class _TableCard extends StatelessWidget {
     );
   }
 
-  // ─── Transfer KOT ───────────────────────────────────────────────────
-  Future<void> _showTransferKotSheet(BuildContext context) async {
+  // ─────────────────────────────────────────────────────────────
+  // Transfer KOT
+  // ─────────────────────────────────────────────────────────────
+
+  Future<void> _showTransferKotSheet(
+      BuildContext context,
+      ) async {
     int? activeOrderId = orderId;
 
+    // Fetch order ID if not already available.
     if (activeOrderId == null || activeOrderId == 0) {
       try {
-        final orderUseCase = context.read<GetOrderByTableUseCase>();
+        final orderUseCase =
+        context.read<GetOrderByTableUseCase>();
+
         final orderData = await orderUseCase(
           restaurantId: restaurantId,
           tableId: tableId,
           zoneId: zoneId,
         );
+
         activeOrderId = orderData.orderId;
       } catch (e) {
         if (!context.mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to fetch order details: ${e.toString()}'),
+            content: Text(
+              'Failed to fetch order details: ${e.toString()}',
+            ),
             backgroundColor: Colors.red,
           ),
         );
+
         return;
       }
     }
 
     if (activeOrderId == null || activeOrderId == 0) {
+      if (!context.mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No active order found for this table.'),
+          content: Text(
+            'No active order found for this table.',
+          ),
           backgroundColor: Colors.orange,
         ),
       );
+
       return;
     }
 

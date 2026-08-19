@@ -293,7 +293,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                               ),
                             ),
                             SizedBox(height: size.height * 0.02),
-                            _fieldLabel('Store ID (optional):', size),
+                            _fieldLabel('Store ID:', size),
                             _buildStyledField(
                               controller: _storeIdController,
                               hint: 'Store ID',

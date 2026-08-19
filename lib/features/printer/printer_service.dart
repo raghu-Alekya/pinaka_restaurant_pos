@@ -142,9 +142,9 @@ class Printer {
       await printerSettings.printTicket(bytes, generator);
     } catch (e) {
       debugPrint('Print KOT Error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Print error: $e'), backgroundColor: Colors.red),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Print error: $e'), backgroundColor: Colors.red),
+      // );
     }
   }
 

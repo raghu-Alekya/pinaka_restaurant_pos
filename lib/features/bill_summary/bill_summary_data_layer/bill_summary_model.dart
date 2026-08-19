@@ -116,6 +116,7 @@ class LineItemModel {
   final int qty;
   final double total;
   final double price;
+  final double originalPrice; // 👈 non-nullable with default
   final double tax;
   final String taxClass;
   final List<dynamic> modifiers;
@@ -129,6 +130,7 @@ class LineItemModel {
     required this.qty,
     required this.total,
     required this.price,
+    required this.originalPrice,
     required this.tax,
     required this.taxClass,
     required this.modifiers,
@@ -144,6 +146,7 @@ class LineItemModel {
       qty: json['qty'] ?? 0,
       total: _toDouble(json['total']),
       price: _toDouble(json['price']),
+      originalPrice: _toDouble(json['original_price']), // 👈 uses helper
       tax: _toDouble(json['tax']),
       taxClass: json['tax_class'] ?? '',
       modifiers: json['modifiers'] ?? [],
@@ -159,6 +162,7 @@ class LineItemModel {
     qty: qty,
     total: total,
     price: price,
+    originalPrice: originalPrice,
     tax: tax,
     taxClass: taxClass,
     modifiers: modifiers,

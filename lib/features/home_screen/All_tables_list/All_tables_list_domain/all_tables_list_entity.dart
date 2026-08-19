@@ -9,11 +9,11 @@ class TableEntity {
   final String? posY;
   final String? rotation;
   final String? dineInTime;
-  final String? status; // "Available", "Dine in"
+  final String? status;
   final bool? isMerged;
   final String? mergedTables;
-  final int? orderId; 
-
+  final int? orderId;
+  final String? orderAmount; // 👈 new
 
   TableEntity({
     this.tableId,
@@ -30,5 +30,6 @@ class TableEntity {
     this.isMerged,
     this.mergedTables,
     this.orderId,
+    this.orderAmount,
   });
 }

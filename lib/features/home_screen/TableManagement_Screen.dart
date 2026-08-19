@@ -889,9 +889,33 @@ class _TableManagementScreenState extends State<TableManagementScreen>
     return _zoneSectionKeys.putIfAbsent(zoneId, () => GlobalKey());
   }
 
+  // void _onZoneTabSelected(String zoneId) {
+  //   setState(() => _selectedZoneId = zoneId);
+  //   final ctx = _zoneSectionKeys[zoneId]?.currentContext;
+  //   if (ctx != null) {
+  //     _isProgrammaticScroll = true;
+  //     Scrollable.ensureVisible(
+  //       ctx,
+  //       duration: const Duration(milliseconds: 300),
+  //       curve: Curves.easeInOut,
+  //       alignment: 0,
+  //     ).whenComplete(() {
+  //       Future.delayed(const Duration(milliseconds: 50), () {
+  //         _isProgrammaticScroll = false;
+  //       });
+  //     });
+  //   }
+  // }
+
   void _onZoneTabSelected(String zoneId) {
     setState(() => _selectedZoneId = zoneId);
+    _scrollToZoneSection(zoneId);
+  }
+
+  void _scrollToZoneSection(String zoneId, {int attempt = 0}) {
+    const maxAttempts = 15; // ~15 frames worth of retrying
     final ctx = _zoneSectionKeys[zoneId]?.currentContext;
+
     if (ctx != null) {
       _isProgrammaticScroll = true;
       Scrollable.ensureVisible(
@@ -902,6 +926,30 @@ class _TableManagementScreenState extends State<TableManagementScreen>
       ).whenComplete(() {
         Future.delayed(const Duration(milliseconds: 50), () {
           _isProgrammaticScroll = false;
+        });
+      });
+      return;
+    }
+
+    // Context not built yet (lazy list hasn't reached that section).
+    // Nudge the scroll position forward so more of the list gets built,
+    // then retry on the next frame.
+    if (attempt < maxAttempts && _tablesScrollController.hasClients) {
+      final position = _tablesScrollController.position;
+      final target = (position.pixels + position.viewportDimension * 0.8)
+          .clamp(0.0, position.maxScrollExtent);
+
+      _tablesScrollController
+          .animateTo(
+        target,
+        duration: const Duration(milliseconds: 16),
+        curve: Curves.linear,
+      )
+          .whenComplete(() {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _selectedZoneId == zoneId) {
+            _scrollToZoneSection(zoneId, attempt: attempt + 1);
+          }
         });
       });
     }
@@ -975,31 +1023,55 @@ class _TableManagementScreenState extends State<TableManagementScreen>
         onSyncData: _onSyncDataFromDrawer,
       ),
       appBar: AppBar(
+        toolbarHeight: 38,
         elevation: 0.5,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
+        centerTitle: true,
+
         leading: IconButton(
-          icon: const Icon(Icons.menu),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(
+            minWidth: 32,
+            minHeight: 32,
+          ),
+          icon: const Icon(Icons.menu, size: 18),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
+
         title: const Text(
           'Table Management',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+            color: Colors.black87,
+          ),
         ),
-        centerTitle: true,
+
         actions: [
           IconButton(
-            icon: const Icon(Icons.table_bar_rounded),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+            icon: const Icon(Icons.table_bar_rounded, size: 18),
             onPressed: () {
               // TODO: table layout view
             },
           ),
-          SizedBox(width: size.width * 0.01),
+
           IconButton(
-            icon: const Icon(Icons.notifications_none_rounded),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32,
+              minHeight: 32,
+            ),
+            icon: const Icon(Icons.notifications_none_rounded, size: 18),
             onPressed: () {},
           ),
-          SizedBox(width: size.width * 0.01),
+
+          const SizedBox(width: 4),
         ],
       ),
       body: BlocBuilder<ZoneBloc, ZoneState>(

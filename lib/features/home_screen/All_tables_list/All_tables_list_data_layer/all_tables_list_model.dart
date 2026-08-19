@@ -47,6 +47,7 @@ class TableModel {
   final String? status;
   final bool? isMerged;
   final String? mergedTables;
+  final String? orderAmount; // 👈 new
 
   TableModel({
     this.tableId,
@@ -62,6 +63,7 @@ class TableModel {
     this.status,
     this.isMerged,
     this.mergedTables,
+    this.orderAmount,
   });
 
   factory TableModel.fromJson(Map<String, dynamic> json) {
@@ -69,34 +71,27 @@ class TableModel {
       tableId: json['table_id'] is int
           ? json['table_id']
           : int.tryParse(json['table_id']?.toString() ?? ''),
-
       tableName: json['table_name']?.toString(),
-
       restaurantId: json['restaurant_id'] is int
           ? json['restaurant_id']
           : int.tryParse(json['restaurant_id']?.toString() ?? ''),
-
       capacity: json['capacity']?.toString(),
       shape: json['shape']?.toString(),
-
       zoneId: json['zone_id'] is int
           ? json['zone_id']
           : int.tryParse(json['zone_id']?.toString() ?? ''),
-
       posX: json['pos_x']?.toString(),
       posY: json['pos_y']?.toString(),
       rotation: json['rotation']?.toString(),
       dineInTime: json['dine_in_time']?.toString(),
       status: json['status']?.toString(),
-
       isMerged: json['is_merged'] is bool
           ? json['is_merged']
           : json['is_merged']?.toString().toLowerCase() == 'true',
-
       mergedTables: json['merged_tables']?.toString(),
+      orderAmount: json['order_amount']?.toString(), // 👈 new
     );
   }
-
 
   Map<String, dynamic> toJson() => {
     'table_id': tableId,
@@ -112,6 +107,7 @@ class TableModel {
     'status': status,
     'is_merged': isMerged,
     'merged_tables': mergedTables,
+    'order_amount': orderAmount,
   };
 
   TableEntity toEntity() => TableEntity(
@@ -128,5 +124,7 @@ class TableModel {
     status: status,
     isMerged: isMerged,
     mergedTables: mergedTables,
+    orderId: null, // not in API response
+    orderAmount: orderAmount,
   );
 }

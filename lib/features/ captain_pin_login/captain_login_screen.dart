@@ -608,7 +608,7 @@ class _CaptainLoginScreenState extends State<CaptainLoginScreen> {
                                       );
                                     },
                                     child: Text(
-                                      'Login as Merchant?',
+                                      'Login  Here ?',
                                       style: TextStyle(
                                         color: Colors.black,
                                         fontSize: size.width * 0.04,

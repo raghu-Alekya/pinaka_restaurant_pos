@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../entities/category_entity.dart';
 import '../entities/product_entity.dart';
@@ -54,6 +55,13 @@ class _ProductListViewState extends State<ProductListView> {
   bool _isScrolling = false;
   int? _lastNotifiedId;
 
+  // 👈 NEW: throttles how often we walk the render tree to find the
+  // currently visible section. Previously this ran on every single
+  // scroll callback (i.e. many times per frame during a fast fling),
+  // which is expensive and was contributing to the flicker/jank while
+  // scrolling. Now it runs at most every 80ms.
+  Timer? _scrollThrottleTimer;
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +73,7 @@ class _ProductListViewState extends State<ProductListView> {
 
   @override
   void dispose() {
+    _scrollThrottleTimer?.cancel(); // 👈 NEW
     _scrollController.dispose();
     super.dispose();
   }
@@ -81,10 +90,15 @@ class _ProductListViewState extends State<ProductListView> {
   }
 
   void _onScroll() {
-    if (_isScrolling) return;
-    _isScrolling = true;
-    _detectVisibleSection();
-    _isScrolling = false;
+    // 👈 NEW: real throttle. The old `_isScrolling` boolean guard never
+    // actually blocked anything (it was set true then immediately reset
+    // false within the same synchronous call), so detection ran on every
+    // scroll notification. This replaces it with a proper timer-based
+    // throttle without touching the detection logic itself.
+    _scrollThrottleTimer?.cancel();
+    _scrollThrottleTimer = Timer(const Duration(milliseconds: 80), () {
+      if (mounted) _detectVisibleSection();
+    });
   }
 
   void _detectVisibleSection() {
@@ -146,15 +160,33 @@ class _ProductListViewState extends State<ProductListView> {
       return const Center(child: Text('No items available.'));
     }
 
+    final bool isFiltered = widget.selectedSubcategoryId != null;
     final List<Widget> children = [];
 
-    final directFiltered = _filter(widget.directProducts);
-    if (directFiltered.isNotEmpty) {
-      children.add(_buildGrid(directFiltered));
-      children.add(const SizedBox(height: 16));
+    // 👇 Show the selected subcategory's name as a title at the top
+    if (isFiltered) {
+      final selectedSub = widget.subcategories.firstWhere(
+            (s) => s.id == widget.selectedSubcategoryId,
+        orElse: () => widget.subcategories.first,
+      );
+      children.add(_buildSectionHeader(selectedSub.name));
+    }
+
+    // Direct (category-level) products only show in "All" mode
+    if (!isFiltered) {
+      final directFiltered = _filter(widget.directProducts);
+      if (directFiltered.isNotEmpty) {
+        children.add(_buildGrid(directFiltered));
+        children.add(const SizedBox(height: 16));
+      }
     }
 
     for (final sub in widget.subcategories) {
+      // 👇 EXACT FILTER: skip every subcategory except the selected one
+      if (isFiltered && sub.id != widget.selectedSubcategoryId) {
+        continue;
+      }
+
       if (!_sectionKeys.containsKey(sub.id)) {
         _sectionKeys[sub.id] = GlobalKey();
       }
@@ -177,7 +209,9 @@ class _ProductListViewState extends State<ProductListView> {
           sectionContent = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader(sub.name),
+              // Per-section header still hidden when filtered —
+              // the title above already shows the active subcategory.
+              if (!isFiltered) _buildSectionHeader(sub.name),
               _buildGrid(products),
             ],
           );
@@ -194,7 +228,7 @@ class _ProductListViewState extends State<ProductListView> {
           sectionContent = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader(sub.name),
+              if (!isFiltered) _buildSectionHeader(sub.name),
               _buildGrid(products),
             ],
           );
@@ -204,12 +238,17 @@ class _ProductListViewState extends State<ProductListView> {
       }
 
       children.add(
-        Container(
-          key: _sectionKeys[sub.id],
-          child: sectionContent,
+        // 👈 NEW: RepaintBoundary isolates each section's repaint from
+        // its neighbors during scroll, instead of the whole ListView
+        // repainting together — helps with scroll flicker.
+        RepaintBoundary(
+          child: Container(
+            key: _sectionKeys[sub.id],
+            child: sectionContent,
+          ),
         ),
       );
-      children.add(const SizedBox(height: 16));
+      children.add(const SizedBox(height: 2));
     }
 
     if (children.isEmpty) {
@@ -218,7 +257,7 @@ class _ProductListViewState extends State<ProductListView> {
 
     return ListView(
       controller: _scrollController,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 1),
       children: children,
     );
   }
@@ -230,9 +269,9 @@ class _ProductListViewState extends State<ProductListView> {
       itemCount: products.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 1.55,
+        mainAxisSpacing: 6,      // was 12
+        crossAxisSpacing: 10,    // was 12
+        childAspectRatio: 1.7,
       ),
       itemBuilder: (context, index) {
         final product = products[index];
@@ -251,12 +290,12 @@ class _ProductListViewState extends State<ProductListView> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 12),
+      padding: const EdgeInsets.only(top: 1, bottom:4),
       child: Text(
         title,
         style: const TextStyle(
           fontWeight: FontWeight.bold,
-          fontSize: 18,
+          fontSize: 16,
           color: Colors.black87,
         ),
       ),

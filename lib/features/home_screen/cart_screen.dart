@@ -16,6 +16,12 @@
 // import '../printer/printer_service.dart';
 // import 'order_menu/order_menu_screen.dart';
 //
+// // ─── NEW imports for table refresh ──────────────────────────────────
+// import '../home_screen/All_tables_list/All_tables_list_bloc/all_tables_list_bloc.dart';
+// import '../home_screen/All_tables_list/All_tables_list_bloc/all_tables_list_event.dart';
+// import '../home_screen/Zones/Zones_bloc/zone_event.dart';
+// import '../home_screen/Zones/Zones_bloc/zones_bloc.dart';
+//
 // class CartScreen extends StatefulWidget {
 //   final List<CartItem> cartItems;
 //   final int orderId;
@@ -48,6 +54,7 @@
 //   late List<CartItem> cartItems;
 //   bool _showAllKots = false;
 //   bool _isPrintingKot = false;
+//   bool _isRepeatingKot = false;
 //   bool _hasPrintedKot = false;
 //   bool _hasAnyKots = false;
 //   late final StreamSubscription<KotsListState> _kotsSubscription;
@@ -145,6 +152,7 @@
 //     }).toList();
 //   }
 //
+//   // ─── KOT Print ────────────────────────────────────────────────────────────
 //   Future<void> _printKot() async {
 //     if (cartItems.isEmpty || _isPrintingKot) return;
 //     setState(() => _isPrintingKot = true);
@@ -225,10 +233,11 @@
 //         ),
 //       );
 //
+//       // ─── ✅ Refresh tables instantly ──────────────────────────
+//       context.read<AllTablesBloc>().add(FetchAllTables());
+//       context.read<ZoneBloc>().add(FetchZones());
+//
 //       Navigator.pop(context);
-//       // ScaffoldMessenger.of(context).showSnackBar(
-//       //   const SnackBar(content: Text('KOT printed successfully'), backgroundColor: Colors.green),
-//       // );
 //     } catch (e) {
 //       if (!mounted) return;
 //       ScaffoldMessenger.of(context).showSnackBar(
@@ -236,6 +245,178 @@
 //       );
 //     } finally {
 //       if (mounted) setState(() => _isPrintingKot = false);
+//     }
+//   }
+//
+//   void _showRepeatKotDialog() {
+//     showDialog(
+//       context: context,
+//       barrierDismissible: false,
+//       builder: (BuildContext context) {
+//         return Dialog(
+//           shape: RoundedRectangleBorder(
+//             borderRadius: BorderRadius.circular(16),
+//           ),
+//           elevation: 8,
+//           backgroundColor: Colors.white,
+//           child: Padding(
+//             padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+//             child: Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 Container(
+//                   width: 48,
+//                   height: 48,
+//                   decoration: BoxDecoration(
+//                     color: const Color(0xFFFFF3E0),
+//                     shape: BoxShape.circle,
+//                   ),
+//                   child: const Icon(
+//                     Icons.warning_amber_rounded,
+//                     color: Color(0xFFFFA000),
+//                     size: 28,
+//                   ),
+//                 ),
+//                 const SizedBox(height: 16),
+//                 const Text(
+//                   'Repeat KOT?',
+//                   style: TextStyle(
+//                     fontSize: 18,
+//                     fontWeight: FontWeight.w600,
+//                     color: Color(0xFF1A1A1A),
+//                   ),
+//                 ),
+//                 const SizedBox(height: 10),
+//                 const Text(
+//                   'A new KOT will be generated with the same items and sent to the kitchen.',
+//                   textAlign: TextAlign.center,
+//                   style: TextStyle(
+//                     fontSize: 14,
+//                     height: 1.4,
+//                     color: Color(0xFF666666),
+//                   ),
+//                 ),
+//                 const SizedBox(height: 24),
+//                 Row(
+//                   children: [
+//                     Expanded(
+//                       child: OutlinedButton(
+//                         onPressed: () => Navigator.pop(context),
+//                         style: OutlinedButton.styleFrom(
+//                           foregroundColor: ColorConstants.primaryColor,
+//                           side: BorderSide(
+//                             color: ColorConstants.primaryColor,
+//                             width: 1.5,
+//                           ),
+//                           padding: const EdgeInsets.symmetric(vertical: 12),
+//                           shape: RoundedRectangleBorder(
+//                             borderRadius: BorderRadius.circular(8),
+//                           ),
+//                         ),
+//                         child: const Text(
+//                           'Cancel',
+//                           style: TextStyle(
+//                             fontSize: 15,
+//                             fontWeight: FontWeight.w500,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 12),
+//                     Expanded(
+//                       child: ElevatedButton(
+//                         onPressed: () {
+//                           Navigator.pop(context);
+//                           _repeatKot();
+//                         },
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor: ColorConstants.primaryColor,
+//                           foregroundColor: Colors.white,
+//                           elevation: 0,
+//                           padding: const EdgeInsets.symmetric(vertical: 12),
+//                           shape: RoundedRectangleBorder(
+//                             borderRadius: BorderRadius.circular(8),
+//                           ),
+//                         ),
+//                         child: const Text(
+//                           'Confirm',
+//                           style: TextStyle(
+//                             fontSize: 15,
+//                             fontWeight: FontWeight.w600,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ],
+//             ),
+//           ),
+//         );
+//       },
+//     );
+//   }
+//
+//   Future<void> _repeatKot() async {
+//     if (_isRepeatingKot || !_hasAnyKots) return;
+//     setState(() => _isRepeatingKot = true);
+//
+//     try {
+//       final merchantStorage = context.read<MerchantLocalStorage>();
+//       final captainStorage = context.read<CaptainLocalStorage>();
+//
+//       final baseUrl = await merchantStorage.getStoreBaseUrl();
+//       if (baseUrl == null || baseUrl.isEmpty) {
+//         throw Exception('Store base URL not found.');
+//       }
+//
+//       final captainData = await captainStorage.getCaptainData();
+//       final token = captainData?.data?.token;
+//       if (token == null || token.isEmpty) {
+//         throw Exception('Captain token not found.');
+//       }
+//
+//       final response = await http.post(
+//         Uri.parse('$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/repeat-kot-order'),
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': 'Bearer $token',
+//         },
+//         body: jsonEncode({
+//           'order_id': widget.orderId,
+//           'restaurant_id': widget.restaurantId,
+//           'zone_id': widget.zoneId,
+//         }),
+//       );
+//
+//       if (response.statusCode < 200 || response.statusCode >= 300) {
+//         throw Exception('Repeat KOT failed (${response.statusCode}): ${response.body}');
+//       }
+//
+//       context.read<KotsListBloc>().add(
+//         FetchKotsList(
+//           parentOrderId: widget.orderId,
+//           restaurantId: widget.restaurantId,
+//           zoneId: widget.zoneId,
+//         ),
+//       );
+//
+//       // ─── ✅ Refresh tables instantly ──────────────────────────
+//       context.read<AllTablesBloc>().add(FetchAllTables());
+//       context.read<ZoneBloc>().add(FetchZones());
+//
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(content: Text('KOT repeated successfully'), backgroundColor: Colors.green),
+//         );
+//       }
+//     } catch (e) {
+//       if (!mounted) return;
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Failed to repeat KOT: $e'), backgroundColor: Colors.red),
+//       );
+//     } finally {
+//       if (mounted) setState(() => _isRepeatingKot = false);
 //     }
 //   }
 //
@@ -565,6 +746,7 @@
 //     );
 //   }
 //
+//   // ─── Bottom Bar with Repeat KOT ──────────────────────────────────────────
 //   Widget _bottomKotBar(String currencySymbol) {
 //     return Container(
 //       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -576,14 +758,16 @@
 //         children: [
 //           Expanded(
 //             child: OutlinedButton(
-//               onPressed: cartItems.isEmpty ? null : () {},
+//               onPressed: (!_hasAnyKots || _isRepeatingKot) ? null : _showRepeatKotDialog,
 //               style: OutlinedButton.styleFrom(
 //                 foregroundColor: ColorConstants.primaryColor,
 //                 side: BorderSide(color: ColorConstants.primaryColor),
 //                 padding: const EdgeInsets.symmetric(vertical: 14),
 //                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
 //               ),
-//               child: const Text('Repeat KOT', style: TextStyle(fontWeight: FontWeight.w600)),
+//               child: _isRepeatingKot
+//                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: ColorConstants.primaryColor))
+//                   : const Text('Repeat KOT', style: TextStyle(fontWeight: FontWeight.w600)),
 //             ),
 //           ),
 //           const SizedBox(width: 12),
@@ -650,6 +834,8 @@
 //   }
 // }
 
+////====
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -667,6 +853,13 @@ import '../kots_list/kots_list_bloc/kots_list_state.dart';
 import '../kots_list/kots_list_widget.dart';
 import '../printer/printer_service.dart';
 import 'order_menu/order_menu_screen.dart';
+
+// ─── Table refresh and navigation imports ────────────────────────────
+import '../home_screen/All_tables_list/All_tables_list_bloc/all_tables_list_bloc.dart';
+import '../home_screen/All_tables_list/All_tables_list_bloc/all_tables_list_event.dart';
+import '../home_screen/Zones/Zones_bloc/zone_event.dart';
+import '../home_screen/Zones/Zones_bloc/zones_bloc.dart';
+import '../home_screen/TableManagement_Screen.dart'; // 👈 added
 
 class CartScreen extends StatefulWidget {
   final List<CartItem> cartItems;
@@ -700,9 +893,10 @@ class _CartScreenState extends State<CartScreen> {
   late List<CartItem> cartItems;
   bool _showAllKots = false;
   bool _isPrintingKot = false;
-  bool _isRepeatingKot = false; // loading state for Repeat KOT
+  bool _isRepeatingKot = false;
   bool _hasPrintedKot = false;
   bool _hasAnyKots = false;
+  bool _initialAutoExpandDone = false;
   late final StreamSubscription<KotsListState> _kotsSubscription;
   final ValueNotifier<String> _currencySymbolNotifier = ValueNotifier<String>('\$');
 
@@ -716,12 +910,20 @@ class _CartScreenState extends State<CartScreen> {
 
     if (kotsBloc.state is KotsListLoaded && (kotsBloc.state as KotsListLoaded).kots.isNotEmpty) {
       _hasAnyKots = true;
+      if (cartItems.isEmpty) {
+        _showAllKots = true;
+        _initialAutoExpandDone = true;
+      }
     }
 
     _kotsSubscription = kotsBloc.stream.listen((state) {
       if (state is KotsListLoaded && mounted) {
         setState(() {
           _hasAnyKots = state.kots.isNotEmpty;
+          if (_hasAnyKots && cartItems.isEmpty && !_initialAutoExpandDone) {
+            _showAllKots = true;
+            _initialAutoExpandDone = true;
+          }
         });
       }
     });
@@ -820,6 +1022,8 @@ class _CartScreenState extends State<CartScreen> {
 
       final captainId = captainData?.data?.id;
       final captainName = captainData?.data?.displayName ?? 'Captain';
+      final captainRole = captainData?.data?.role ?? 'Captain';
+
       final lineItems = _buildLineItems();
       if (lineItems.isEmpty) {
         throw Exception('No items available to print.');
@@ -879,12 +1083,37 @@ class _CartScreenState extends State<CartScreen> {
         ),
       );
 
-      Navigator.pop(context);
+      // ─── Refresh tables & zones instantly ──────────────────────────
+      context.read<AllTablesBloc>().add(FetchAllTables());
+      context.read<ZoneBloc>().add(FetchZones());
+
+      // ─── Return to the existing TableManagementScreen ───────────────
+      // 👈 popUntil reuses the screen already on the stack instead of
+      // pushAndRemoveUntil building a brand-new one — so it just
+      // updates via the blocs above instead of showing a full reload.
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+
+      // // ─── Navigate to TableManagementScreen ─────────────────────────
+      // if (mounted) {
+      //   Navigator.of(context).pushAndRemoveUntil(
+      //     MaterialPageRoute(
+      //       builder: (_) => TableManagementScreen(
+      //         captainName: captainName,
+      //         captainRole: captainRole,
+      //       ),
+      //     ),
+      //         (route) => false,
+      //   );
+      // }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to print KOT: $e'), backgroundColor: Colors.red),
       );
+      // Still navigate back on error? Maybe not – but we'll pop to avoid stuck screen.
+      Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _isPrintingKot = false);
     }
@@ -906,23 +1135,20 @@ class _CartScreenState extends State<CartScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Warning icon
                 Container(
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0), // light orange background
+                    color: const Color(0xFFFFF3E0),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.warning_amber_rounded,
-                    color: Color(0xFFFFA000), // amber/orange
+                    color: Color(0xFFFFA000),
                     size: 28,
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // Title
                 const Text(
                   'Repeat KOT?',
                   style: TextStyle(
@@ -932,8 +1158,6 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-
-                // Message
                 const Text(
                   'A new KOT will be generated with the same items and sent to the kitchen.',
                   textAlign: TextAlign.center,
@@ -944,11 +1168,8 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Buttons
                 Row(
                   children: [
-                    // Cancel button (outlined)
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
@@ -973,8 +1194,6 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-
-                    // Confirm button (filled)
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () {
@@ -1045,7 +1264,6 @@ class _CartScreenState extends State<CartScreen> {
         throw Exception('Repeat KOT failed (${response.statusCode}): ${response.body}');
       }
 
-      // Refresh the KOT list after successful repeat
       context.read<KotsListBloc>().add(
         FetchKotsList(
           parentOrderId: widget.orderId,
@@ -1054,11 +1272,15 @@ class _CartScreenState extends State<CartScreen> {
         ),
       );
 
-      // if (mounted) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     const SnackBar(content: Text('KOT repeated successfully'), backgroundColor: Colors.green),
-      //   );
-      // }
+      // ─── Refresh tables instantly ──────────────────────────
+      context.read<AllTablesBloc>().add(FetchAllTables());
+      context.read<ZoneBloc>().add(FetchZones());
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('KOT repeated successfully'), backgroundColor: Colors.green),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1090,17 +1312,22 @@ class _CartScreenState extends State<CartScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
+        toolbarHeight: 28,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
+          icon: const Icon(Icons.arrow_back_ios, size: 16),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Cart',
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
         ),
       ),
       body: ValueListenableBuilder<String>(
@@ -1116,7 +1343,8 @@ class _CartScreenState extends State<CartScreen> {
                   child: Column(
                     children: [
                       _buildKotListSection(),
-                      _itemsCard(currencySymbol),
+                      if (cartItems.isNotEmpty || !_showAllKots)
+                        _itemsCard(currencySymbol),
                     ],
                   ),
                 ),
@@ -1304,7 +1532,149 @@ class _CartScreenState extends State<CartScreen> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: cartItems.length,
               separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
-              itemBuilder: (context, index) => _itemRow(cartItems[index], currencySymbol),
+              itemBuilder: (context, index) {
+                final item = cartItems[index];
+                return Dismissible(
+                  key: ValueKey(item.key),
+                  direction: DismissDirection.horizontal,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.only(left: 16),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  secondaryBackground: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 16),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  confirmDismiss: (direction) async {
+                    return await showDialog<bool>(
+                      context: context,
+                      barrierDismissible: true,
+                      builder: (context) {
+                        return Dialog(
+                          backgroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: Colors.red.shade600,
+                                    size: 32,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                const Text(
+                                  'Remove item?',
+                                  style: TextStyle(
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF171717),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Are you sure you want to remove\n'
+                                      '${item.product.name} from your cart?',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    height: 1.5,
+                                    color: Color(0xFF737373),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 24),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: SizedBox(
+                                        height: 58,
+                                        child: OutlinedButton(
+                                          onPressed: () {
+                                            Navigator.pop(context, false);
+                                          },
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: const Color(0xFF404040),
+                                            side: const BorderSide(
+                                              color: Color(0xFFE5E5E5),
+                                              width: 1.5,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Cancel',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: SizedBox(
+                                        height: 58,
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            Navigator.pop(context, true);
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: const Color(0xFFE53935),
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Remove',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  onDismissed: (_) {
+                    _decrement(item);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${item.product.name} removed'),
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  child: _itemRow(item, currencySymbol),
+                );
+              },
             ),
         ],
       ),
@@ -1405,7 +1775,6 @@ class _CartScreenState extends State<CartScreen> {
       ),
       child: Row(
         children: [
-          // ── Repeat KOT Button ──
           Expanded(
             child: OutlinedButton(
               onPressed: (!_hasAnyKots || _isRepeatingKot) ? null : _showRepeatKotDialog,
@@ -1421,7 +1790,6 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          // ── KOT Print Button ──
           Expanded(
             child: ElevatedButton(
               onPressed: (cartItems.isEmpty || _showAllKots || _isPrintingKot) ? null : _printKot,
