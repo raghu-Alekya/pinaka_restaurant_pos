@@ -1049,6 +1049,11 @@ class KitchenOrder {
 
     switch (kotStatus) {
       case 'processing':
+      case 'created':
+      case 'new':
+      case 'yet_to_prepare':
+      case 'yet to prepare':
+      case 'pending':
         uiStatus = 'Pending';
         break;
 
@@ -1068,6 +1073,7 @@ class KitchenOrder {
       default:
         uiStatus = 'Pending';
     }
+
 
     final rawItems =
         (json['kot_items'] ??
@@ -1268,6 +1274,12 @@ class KitchenOrder {
           // ==================================================
 
           'category':
+          item.category,
+
+          'category_name':
+          item.category,
+
+          'categoryName':
           item.category,
 
           // ==================================================

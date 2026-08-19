@@ -70,11 +70,21 @@ class OrderProvider extends ChangeNotifier {
   int get mqttMessagesReceived => _mqttService.messagesReceived;
 
   List<Map<String, dynamic>> get pendingOrders => _orders
-      .where((o) =>
-  o.status == 'Pending' &&
-      o.kotStatus.toLowerCase() != 'on hold')
+      .where((o) {
+        final st = o.status.trim().toLowerCase();
+        final isPendingStatus = st == 'pending' ||
+            st == 'new' ||
+            st == 'created' ||
+            st == 'yet_to_prepare' ||
+            st == 'yet to prepare' ||
+            st == 'processing';
+
+        return isPendingStatus &&
+            o.kotStatus.toLowerCase() != 'on hold';
+      })
       .map((o) => o.toUiMap())
       .toList();
+
 
   List<Map<String, dynamic>> get preparingOrders => _orders
       .where((o) => o.status == 'Preparing')
@@ -378,6 +388,7 @@ class OrderProvider extends ChangeNotifier {
         // --------------------------------------------------------
 
         _addOrder(order);
+        unawaited(_refreshAfterMqtt());
 
         debugPrint(
           '✅ KOT ADDED TO PROVIDER',
@@ -754,19 +765,20 @@ class OrderProvider extends ChangeNotifier {
           '${order.id} = ${order.status}',
     );
   }
-  // Future<void> _refreshAfterMqtt() async {
-  //   try {
-  //     await Future<void>.delayed(
-  //       const Duration(milliseconds: 800),
-  //     );
-  //
-  //     await loadExistingOrders();
-  //   } catch (e, stack) {
-  //     KdsDebugLog.error(
-  //       'MQTT refresh failed: $e\n$stack',
-  //     );
-  //   }
-  // }
+  Future<void> _refreshAfterMqtt() async {
+    try {
+      await Future<void>.delayed(
+        const Duration(milliseconds: 800),
+      );
+
+      await loadExistingOrders();
+    } catch (e, stack) {
+      KdsDebugLog.error(
+        'MQTT refresh failed: $e\n$stack',
+      );
+    }
+  }
+
 
   Map<String, dynamic> _enrichMqttMessageWithCategories(
       Map<String, dynamic> message) {
@@ -795,6 +807,22 @@ class OrderProvider extends ChangeNotifier {
     _enrichMapRecursively(copy);
 
     return copy;
+  }
+
+  String _extractStringCategory(dynamic raw) {
+    if (raw == null) return '';
+    if (raw is Map) {
+      final name = (raw['name'] ?? raw['category_name'] ?? raw['categoryName'] ?? raw['title'])?.toString().trim() ?? '';
+      if (name.isNotEmpty && name.toLowerCase() != 'unknown' && name.toUpperCase() != 'OTHER' && !name.startsWith('{')) {
+        return name;
+      }
+      return '';
+    }
+    final str = raw.toString().trim();
+    if (str.isEmpty || str.toLowerCase() == 'unknown' || str.toUpperCase() == 'OTHER' || (str.startsWith('{') && str.endsWith('}'))) {
+      return '';
+    }
+    return str;
   }
 
   void _enrichMapRecursively(Map<String, dynamic> map) {
@@ -837,28 +865,30 @@ class OrderProvider extends ChangeNotifier {
                 '';
       }
 
-      final existingCategory =
-          (map['category_name'] ??
-              map['categoryName'] ??
-              map['category'])
-              ?.toString()
-              .trim() ??
-              '';
+      final existingCategory = [
+        _extractStringCategory(map['category_name']),
+        _extractStringCategory(map['categoryName']),
+        _extractStringCategory(map['category']),
+        _extractStringCategory(map['section_name']),
+        _extractStringCategory(map['section']),
+      ].firstWhere((c) => c.isNotEmpty, orElse: () => '');
 
-      if (category.isEmpty &&
-          existingCategory.isNotEmpty &&
-          existingCategory.toUpperCase() != 'OTHER') {
+      if (category.isEmpty && existingCategory.isNotEmpty) {
         category = existingCategory;
       }
 
       if (category.isNotEmpty) {
         map['category_name'] = category;
         map['categoryName'] = category;
+        map['category'] = category;
 
-        // Some existing UI code reads `category` directly.
-        if ((map['category']?.toString().trim() ?? '').isEmpty ||
-            (map['category']?.toString().trim().toUpperCase() == 'OTHER')) {
-          map['category'] = category;
+        if (productId.isNotEmpty) {
+          _productCategoryMap[productId] = category;
+        }
+
+        if (productName.isNotEmpty) {
+          _productCategoryNameMap[_normalizeProductName(productName)] = category;
+          _productCategoryNameMap[productName.toLowerCase()] = category;
         }
 
         debugPrint(
@@ -872,6 +902,7 @@ class OrderProvider extends ChangeNotifier {
         );
       }
     }
+
 
     // Recursively walk the entire MQTT payload so this works regardless of
     // whether items are under `items`, `kot_items`, `order`, `data`, etc.
@@ -975,9 +1006,6 @@ class OrderProvider extends ChangeNotifier {
 
   void _buildCategoryMapsFromApiOrders(
       List<Map<String, dynamic>> apiOrders) {
-    _productCategoryMap.clear();
-    _productCategoryNameMap.clear();
-
     for (final order in apiOrders) {
       final rawItems = order['kot_items'] ?? order['items'];
 
@@ -1003,16 +1031,15 @@ class OrderProvider extends ChangeNotifier {
                 .trim() ??
                 '';
 
-        final category =
-            (item['category_name'] ??
-                item['categoryName'] ??
-                item['category'])
-                ?.toString()
-                .trim() ??
-                '';
+        final category = [
+          _extractStringCategory(item['category_name']),
+          _extractStringCategory(item['categoryName']),
+          _extractStringCategory(item['category']),
+          _extractStringCategory(item['section_name']),
+          _extractStringCategory(item['section']),
+        ].firstWhere((c) => c.isNotEmpty, orElse: () => '');
 
-        if (category.isEmpty ||
-            category.toUpperCase() == 'OTHER') {
+        if (category.isEmpty) {
           continue;
         }
 
@@ -1030,6 +1057,7 @@ class OrderProvider extends ChangeNotifier {
         }
       }
     }
+
 
     debugPrint(
       'CATEGORY MAP READY: ${_productCategoryMap.length} product IDs, '
@@ -1448,8 +1476,16 @@ class OrderProvider extends ChangeNotifier {
       );
 
       // ----------------------------------------------------------
-      // BUILD CATEGORY MAPS
+      // BUILD CATEGORY MAPS (API Service + API Orders)
       // ----------------------------------------------------------
+
+      _productCategoryMap
+        ..clear()
+        ..addAll(_apiService.productCategoryById);
+
+      _productCategoryNameMap
+        ..clear()
+        ..addAll(_apiService.productCategoryByName);
 
       _buildCategoryMapsFromApiOrders(apiOrders);
 
@@ -1461,40 +1497,8 @@ class OrderProvider extends ChangeNotifier {
       debugPrint(
         'NAME MAP COUNT: ${_productCategoryNameMap.length}',
       );
-      debugPrint(
-        '5823 => ${_productCategoryMap['5823']}',
-      );
-      debugPrint(
-        '14147 => ${_productCategoryMap['14147']}',
-      );
-      debugPrint(
-        '13847 => ${_productCategoryMap['13847']}',
-      );
-      debugPrint(
-        'chicken curry => '
-            '${_productCategoryNameMap['chicken curry']}',
-      );
       debugPrint('==========================================');
 
-
-      // ==========================================================
-// SYNC CATEGORY MAPS FROM API SERVICE
-// These maps are used by newly-created MQTT KOTs.
-// ==========================================================
-
-      _productCategoryMap
-        ..clear()
-        ..addAll(_apiService.productCategoryById);
-
-      _productCategoryNameMap
-        ..clear()
-        ..addAll(_apiService.productCategoryByName);
-
-      debugPrint(
-        'SYNCED API CATEGORY MAPS → '
-            'IDs=${_productCategoryMap.length}, '
-            'NAMES=${_productCategoryNameMap.length}',
-      );
 
       // ----------------------------------------------------------
       // KEEP CURRENT LOCAL ORDERS

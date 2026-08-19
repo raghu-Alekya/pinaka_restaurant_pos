@@ -1,6 +1,8 @@
 
 
+import 'dart:async';
 import 'package:flutter/material.dart';
+
 import 'package:intl/intl.dart';
 import 'package:kds_app/providers/order_provider.dart';
 import 'package:kds_app/top_bar.dart';
@@ -64,10 +66,27 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
   KotView selectedView = KotView.pending;
   bool isZoomedOut = true;
   final Set<String> zoomedKotIds = {};
+  final Set<String> expandedKotIds = {};
+  Timer? _liveTimer;
+
+  String _formatCountUpTimer(DateTime? kotTime) {
+    if (kotTime == null) return '0.00';
+    final elapsedSeconds = DateTime.now().difference(kotTime).inSeconds;
+    if (elapsedSeconds < 0) return '0.00';
+    final minutes = elapsedSeconds ~/ 60;
+    final seconds = elapsedSeconds % 60;
+    return '$minutes.${seconds.toString().padLeft(2, '0')}';
+  }
 
   @override
   void initState() {
     super.initState();
+
+    _liveTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final orderProvider = context.read<OrderProvider>();
@@ -89,27 +108,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
         _categoryMapLoaded = true;
       });
-
-      debugPrint('==========================================');
-      debugPrint('CATEGORY MAP LOADED INTO DASHBOARD');
-      debugPrint(
-        'TOTAL ID MAP: ${productCategoryMap.length}',
-      );
-      debugPrint(
-        'TOTAL NAME MAP: ${productCategoryNameMap.length}',
-      );
-      debugPrint(
-        '5823 => ${productCategoryMap['5823']}',
-      );
-      debugPrint(
-        '14147 => ${productCategoryMap['14147']}',
-      );
-      debugPrint(
-        '13847 => ${productCategoryMap['13847']}',
-      );
-      debugPrint('==========================================');
     });
   }
+
+
   bool _isKotFullyServed(Map<String, dynamic> order) {
     final items = _getOrderItems(order);
 
@@ -353,12 +355,22 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
   @override
   void dispose() {
+    _liveTimer?.cancel();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
     final orderProvider = context.watch<OrderProvider>();
+
+    if (orderProvider.productCategoryMap.isNotEmpty) {
+      productCategoryMap = Map<String, String>.from(orderProvider.productCategoryMap);
+    }
+    if (orderProvider.productCategoryNameMap.isNotEmpty) {
+      productCategoryNameMap = Map<String, String>.from(orderProvider.productCategoryNameMap);
+    }
+
 
     // Calculate repeatedCount (Summary items count) dynamically
     final summaryOrders = orderProvider.orders.where((o) {
@@ -1134,38 +1146,46 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   Expanded(
                     child: filteredActiveOrders.isEmpty
                         ? _buildNoActiveKots()
-                        : GridView.builder(
-                      padding: const EdgeInsets.only(
-                        left: 0,
-                        right: 0,
-                        bottom: 4,
-                      ),
+                        : () {
+                            int maxItemsInView = 5;
+                            for (final order in filteredActiveOrders) {
+                              final kotId = order['id']?.toString() ?? '';
+                              final kotNo = (order['kotNo'] ?? order['kot_no'] ?? order['kot_number'] ?? order['kotNumber'] ?? order['id'] ?? '').toString().replaceAll('KOT#', '').replaceAll('KOT', '').trim();
+                              final parentOrderId = (order['parentOrderId'] ?? order['parent_order_id'] ?? order['order_id'] ?? order['orderId'] ?? '').toString().replaceAll('ORDER#', '').trim();
+                              final switchKey = kotId.isNotEmpty ? kotId : '${kotNo}_$parentOrderId';
 
-                      gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        // Exactly 2 KOT cards per row
-                        crossAxisCount: 2,
+                              if (expandedKotIds.contains(switchKey)) {
+                                final rawItems = _getOrderItems(order);
+                                if (rawItems.length > maxItemsInView) {
+                                  maxItemsInView = rawItems.length;
+                                }
+                              }
+                            }
+                            final double dynamicExtent = 330.0 + (maxItemsInView > 5 ? (maxItemsInView - 5) * 44.0 : 0.0);
 
-                        // Horizontal spacing
-                        crossAxisSpacing: 8,
-
-                        // Vertical spacing
-                        mainAxisSpacing: 8,
-
-                        // Increased KOT card height
-                        mainAxisExtent: 300,
-                      ),
-
-                      itemCount: filteredActiveOrders.length,
-
-                      itemBuilder: (context, index) {
-                        return _buildReferenceKotCard(
-                          filteredActiveOrders[index],
-                          orderProvider,
-                        );
-                      },
-                    ),
+                            return GridView.builder(
+                              padding: const EdgeInsets.only(
+                                left: 0,
+                                right: 0,
+                                bottom: 4,
+                              ),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                mainAxisExtent: dynamicExtent,
+                              ),
+                              itemCount: filteredActiveOrders.length,
+                              itemBuilder: (context, index) {
+                                return _buildReferenceKotCard(
+                                  filteredActiveOrders[index],
+                                  orderProvider,
+                                );
+                              },
+                            );
+                          }(),
                   ),
+
                 ],
               ),
             ),
@@ -1184,12 +1204,21 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       ) {
     final totalItems = _getTotalItems(orders);
 
+    final effectiveCategoryMap = orderProvider.productCategoryMap.isNotEmpty
+        ? orderProvider.productCategoryMap
+        : productCategoryMap;
+
+    final effectiveCategoryNameMap = orderProvider.productCategoryNameMap.isNotEmpty
+        ? orderProvider.productCategoryNameMap
+        : productCategoryNameMap;
+
     final groups = _groupPendingItems(
       orders,
-      productCategoryMap,
-      productCategoryNameMap,
+      effectiveCategoryMap,
+      effectiveCategoryNameMap,
       selectedItemsMap,
     );
+
 
     final entries = groups.entries.toList();
 
@@ -2340,6 +2369,34 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         }
 
 // ==========================================================
+// 7.5. SMART HEURISTICS FOR ITEM NAME KEYWORDS
+// ==========================================================
+
+        if (!isValidCategory(category) && resolvedName.isNotEmpty) {
+          final lowerName = resolvedName.toLowerCase();
+          if (lowerName.contains('naan') ||
+              lowerName.contains('kulcha') ||
+              lowerName.contains('roti') ||
+              lowerName.contains('paratha') ||
+              lowerName.contains('phulka') ||
+              lowerName.contains('bhatura') ||
+              lowerName.contains('puri') ||
+              lowerName.contains('bread')) {
+            category = 'INDIAN BREADS';
+          } else if (lowerName.contains('soup')) {
+            category = 'SOUPS';
+          } else if (lowerName.contains('kebab') ||
+              lowerName.contains('kabab') ||
+              lowerName.contains('tikka')) {
+            category = 'KEBABS';
+          } else if (lowerName.contains('biryani') ||
+              lowerName.contains('pulao') ||
+              lowerName.contains('fried rice')) {
+            category = 'RICE & BIRYANI';
+          }
+        }
+
+// ==========================================================
 // 8. FINAL FALLBACK
 // ==========================================================
 
@@ -2350,6 +2407,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             'CATEGORY SOURCE: FALLBACK OTHER',
           );
         }
+
 
 // ==========================================================
 // FINAL DEBUG
@@ -2576,12 +2634,50 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           ],
         ),
         const Spacer(),
+        InkWell(
+          onTap: () async {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Fetching latest KOTs...'),
+                duration: Duration(milliseconds: 1000),
+              ),
+            );
+            await provider.loadExistingOrders();
+
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xffF2F4F7),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xffD0D5DD)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.refresh, size: 16, color: Color(0xff344054)),
+                SizedBox(width: 4),
+                Text(
+                  'Refresh',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xff344054),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
         _buildReferenceFilter(
           'All',
           activeOrders.length,
           OrderTypeFilter.all,
           const Color(0xffF04438),
         ),
+
         const SizedBox(width: 4),
         _buildReferenceFilter(
           'Dine-In',
@@ -2737,8 +2833,26 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final table = order['tableName']?.toString() ??
         order['tableNo']?.toString() ??
         '';
-    final kotNo = order['kotNo']?.toString() ?? '';
-    final parentOrderId = order['parentOrderId']?.toString() ?? '';
+    final kotNo = (order['kotNo'] ??
+            order['kot_no'] ??
+            order['kot_number'] ??
+            order['kotNumber'] ??
+            order['id'] ??
+            '')
+        .toString()
+        .replaceAll('KOT#', '')
+        .replaceAll('KOT', '')
+        .trim();
+
+    final parentOrderId = (order['parentOrderId'] ??
+            order['parent_order_id'] ??
+            order['order_id'] ??
+            order['orderId'] ??
+            '')
+        .toString()
+        .replaceAll('ORDER#', '')
+        .trim();
+
 
     final rawItems = _getOrderItems(order);
     final List items = rawItems;
@@ -2747,6 +2861,11 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final switchKey = kotId.isNotEmpty
         ? kotId
         : '${kotNo}_$parentOrderId';
+
+    final bool isExpanded = expandedKotIds.contains(switchKey);
+    final bool hasMoreThanFive = items.length > 5;
+    final int visibleItemsCount = (hasMoreThanFive && !isExpanded) ? 5 : items.length;
+
 
     // Cancellation state is kept separately so the existing switch state
     // and status flow are not changed.
@@ -2897,7 +3016,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     const SizedBox(width: 5),
 
                   // ==========================================================
-                  // TIME
+                  // LIVE COUNT-UP TIMER (AFTER TABLE NAME)
                   // ==========================================================
                   Container(
                     height: 28,
@@ -2914,20 +3033,18 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.access_time_rounded,
-                          size: 10,
+                          Icons.timer_outlined,
+                          size: 11,
                           color: headerColor,
                         ),
-
                         const SizedBox(width: 3),
-
                         Text(
-                          time,
+                          _formatCountUpTimer(kotTime),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: headerColor,
-                            fontSize: 14,
+                            fontSize: 13,
                             height: 1.0,
                             fontWeight: FontWeight.w700,
                           ),
@@ -2966,6 +3083,40 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       ),
                     ),
                   ),
+
+                  // ==========================================================
+                  // ZOOM IN / ZOOM OUT ICON (CROSS FORM ARROWS <->)
+                  // ==========================================================
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (isExpanded) {
+                          expandedKotIds.remove(switchKey);
+                        } else {
+                          expandedKotIds.add(switchKey);
+                        }
+                      });
+                    },
+                    child: Container(
+                      height: 28,
+                      width: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Icon(
+                        isExpanded
+                            ? Icons.close_fullscreen
+                            : Icons.open_in_full,
+                        size: 16,
+                        color: headerColor,
+                      ),
+                    ),
+                  ),
+
+
                 ],
               ),
             ),
@@ -3055,7 +3206,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     // ORDER ID - LEFT
                     Expanded(
                       child: Text(
-                        'Order: #${order['parentOrderId']?.toString() ?? ''}',
+                        'Order: #$parentOrderId',
+
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.montserrat(
@@ -3182,21 +3334,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               ),
               child: Column(
                 children: [
-                  Expanded(
-                    child: ListView.builder(
-                      // ==========================================================
-                      // ENABLE SCROLLING
-                      // ==========================================================
-                      physics: const AlwaysScrollableScrollPhysics(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: List.generate(visibleItemsCount, (index) {
 
-                      padding: EdgeInsets.zero,
-
-                      // Allows the list to scroll smoothly
-                      shrinkWrap: false,
-
-                      itemCount: items.length,
-
-                      itemBuilder: (context, index) {
                         final raw = items[index];
 
                         if (raw is! Map) {
@@ -3527,7 +3668,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                       ),
                                     ),
 
-                                    const SizedBox(width: 8),
+                                    const SizedBox(width: 18),
+
 
                                     // ====================================================
                                     // CANCEL CHECKBOX - only visible in Cancel mode
@@ -4173,19 +4315,19 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
-        width: 29,
-        height: 18,
+        width: 58,
+        height: 24,
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: value
               ? activeColor.withOpacity(.18)
               : const Color(0xffE4E7EC),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: value
                 ? activeColor
                 : const Color(0xffD0D5DD),
-            width: .7,
+            width: 1,
           ),
         ),
         child: AnimatedAlign(
@@ -4194,8 +4336,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           alignment:
           value ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
-            width: 12,
-            height: 12,
+            width: 18,
+            height: 18,
             decoration: BoxDecoration(
               color: value
                   ? activeColor
@@ -4207,6 +4349,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       ),
     );
   }
+
   Widget vegNonVegIcon(bool isVeg) {
     final color = isVeg
         ? const Color(0xFF10B981) // Green
