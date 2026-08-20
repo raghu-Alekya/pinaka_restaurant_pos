@@ -1136,8 +1136,12 @@ class KitchenOrder {
         );
       }).toList(),
 
-      restaurantId: (json['restaurant_id'] as num?)?.toInt() ??
-          (json['restaurantId'] as num?)?.toInt(),
+      restaurantId: _toInt(json['restaurant_id']) ??
+          _toInt(json['restaurantId']) ??
+          _toInt(json['store_id']) ??
+          _toInt(json['storeId']) ??
+          _toInt(json['merchant_id']) ??
+          _toInt(json['merchantId']),
 
       servedAt:
       json['servedAt'] != null

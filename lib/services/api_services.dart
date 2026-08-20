@@ -560,6 +560,16 @@ class OrderApiService {
       final order =
       Map<String, dynamic>.from(rawOrder);
 
+      final kotNo = (order['kot_number'] ?? order['kotNo'] ?? order['id'])?.toString().trim() ?? '';
+      final kotId = order['kot_id'] ?? order['kotId'];
+      final orderId = order['order_id'] ?? order['orderId'] ?? order['parent_order_id'] ?? order['parentOrderId'];
+
+      // Skip invalid order payloads missing KOT number and order ID
+      if (kotNo.isEmpty && (kotId == null || kotId == 0 || kotId.toString() == '0') && (orderId == null || orderId == 0 || orderId.toString() == '0')) {
+        print('🚫 SKIPPING INVALID KOT WITHOUT KOT NO AND ORDER NO: $order');
+        continue;
+      }
+
 
 
 // KOT ORDER STATUS

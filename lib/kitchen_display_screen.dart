@@ -3777,22 +3777,26 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                             // ==========================================================
                                             final parentId = int.tryParse(
                                               (order['parentOrderId'] ??
-                                                  order['parent_order_id'])
+                                                  order['parent_order_id'] ??
+                                                  '0')
                                                   .toString(),
                                             );
 
                                             final orderId = int.tryParse(
-                                              (order['orderId'] ??
+                                              (order['kotId'] ??
+                                                  order['kot_id'] ??
+                                                  order['orderId'] ??
                                                   order['order_id'] ??
-                                                  order['id'])
+                                                  '')
                                                   .toString(),
                                             );
 
                                             final zoneId = int.tryParse(
                                               (order['zoneId'] ??
-                                                  order['zone_id'])
+                                                  order['zone_id'] ??
+                                                  '0')
                                                   .toString(),
-                                            );
+                                            ) ?? 0;
 
                                             final restaurantId = int.tryParse(
                                               widget.restaurantId.toString(),
@@ -3800,10 +3804,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
                                             if (parentId == null ||
                                                 orderId == null ||
-                                                zoneId == null ||
                                                 restaurantId == null) {
                                               debugPrint(
-                                                '❌ Missing order information',
+                                                '❌ Missing order information: parentId=$parentId orderId=$orderId restaurantId=$restaurantId',
                                               );
                                               return;
                                             }
@@ -3853,12 +3856,16 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                               items,
                                             );
 
-                                            final allItemsReady =
-                                                items.isNotEmpty &&
-                                                    values.length >= items.length &&
-                                                    values
-                                                        .take(items.length)
-                                                        .every((value) => value == true);
+                                            bool allItemsReady = items.isNotEmpty;
+                                            for (int i = 0; i < items.length; i++) {
+                                              final rawItem = items[i];
+                                              final isCancelled = itemStatusIsCancelled(rawItem);
+                                              final isToggled = i < values.length && values[i] == true;
+                                              if (!isCancelled && !isToggled) {
+                                                allItemsReady = false;
+                                                break;
+                                              }
+                                            }
 
                                             debugPrint(
                                               '========== ITEM STATUS CHECK ==========',
@@ -3887,31 +3894,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                             // ==========================================================
                                             if (allItemsReady) {
                                               debugPrint(
-                                                '✅ LAST ITEM COMPLETED',
+                                                '✅ LAST ITEM COMPLETED -> SERVING KOT',
                                               );
 
-                                              debugPrint(
-                                                '✅ ALL ITEMS ARE READY',
+                                              await provider.updateOrderStatus(
+                                                kotId,
+                                                'Served',
                                               );
 
-                                              debugPrint(
-                                                '➡️ KOT SHOULD NOW BE SERVED',
-                                              );
-
-                                              // --------------------------------------------------------
-                                              // IMPORTANT:
-                                              // Call your existing KOT STATUS API/MQTT method here.
-                                              // --------------------------------------------------------
-
-                                              // Example:
-                                              //
-                                              // await context.read<OrderProvider>().updateKotStatus(
-                                              //   token: widget.token,
-                                              //   kotId: orderId,
-                                              //   parentOrderId: parentId,
-                                              //   status: 'served',
-                                              // );
-
+                                              if (mounted) {
+                                                setState(() {});
+                                              }
                                             }
                                             else {
                                               debugPrint(

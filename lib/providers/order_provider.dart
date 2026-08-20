@@ -70,14 +70,24 @@ class OrderProvider extends ChangeNotifier {
   int get brokerPort => _mqttService.brokerPort;
   int get mqttMessagesReceived => _mqttService.messagesReceived;
 
+  bool _isForCurrentRestaurant(KitchenOrder o) {
+    final String currentRestId = _apiService.restaurantId.toString().trim();
+    if (currentRestId.isEmpty || currentRestId == '0') return true;
+
+    if (o.restaurantId != null && o.restaurantId! > 0) {
+      return o.restaurantId.toString().trim() == currentRestId;
+    }
+    return true;
+  }
+
   List<Map<String, dynamic>> get pendingOrders => _orders
       .where((o) {
-        final currentRestId = _apiService.restaurantId.toString().trim();
-        if (o.restaurantId != null && o.restaurantId! > 0 && currentRestId.isNotEmpty) {
-          if (o.restaurantId.toString().trim() != currentRestId) {
-            return false;
-          }
-        }
+        final isInvalidOrder = (o.id.trim().isEmpty || o.id == '0') &&
+            (o.kotId == null || o.kotId == 0) &&
+            (o.parentOrderId == null || o.parentOrderId == 0);
+        if (isInvalidOrder) return false;
+
+        if (!_isForCurrentRestaurant(o)) return false;
 
         final st = o.status.trim().toLowerCase();
         final isPendingStatus = st == 'pending' ||
@@ -93,20 +103,19 @@ class OrderProvider extends ChangeNotifier {
       .map((o) => o.toUiMap())
       .toList();
 
-
-
   List<Map<String, dynamic>> get preparingOrders => _orders
-      .where((o) => o.status == 'Preparing')
+      .where((o) => o.status == 'Preparing' && _isForCurrentRestaurant(o))
       .map((o) => o.toUiMap())
       .toList();
 
   List<Map<String, dynamic>> get readyOrders => _orders
-      .where((o) => o.status == 'Ready')
+      .where((o) => o.status == 'Ready' && _isForCurrentRestaurant(o))
       .map((o) => o.toUiMap())
       .toList();
 
   List<Map<String, dynamic>> get servedOrders => _orders
       .where((o) {
+    if (!_isForCurrentRestaurant(o)) return false;
     if (o.status != 'Served') return false;
     if (o.servedAt == null) return false;
     return DateTime.now().difference(o.servedAt!).inSeconds < 15;
@@ -346,7 +355,11 @@ class OrderProvider extends ChangeNotifier {
     // ==========================================================
     final dynamic msgRestIdRaw = message['restaurant_id'] ??
         message['restaurantId'] ??
-        (message['kot'] is Map ? (message['kot']['restaurant_id'] ?? message['kot']['restaurantId']) : null);
+        message['store_id'] ??
+        message['storeId'] ??
+        message['merchant_id'] ??
+        message['merchantId'] ??
+        (message['kot'] is Map ? (message['kot']['restaurant_id'] ?? message['kot']['restaurantId'] ?? message['kot']['store_id'] ?? message['kot']['storeId'] ?? message['kot']['merchant_id'] ?? message['kot']['merchantId']) : null);
 
     if (msgRestIdRaw != null) {
       final String msgRestId = msgRestIdRaw.toString().trim();
@@ -1329,8 +1342,35 @@ class OrderProvider extends ChangeNotifier {
     debugPrint('================================');
   }
   KitchenOrder? _findOrder(String orderId) {
+    final cleanSearchId = orderId
+        .replaceAll('KOT#', '')
+        .replaceAll('KOT', '')
+        .replaceAll('ORDER#', '')
+        .trim()
+        .toLowerCase();
+
     for (final order in _orders) {
-      if (order.id == orderId) return order;
+      final cleanId = order.id
+          .replaceAll('KOT#', '')
+          .replaceAll('KOT', '')
+          .replaceAll('ORDER#', '')
+          .trim()
+          .toLowerCase();
+
+      final cleanKotNo = order.kotNo
+          .replaceAll('KOT#', '')
+          .replaceAll('KOT', '')
+          .replaceAll('ORDER#', '')
+          .trim()
+          .toLowerCase();
+
+      if (order.id == orderId ||
+          cleanId == cleanSearchId ||
+          cleanKotNo == cleanSearchId ||
+          (order.kotId != null && order.kotId.toString() == cleanSearchId) ||
+          (order.parentOrderId != null && order.parentOrderId.toString() == cleanSearchId)) {
+        return order;
+      }
     }
     return null;
   }
@@ -1760,7 +1800,9 @@ class OrderProvider extends ChangeNotifier {
           final dynamic jsonRestIdRaw = json['restaurant_id'] ??
               json['restaurantId'] ??
               json['store_id'] ??
-              json['storeId'];
+              json['storeId'] ??
+              json['merchant_id'] ??
+              json['merchantId'];
 
           final String currentRestId = _apiService.restaurantId.toString().trim();
 
@@ -1775,6 +1817,14 @@ class OrderProvider extends ChangeNotifier {
           final order = KitchenOrder.fromJson(
             Map<String, dynamic>.from(json),
           );
+
+          final isInvalidOrder = (order.id.trim().isEmpty || order.id == '0') &&
+              (order.kotId == null || order.kotId == 0) &&
+              (order.parentOrderId == null || order.parentOrderId == 0);
+          if (isInvalidOrder) {
+            debugPrint('🚫 IGNORING ORDER WITHOUT KOT NO AND ORDER NO');
+            continue;
+          }
 
           if (order.restaurantId != null && order.restaurantId! > 0) {
             if (order.restaurantId.toString().trim() != currentRestId) {
@@ -1856,6 +1906,11 @@ class OrderProvider extends ChangeNotifier {
       // ----------------------------------------------------------
 
       for (final localOrder in localOrders) {
+        final isInvalidOrder = (localOrder.id.trim().isEmpty || localOrder.id == '0') &&
+            (localOrder.kotId == null || localOrder.kotId == 0) &&
+            (localOrder.parentOrderId == null || localOrder.parentOrderId == 0);
+        if (isInvalidOrder) continue;
+
         final status =
         localOrder.status.trim().toLowerCase();
 
@@ -2095,25 +2150,27 @@ class OrderProvider extends ChangeNotifier {
         }
       }
 
-      // ==========================================================
-      // REMOVE COMPLETED ITEMS
-      // ==========================================================
+      // Check if all active (non-cancelled) items are completed
+      final activeItems = order.items.where((item) {
+        final st = item.status.trim().toLowerCase();
+        return st != 'cancelled' && st != 'cancel';
+      });
 
-      order.items.removeWhere(
-            (item) =>
-        item.lineItemId != null &&
-            items.contains(item.lineItemId),
-      );
+      final allItemsCompleted = activeItems.isNotEmpty &&
+          activeItems.every((item) {
+            final st = item.status.trim().toLowerCase();
+            return st == 'completed' || st == 'served';
+          });
 
       debugPrint(
-        'Remaining items in KOT: ${order.items.length}',
+        'Remaining active items count: ${activeItems.length} | All completed: $allItemsCompleted',
       );
 
       // ==========================================================
-      // LAST ITEM COMPLETED
+      // LAST ITEM COMPLETED -> MARK KOT SERVED
       // ==========================================================
 
-      if (order.items.isEmpty) {
+      if (allItemsCompleted) {
         debugPrint(
           '============================================',
         );
@@ -2140,7 +2197,7 @@ class OrderProvider extends ChangeNotifier {
             );
 
         // --------------------------------------------------------
-        // BACKEND STATUS UPDATE
+        // BACKEND STATUS UPDATE (WITH ALL ITEMS INTACT)
         // --------------------------------------------------------
 
         try {
@@ -2175,16 +2232,6 @@ class OrderProvider extends ChangeNotifier {
 
         debugPrint(
           '✅ POS SHOULD NOW SHOW SERVED',
-        );
-
-        // --------------------------------------------------------
-        // REMOVE FROM ACTIVE KDS
-        // --------------------------------------------------------
-
-        _orders.removeAt(orderIndex);
-
-        debugPrint(
-          '✅ KOT removed from active KDS',
         );
 
         await _persist();
