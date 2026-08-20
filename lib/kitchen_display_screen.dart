@@ -2537,40 +2537,46 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         continue;
       }
 
+      // Same switch key used by Item Queue
       final kotId = order['id']?.toString() ?? '';
       final kotNo = order['kotNo']?.toString() ?? '';
+
       final parentOrderId =
-          (order['parentOrderId'] ?? order['parent_order_id'])?.toString() ?? '';
+          (order['parentOrderId'] ??
+              order['parent_order_id'])
+              ?.toString() ??
+              '';
 
-      final switchKey = kotId.isNotEmpty ? kotId : '${kotNo}_$parentOrderId';
-      final switchValues = selectedItemsMap[switchKey];
+      final switchKey = kotId.isNotEmpty
+          ? kotId
+          : '${kotNo}_$parentOrderId';
 
-      for (int index = 0; index < rawItems.length; index++) {
+      final switchValues =
+      selectedItemsMap[switchKey];
+
+      for (int index = 0;
+      index < rawItems.length;
+      index++) {
+
         final rawItem = rawItems[index];
 
         if (rawItem is! Map) {
           continue;
         }
 
-        // Skip item if toggled ON (ready/served) in UI
-        if (switchValues != null &&
-            index < switchValues.length &&
-            switchValues[index] == true) {
-          continue;
-        }
-
-        final item = Map<String, dynamic>.from(
-          rawItem,
-        );
+        final item =
+        Map<String, dynamic>.from(rawItem);
 
         // ==========================================================
-        // STATUS
+        // CANCELLED ITEM
         // ==========================================================
-        final status = item['status']
-            ?.toString()
-            .trim()
-            .toLowerCase() ??
-            '';
+
+        final status =
+            item['status']
+                ?.toString()
+                .trim()
+                .toLowerCase() ??
+                '';
 
         if (status == 'cancelled' ||
             status == 'cancel') {
@@ -2578,8 +2584,25 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         }
 
         // ==========================================================
+        // READY/RUNNING TOGGLE
+        // Same logic as Item Queue
+        // ==========================================================
+
+        final isToggleOn =
+            switchValues != null &&
+                index < switchValues.length &&
+                switchValues[index] == true;
+
+        // Toggle ON → item is removed from Item Queue
+        // so don't include it in total count.
+        if (isToggleOn) {
+          continue;
+        }
+
+        // ==========================================================
         // QUANTITY
         // ==========================================================
+
         final quantity = _toInt(
           item['quantity'] ??
               item['qty'] ??
@@ -2594,6 +2617,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
     return total;
   }
+
 
 
 // ============================================================================

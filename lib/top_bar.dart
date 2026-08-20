@@ -481,11 +481,11 @@ class _TopBarWidgetState extends State<TopBarWidget> {
 
   Widget _buildProfileCard() {
     return Container(
-      height: 42,
+      height: 62,
 
       constraints:
       const BoxConstraints(
-        minWidth: 145,
+        minWidth: 185,
       ),
 
       padding:
@@ -584,7 +584,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                   TextOverflow.ellipsis,
 
                   style: const TextStyle(
-                    fontSize: 9,
+                    fontSize: 14,
                     fontWeight:
                     FontWeight.w700,
                     color:
@@ -607,7 +607,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                   TextOverflow.ellipsis,
 
                   style: const TextStyle(
-                    fontSize: 8,
+                    fontSize: 12,
                     color:
                     Color(0xff64748B),
                   ),

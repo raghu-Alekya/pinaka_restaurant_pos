@@ -201,149 +201,149 @@ class OrderProvider extends ChangeNotifier {
   //     KdsDebugLog.error('Failed to parse order: $e\n$stack');
   //   }
   // }
-  void _handleKotItemQuantityUpdate(
-      Map<String, dynamic> message,
-      ) {
-
-    final kotId =
-    message['kot_id']?.toString();
-
-    final kotNumber =
-    message['kot_number']?.toString();
-
-    final itemId =
-    (message['item_id'] ??
-        message['line_item_id'] ??
-        message['lineItemId'])
-        ?.toString();
-
-    final dynamic qtyValue =
-        message['quantity'] ??
-            message['qty'];
-
-    debugPrint('========== UPDATE KOT ITEM ==========');
-    debugPrint('KOT ID     : $kotId');
-    debugPrint('KOT NUMBER : $kotNumber');
-    debugPrint('ITEM ID    : $itemId');
-    debugPrint('NEW QTY    : $qtyValue');
-
-    if (itemId == null || qtyValue == null) {
-      debugPrint(
-        '❌ Missing item ID or quantity',
-      );
-      return;
-    }
-
-    final newQty = qtyValue is num
-        ? qtyValue.toInt()
-        : int.tryParse(
-      qtyValue.toString(),
-    );
-
-    if (newQty == null) {
-      debugPrint(
-        '❌ Invalid quantity: $qtyValue',
-      );
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // FIND KOT
-    // ----------------------------------------------------------
-
-    final orderIndex = _orders.indexWhere(
-          (order) {
-        if (kotId != null &&
-            order.kotId?.toString() == kotId) {
-          return true;
-        }
-
-        if (kotNumber != null &&
-            order.kotNo?.toString() == kotNumber) {
-          return true;
-        }
-
-        return false;
-      },
-    );
-
-    if (orderIndex == -1) {
-      debugPrint(
-        '❌ KOT NOT FOUND IN KDS',
-      );
-      return;
-    }
-
-    final order = _orders[orderIndex];
-
-    // ----------------------------------------------------------
-    // FIND ITEM
-    // ----------------------------------------------------------
-
-    final itemIndex = order.items.indexWhere(
-          (item) =>
-      item.lineItemId?.toString() == itemId,
-    );
-
-    if (itemIndex == -1) {
-      debugPrint(
-        '❌ ITEM NOT FOUND IN KOT',
-      );
-      return;
-    }
-
-    final oldItem =
-    order.items[itemIndex];
-
-    debugPrint(
-      'ITEM       : ${oldItem.name}',
-    );
-
-    debugPrint(
-      'OLD QTY    : ${oldItem.qty}',
-    );
-
-    debugPrint(
-      'NEW QTY    : $newQty',
-    );
-
-    // ----------------------------------------------------------
-    // REPLACE ITEM WITH UPDATED QUANTITY
-    // ----------------------------------------------------------
-
-    order.items[itemIndex] = OrderItem(
-      lineItemId: oldItem.lineItemId,
-      name: oldItem.name,
-      productId: oldItem.productId,
-      qty: newQty,
-      status: oldItem.status,
-      note: oldItem.note,
-      isVeg: oldItem.isVeg,
-      category: oldItem.category,
-      modifiers: oldItem.modifiers,
-      addons: oldItem.addons,
-    );
-
-    debugPrint(
-      '✅ ITEM QUANTITY UPDATED IN KDS',
-    );
-
-    // ----------------------------------------------------------
-    // SAVE + UPDATE UI
-    // ----------------------------------------------------------
-
-    _persist();
-
-    notifyListeners();
-
-    debugPrint(
-      '✅ KDS UI UPDATED WITHOUT REFRESH',
-    );
-
-    debugPrint(
-      '====================================',
-    );
-  }
+  // void _handleKotItemQuantityUpdate(
+  //     Map<String, dynamic> message,
+  //     ) {
+  //
+  //   final kotId =
+  //   message['kot_id']?.toString();
+  //
+  //   final kotNumber =
+  //   message['kot_number']?.toString();
+  //
+  //   final itemId =
+  //   (message['item_id'] ??
+  //       message['line_item_id'] ??
+  //       message['lineItemId'])
+  //       ?.toString();
+  //
+  //   final dynamic qtyValue =
+  //       message['quantity'] ??
+  //           message['qty'];
+  //
+  //   debugPrint('========== UPDATE KOT ITEM ==========');
+  //   debugPrint('KOT ID     : $kotId');
+  //   debugPrint('KOT NUMBER : $kotNumber');
+  //   debugPrint('ITEM ID    : $itemId');
+  //   debugPrint('NEW QTY    : $qtyValue');
+  //
+  //   if (itemId == null || qtyValue == null) {
+  //     debugPrint(
+  //       '❌ Missing item ID or quantity',
+  //     );
+  //     return;
+  //   }
+  //
+  //   final newQty = qtyValue is num
+  //       ? qtyValue.toInt()
+  //       : int.tryParse(
+  //     qtyValue.toString(),
+  //   );
+  //
+  //   if (newQty == null) {
+  //     debugPrint(
+  //       '❌ Invalid quantity: $qtyValue',
+  //     );
+  //     return;
+  //   }
+  //
+  //   // ----------------------------------------------------------
+  //   // FIND KOT
+  //   // ----------------------------------------------------------
+  //
+  //   final orderIndex = _orders.indexWhere(
+  //         (order) {
+  //       if (kotId != null &&
+  //           order.kotId?.toString() == kotId) {
+  //         return true;
+  //       }
+  //
+  //       if (kotNumber != null &&
+  //           order.kotNo?.toString() == kotNumber) {
+  //         return true;
+  //       }
+  //
+  //       return false;
+  //     },
+  //   );
+  //
+  //   if (orderIndex == -1) {
+  //     debugPrint(
+  //       '❌ KOT NOT FOUND IN KDS',
+  //     );
+  //     return;
+  //   }
+  //
+  //   final order = _orders[orderIndex];
+  //
+  //   // ----------------------------------------------------------
+  //   // FIND ITEM
+  //   // ----------------------------------------------------------
+  //
+  //   final itemIndex = order.items.indexWhere(
+  //         (item) =>
+  //     item.lineItemId?.toString() == itemId,
+  //   );
+  //
+  //   if (itemIndex == -1) {
+  //     debugPrint(
+  //       '❌ ITEM NOT FOUND IN KOT',
+  //     );
+  //     return;
+  //   }
+  //
+  //   final oldItem =
+  //   order.items[itemIndex];
+  //
+  //   debugPrint(
+  //     'ITEM       : ${oldItem.name}',
+  //   );
+  //
+  //   debugPrint(
+  //     'OLD QTY    : ${oldItem.qty}',
+  //   );
+  //
+  //   debugPrint(
+  //     'NEW QTY    : $newQty',
+  //   );
+  //
+  //   // ----------------------------------------------------------
+  //   // REPLACE ITEM WITH UPDATED QUANTITY
+  //   // ----------------------------------------------------------
+  //
+  //   order.items[itemIndex] = OrderItem(
+  //     lineItemId: oldItem.lineItemId,
+  //     name: oldItem.name,
+  //     productId: oldItem.productId,
+  //     qty: newQty,
+  //     status: oldItem.status,
+  //     note: oldItem.note,
+  //     isVeg: oldItem.isVeg,
+  //     category: oldItem.category,
+  //     modifiers: oldItem.modifiers,
+  //     addons: oldItem.addons,
+  //   );
+  //
+  //   debugPrint(
+  //     '✅ ITEM QUANTITY UPDATED IN KDS',
+  //   );
+  //
+  //   // ----------------------------------------------------------
+  //   // SAVE + UPDATE UI
+  //   // ----------------------------------------------------------
+  //
+  //   _persist();
+  //
+  //   notifyListeners();
+  //
+  //   debugPrint(
+  //     '✅ KDS UI UPDATED WITHOUT REFRESH',
+  //   );
+  //
+  //   debugPrint(
+  //     '====================================',
+  //   );
+  // }
 
   Future<void> _handleMessage(Map<String, dynamic> message) async {
     final event = message['event']?.toString();
@@ -716,6 +716,120 @@ class OrderProvider extends ChangeNotifier {
 
     debugPrint(
       'Ignoring MQTT event: $event',
+    );
+  }
+  void _handleKotItemQuantityUpdate(
+      Map<String, dynamic> message,
+      ) {
+    final kotId = message['kot_id']?.toString();
+    final itemId = message['item_id']?.toString();
+
+    final quantity = int.tryParse(
+      message['quantity']?.toString() ?? '',
+    ) ??
+        0;
+
+    debugPrint('========== QUANTITY UPDATE ==========');
+    debugPrint('KOT ID     : $kotId');
+    debugPrint('ITEM ID    : $itemId');
+    debugPrint('QUANTITY   : $quantity');
+
+    // ==========================================================
+    // FIND KOT
+    // ==========================================================
+
+    final orderIndex = _orders.indexWhere(
+          (order) =>
+      order.kotId?.toString() == kotId,
+    );
+
+    if (orderIndex == -1) {
+      debugPrint('❌ KOT NOT FOUND: $kotId');
+      return;
+    }
+
+    final order = _orders[orderIndex];
+
+    // ==========================================================
+    // FIND ITEM
+    // ==========================================================
+
+    final itemIndex = order.items.indexWhere(
+          (item) =>
+      item.lineItemId?.toString() == itemId,
+    );
+
+    if (itemIndex == -1) {
+      debugPrint('❌ ITEM NOT FOUND: $itemId');
+      return;
+    }
+
+    final oldItem = order.items[itemIndex];
+
+    // ==========================================================
+    // QUANTITY = 0
+    // REMOVE ITEM
+    // ==========================================================
+
+    if (quantity <= 0) {
+      debugPrint(
+        '🗑️ REMOVING ITEM FROM KOT '
+            'KOT=$kotId ITEM=$itemId',
+      );
+
+      order.items.removeAt(itemIndex);
+
+      // If no items remain, remove complete KOT
+      if (order.items.isEmpty) {
+        debugPrint(
+          '🗑️ NO ITEMS LEFT → REMOVING KOT $kotId',
+        );
+
+        _orders.removeAt(orderIndex);
+      }
+    }
+
+    // ==========================================================
+    // QUANTITY > 0
+    // CREATE NEW ITEM WITH UPDATED QTY
+    // ==========================================================
+
+    else {
+      final updatedItem = OrderItem(
+        lineItemId: oldItem.lineItemId,
+        name: oldItem.name,
+        productId: oldItem.productId,
+        qty: quantity,
+        status: oldItem.status,
+        note: oldItem.note,
+        isVeg: oldItem.isVeg,
+        category: oldItem.category,
+        modifiers: oldItem.modifiers,
+        addons: oldItem.addons,
+      );
+
+      order.items[itemIndex] = updatedItem;
+
+      debugPrint(
+        '✅ ITEM QUANTITY UPDATED '
+            '${oldItem.qty} → $quantity',
+      );
+    }
+
+    // ==========================================================
+    // SAVE + REFRESH UI
+    // ==========================================================
+
+    _persist();
+
+    notifyListeners();
+
+    debugPrint(
+      'TOTAL ORDERS AFTER UPDATE: ${_orders.length}',
+    );
+
+    debugPrint(
+      '======================================',
     );
   }
   Future<void> _handleTakeawayCompleted(
