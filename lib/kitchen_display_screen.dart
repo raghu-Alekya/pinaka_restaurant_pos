@@ -2877,15 +2877,35 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final isCancelMode = selectedCancelItemKotId == switchKey;
 
     final cancellableIndexes = <int>[];
+
     for (int i = 0; i < items.length; i++) {
       final raw = items[i];
-      if (raw is Map) {
-        final itemStatus =
-            raw['status']?.toString().trim().toLowerCase() ?? '';
-        if (itemStatus != 'cancelled' && itemStatus != 'cancel') {
-          cancellableIndexes.add(i);
-        }
+
+      if (raw is! Map) continue;
+
+      final itemStatus =
+          raw['status']?.toString().trim().toLowerCase() ?? '';
+
+      // Already cancelled → don't show
+      if (itemStatus == 'cancelled' || itemStatus == 'cancel') {
+        continue;
       }
+
+      // Check Ready/Running toggle state
+      final switchValues = selectedItemsMap[switchKey];
+
+      final isToggleOn =
+          switchValues != null &&
+              i < switchValues.length &&
+              switchValues[i] == true;
+
+      // Toggle ON → don't show in Cancel mode
+      if (isToggleOn) {
+        continue;
+      }
+
+      // Only non-cancelled + toggle OFF items can be cancelled
+      cancellableIndexes.add(i);
     }
 
     final selectedCancelCount = cancellableIndexes
@@ -3446,6 +3466,12 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         index < switchValues.length
                             ? switchValues[index]
                             : false;
+
+// HIDE TOGGLE-ON ITEM WHEN CANCEL MODE IS ACTIVE
+// ==========================================================
+                      if (isCancelMode && currentValue) {
+                      return const SizedBox.shrink();
+                      }
 
                         return InkWell(
                             onTap: isCancelMode && !isCancelled
@@ -4071,7 +4097,30 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
                         if (isCancelMode) {
                           if (allItemsSelectedForCancel) {
-                            final success = await provider.cancelOrder(kotId);
+
+                            // ======================================================
+                            // CANCEL ENTIRE KOT USING ITEM-LEVEL CANCEL API
+                            // ======================================================
+
+                            final itemsToCancel = items
+                                .where((item) {
+                              if (item is! Map) return false;
+
+                              final status =
+                                  item['status']?.toString().toLowerCase() ?? '';
+
+                              return status != 'cancelled' &&
+                                  status != 'cancel';
+                            })
+                                .map<Map<String, dynamic>>(
+                                  (item) => Map<String, dynamic>.from(item),
+                            )
+                                .toList();
+
+                            final success = await provider.cancelItems(
+                              kotId,
+                              itemsToCancel,
+                            );
 
                             if (success && mounted) {
                               setState(() {

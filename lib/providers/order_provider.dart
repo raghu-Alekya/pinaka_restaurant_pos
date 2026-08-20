@@ -19,6 +19,7 @@ import '../utils/kds_logger.dart';
 class OrderProvider extends ChangeNotifier {
 
   Timer? _servedCleanupTimer;
+  Map<String, List<bool>> selectedItemsMap = {};
   final Map<String, _OptimisticStatus> _optimisticStatuses = {};
   // Map<String, String> get productCategoryById =>
   //     _apiService.productCategoryById;
@@ -28,7 +29,7 @@ class OrderProvider extends ChangeNotifier {
 
   OrderProvider(this._mqttService, this._apiService) {
     KdsDebugLog.info('OrderProvider created');
-    // _init();
+    _init();
 
     _servedCleanupTimer =
         Timer.periodic(const Duration(seconds: 5), (_) {
@@ -113,22 +114,49 @@ class OrderProvider extends ChangeNotifier {
       .map((o) => o.toUiMap())
       .toList();
   Future<void> _init() async {
+    debugPrint('🔥 OrderProvider _init STARTED');
+
+    // 1. Load locally saved orders
     final saved = await _storage.loadOrders();
 
-    _orders.clear();
-    _orders.addAll(saved);
+    _orders
+      ..clear()
+      ..addAll(saved);
 
+    notifyListeners();
+
+    // 2. Subscribe to MQTT BEFORE API loading
+    debugPrint('🔥 ABOUT TO SUBSCRIBE MQTT');
+
+    _mqttService.messages.listen(
+      _handleMessage,
+      onError: (error) {
+        debugPrint('❌ MQTT MESSAGE ERROR: $error');
+      },
+    );
+
+    debugPrint('🔥 MQTT MESSAGE LISTENER REGISTERED');
+
+    _mqttService.connectionState.listen((state) {
+      debugPrint('🔥 MQTT CONNECTION STATE: $state');
+      notifyListeners();
+    });
+
+    // 3. Connect MQTT
+    debugPrint('🔥 ABOUT TO CONNECT MQTT');
+
+    _mqttService.connect();
+
+    debugPrint('🔥 MQTT CONNECT CALLED');
+
+    // 4. Load existing KOTs from API
     await loadExistingOrders();
 
     _loaded = true;
 
     notifyListeners();
 
-    _mqttService.messages.listen(_handleMessage);
-    _mqttService.connectionState.listen((_) => notifyListeners());
-    _mqttService.connect();
-
-    print('Provider notifyListeners called');
+    debugPrint('🔥 OrderProvider INITIALIZATION COMPLETED');
   }
 
   Future<void> _persist() async {
@@ -164,9 +192,154 @@ class OrderProvider extends ChangeNotifier {
   //     KdsDebugLog.error('Failed to parse order: $e\n$stack');
   //   }
   // }
+  void _handleKotItemQuantityUpdate(
+      Map<String, dynamic> message,
+      ) {
+
+    final kotId =
+    message['kot_id']?.toString();
+
+    final kotNumber =
+    message['kot_number']?.toString();
+
+    final itemId =
+    (message['item_id'] ??
+        message['line_item_id'] ??
+        message['lineItemId'])
+        ?.toString();
+
+    final dynamic qtyValue =
+        message['quantity'] ??
+            message['qty'];
+
+    debugPrint('========== UPDATE KOT ITEM ==========');
+    debugPrint('KOT ID     : $kotId');
+    debugPrint('KOT NUMBER : $kotNumber');
+    debugPrint('ITEM ID    : $itemId');
+    debugPrint('NEW QTY    : $qtyValue');
+
+    if (itemId == null || qtyValue == null) {
+      debugPrint(
+        '❌ Missing item ID or quantity',
+      );
+      return;
+    }
+
+    final newQty = qtyValue is num
+        ? qtyValue.toInt()
+        : int.tryParse(
+      qtyValue.toString(),
+    );
+
+    if (newQty == null) {
+      debugPrint(
+        '❌ Invalid quantity: $qtyValue',
+      );
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // FIND KOT
+    // ----------------------------------------------------------
+
+    final orderIndex = _orders.indexWhere(
+          (order) {
+        if (kotId != null &&
+            order.kotId?.toString() == kotId) {
+          return true;
+        }
+
+        if (kotNumber != null &&
+            order.kotNo?.toString() == kotNumber) {
+          return true;
+        }
+
+        return false;
+      },
+    );
+
+    if (orderIndex == -1) {
+      debugPrint(
+        '❌ KOT NOT FOUND IN KDS',
+      );
+      return;
+    }
+
+    final order = _orders[orderIndex];
+
+    // ----------------------------------------------------------
+    // FIND ITEM
+    // ----------------------------------------------------------
+
+    final itemIndex = order.items.indexWhere(
+          (item) =>
+      item.lineItemId?.toString() == itemId,
+    );
+
+    if (itemIndex == -1) {
+      debugPrint(
+        '❌ ITEM NOT FOUND IN KOT',
+      );
+      return;
+    }
+
+    final oldItem =
+    order.items[itemIndex];
+
+    debugPrint(
+      'ITEM       : ${oldItem.name}',
+    );
+
+    debugPrint(
+      'OLD QTY    : ${oldItem.qty}',
+    );
+
+    debugPrint(
+      'NEW QTY    : $newQty',
+    );
+
+    // ----------------------------------------------------------
+    // REPLACE ITEM WITH UPDATED QUANTITY
+    // ----------------------------------------------------------
+
+    order.items[itemIndex] = OrderItem(
+      lineItemId: oldItem.lineItemId,
+      name: oldItem.name,
+      productId: oldItem.productId,
+      qty: newQty,
+      status: oldItem.status,
+      note: oldItem.note,
+      isVeg: oldItem.isVeg,
+      category: oldItem.category,
+      modifiers: oldItem.modifiers,
+      addons: oldItem.addons,
+    );
+
+    debugPrint(
+      '✅ ITEM QUANTITY UPDATED IN KDS',
+    );
+
+    // ----------------------------------------------------------
+    // SAVE + UPDATE UI
+    // ----------------------------------------------------------
+
+    _persist();
+
+    notifyListeners();
+
+    debugPrint(
+      '✅ KDS UI UPDATED WITHOUT REFRESH',
+    );
+
+    debugPrint(
+      '====================================',
+    );
+  }
 
   Future<void> _handleMessage(Map<String, dynamic> message) async {
     final event = message['event']?.toString();
+    debugPrint('🔥🔥🔥 MQTT MESSAGE RECEIVED 🔥🔥🔥');
+    debugPrint('MQTT MESSAGE = $message');
 
     // ==========================================================
     // RESTAURANT ISOLATION CHECK
@@ -387,10 +560,11 @@ class OrderProvider extends ChangeNotifier {
         // --------------------------------------------------------
         // Add normal KOT immediately
         // --------------------------------------------------------
-
         _addOrder(order);
-        unawaited(_refreshAfterMqtt());
 
+        debugPrint(
+          '✅ KOT ADDED TO PROVIDER WITHOUT IMMEDIATE API REFRESH',
+        );
         debugPrint(
           '✅ KOT ADDED TO PROVIDER',
         );
@@ -411,6 +585,38 @@ class OrderProvider extends ChangeNotifier {
           '❌ Failed to parse created KOT: $e\n$stack',
         );
       }
+
+      return;
+    }
+
+    // ==========================================================
+// KOT ITEM / QUANTITY UPDATED
+// ==========================================================
+    if (event == 'kot_item_updated' ||
+        event == 'kot_quantity_updated' ||
+        event == 'order_item_updated') {
+
+      debugPrint(
+        '========== KOT ITEM / QUANTITY UPDATED ==========',
+      );
+
+      debugPrint(
+        'KOT ID       : ${message['kot_id']}',
+      );
+
+      debugPrint(
+        'KOT NUMBER   : ${message['kot_number']}',
+      );
+
+      debugPrint(
+        'ITEM ID      : ${message['item_id'] ?? message['line_item_id']}',
+      );
+
+      debugPrint(
+        'NEW QTY      : ${message['quantity'] ?? message['qty']}',
+      );
+
+      _handleKotItemQuantityUpdate(message);
 
       return;
     }
@@ -1357,6 +1563,29 @@ class OrderProvider extends ChangeNotifier {
             );
           }
         }
+
+        // ==========================================================
+        // REMOVE KOT WHEN ALL ITEMS ARE CANCELLED
+        // ==========================================================
+
+        final allItemsCancelled = order.items.isNotEmpty &&
+            order.items.every(
+                  (item) =>
+              item.status.toString().trim().toLowerCase() == 'cancelled',
+            );
+
+        if (allItemsCancelled) {
+          debugPrint(
+            '🗑️ ALL ITEMS CANCELLED - '
+                'REMOVING KOT ${order.id} FROM ACTIVE KDS',
+          );
+
+          _orders.removeWhere(
+                (o) =>
+            o.id == order.id ||
+                (o.kotId != null && o.kotId == order.kotId),
+          );
+        }
       });
 
       _mqttService.sendStatusUpdate(
@@ -2052,6 +2281,50 @@ class OrderProvider extends ChangeNotifier {
 
       return false;
     }
+  }
+  final Map<String, List<bool>> kotItemToggleStates = {};
+
+  List<bool> getKotToggleStates(
+      String switchKey,
+      int itemCount,
+      ) {
+    final existing = kotItemToggleStates[switchKey];
+
+    if (existing == null) {
+      final values = List<bool>.filled(itemCount, false);
+      kotItemToggleStates[switchKey] = values;
+      return values;
+    }
+
+    // Keep existing states and expand if new items were added
+    if (existing.length < itemCount) {
+      existing.addAll(
+        List<bool>.filled(
+          itemCount - existing.length,
+          false,
+        ),
+      );
+    }
+
+    return existing;
+  }
+
+  void updateKotItemToggle({
+    required String switchKey,
+    required int index,
+    required bool value,
+  }) {
+    final values = kotItemToggleStates[switchKey] ?? [];
+
+    while (values.length <= index) {
+      values.add(false);
+    }
+
+    values[index] = value;
+
+    kotItemToggleStates[switchKey] = values;
+
+    notifyListeners();
   }
 Future<bool> updateOrderStatus(String orderId, String status) async {
     final order = _findOrder(orderId);

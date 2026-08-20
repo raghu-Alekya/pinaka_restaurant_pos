@@ -997,39 +997,32 @@ class KitchenOrder {
     return KitchenOrder(
       id: kotNumber,
 
-      kotId:
-      (kot['id'] as num?)?.toInt(),
+      kotId: _toInt(kot['id']),
 
       parentOrderId:
-      (payload['parent_order_id']
-      as num?)?.toInt() ??
-          (kot['parent_order_id']
-          as num?)?.toInt(),
+      _toInt(payload['parent_order_id']) ??
+          _toInt(kot['parent_order_id']),
 
       zoneId:
-      (payload['zone_id']
-      as num?)?.toInt(),
+      _toInt(payload['zone_id']),
 
       zoneName:
-      payload['zone_name']
-          ?.toString(),
+      payload['zone_name']?.toString(),
 
       type:
-      payload['order_type']
-          ?.toString() ??
+      payload['order_type']?.toString() ??
           'Dine-In',
 
-      restaurantId: (payload['restaurant_id'] as num?)?.toInt() ??
-          (kot['restaurant_id'] as num?)?.toInt() ??
-          (payload['restaurantId'] as num?)?.toInt() ??
-          (kot['restaurantId'] as num?)?.toInt(),
+      restaurantId:
+      _toInt(payload['restaurant_id']) ??
+          _toInt(kot['restaurant_id']) ??
+          _toInt(payload['restaurantId']) ??
+          _toInt(kot['restaurantId']),
 
       status: 'Pending',
 
-
       tableName:
-      payload['table_name']
-          ?.toString(),
+      payload['table_name']?.toString(),
 
       kotTime:
       _parseKotTime(
@@ -1185,6 +1178,17 @@ class KitchenOrder {
     'servedAt':
     servedAt?.toIso8601String(),
   };
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+
+    if (value is int) return value;
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(value.toString().trim());
+  }
 
   // ================================================================
   // UI MAP
