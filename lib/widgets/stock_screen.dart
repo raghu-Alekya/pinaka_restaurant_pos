@@ -600,6 +600,17 @@ class _StockScreenState extends State<StockScreen> {
   //   });
   // }
 
+  bool get _hasChanges {
+    for (final category in _stockCategories) {
+      for (final item in category.items) {
+        if (item.selected != item.isEnabled) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   // ==========================================================
   // SAVE & UPDATE
   // ==========================================================
@@ -2220,7 +2231,7 @@ class _StockScreenState extends State<StockScreen> {
           child:
           ElevatedButton(
             onPressed:
-            _saveAndUpdate,
+            _hasChanges ? _saveAndUpdate : null,
 
             style:
             ElevatedButton.styleFrom(
@@ -2229,8 +2240,18 @@ class _StockScreenState extends State<StockScreen> {
                 0xffff5b4f,
               ),
 
+              disabledBackgroundColor:
+              const Color(
+                0xffD0D5DD,
+              ),
+
               foregroundColor:
               Colors.white,
+
+              disabledForegroundColor:
+              const Color(
+                0xff98A2B3,
+              ),
 
               elevation: 0,
 

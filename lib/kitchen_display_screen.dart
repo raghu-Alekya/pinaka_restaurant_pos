@@ -2537,8 +2537,25 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         continue;
       }
 
-      for (final rawItem in rawItems) {
+      final kotId = order['id']?.toString() ?? '';
+      final kotNo = order['kotNo']?.toString() ?? '';
+      final parentOrderId =
+          (order['parentOrderId'] ?? order['parent_order_id'])?.toString() ?? '';
+
+      final switchKey = kotId.isNotEmpty ? kotId : '${kotNo}_$parentOrderId';
+      final switchValues = selectedItemsMap[switchKey];
+
+      for (int index = 0; index < rawItems.length; index++) {
+        final rawItem = rawItems[index];
+
         if (rawItem is! Map) {
+          continue;
+        }
+
+        // Skip item if toggled ON (ready/served) in UI
+        if (switchValues != null &&
+            index < switchValues.length &&
+            switchValues[index] == true) {
           continue;
         }
 

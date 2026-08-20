@@ -1270,7 +1270,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
               // =====================================================
 
               Text(
-                'Total KOTs: ${filteredOrders.length}',
+                'Total KOTs: ${paginatedOrders.length}/${filteredOrders.length}',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
