@@ -94,51 +94,50 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
     loadVoidedItems(kotId);
   }
+
   KotRevision _buildOriginalRevision(KotOrder kot) {
     final originalItems = List<LineItem>.from(
       kot.initialKotItems ?? kot.lineItems ?? [],
     );
 
-    final items = originalItems.map((item) {
-      final originalQty =
-          item.originalQuantity ??
-              item.quantity ??
-              0;
+    final items =
+        originalItems.map((item) {
+          final originalQty = item.originalQuantity ?? item.quantity ?? 0;
 
-      final price = item.itemPrice ?? 0;
+          final price = item.itemPrice ?? 0;
 
-      return LineItem(
-        lineItemId: item.lineItemId,
-        itemId: item.itemId,
-        name: item.name,
+          return LineItem(
+            lineItemId: item.lineItemId,
+            itemId: item.itemId,
+            name: item.name,
 
-        // IMPORTANT:
-        // Original quantity must be used here.
-        quantity: originalQty,
+            // IMPORTANT:
+            // Original quantity must be used here.
+            quantity: originalQty,
 
-        originalQuantity: originalQty,
+            originalQuantity: originalQty,
 
-        itemPrice: price,
+            itemPrice: price,
 
-        amount: price * originalQty,
+            amount: price * originalQty,
 
-        totalWoTax: price * originalQty,
+            totalWoTax: price * originalQty,
 
-        total: price * originalQty,
+            total: price * originalQty,
 
-        voidedQuantity: 0,
-        voidedAmount: 0,
+            voidedQuantity: 0,
+            voidedAmount: 0,
 
-        modifierAmount: item.modifierAmount,
-        modifiers: item.modifiers,
-        tax: item.tax,
-        kotRemarks: item.kotRemarks,
-      );
-    }).toList();
+            modifierAmount: item.modifierAmount,
+            modifiers: item.modifiers,
+            tax: item.tax,
+            kotRemarks: item.kotRemarks,
+          );
+        }).toList();
 
     final total = items.fold<num>(
       0,
-          (sum, item) => sum + (item.totalWoTax ?? 0),
+      (sum, item) => sum + (item.totalWoTax ?? 0),
     );
 
     return KotRevision(
@@ -150,6 +149,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       modifiedOn: null,
     );
   }
+
   KotOrder? _getSelectedKot() {
     if (selectedKotId == null) return null;
 
@@ -184,69 +184,54 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     }
 
     debugPrint("========== GET REMOVED ITEMS ==========");
-    debugPrint(
-      "Previous revision items: ${previousRevision.items.length}",
-    );
-    debugPrint(
-      "Current revision items: ${revision.items.length}",
-    );
+    debugPrint("Previous revision items: ${previousRevision.items.length}");
+    debugPrint("Current revision items: ${revision.items.length}");
 
     for (final currentItem in revision.items) {
       debugPrint(
         "🔵 CURRENT: "
-            "itemId=${currentItem.itemId}, "
-            "lineItemId=${currentItem.lineItemId}, "
-            "name=${currentItem.name}, "
-            "qty=${currentItem.quantity}",
+        "itemId=${currentItem.itemId}, "
+        "lineItemId=${currentItem.lineItemId}, "
+        "name=${currentItem.name}, "
+        "qty=${currentItem.quantity}",
       );
 
       // Find matching previous item.
-      final previousItem = previousRevision.items.firstWhere(
-            (item) {
-          // FIRST compare lineItemId
-          if (item.lineItemId != null &&
-              currentItem.lineItemId != null) {
-            final match =
-                item.lineItemId.toString() ==
-                    currentItem.lineItemId.toString();
+      final previousItem = previousRevision.items.firstWhere((item) {
+        // FIRST compare lineItemId
+        if (item.lineItemId != null && currentItem.lineItemId != null) {
+          final match =
+              item.lineItemId.toString() == currentItem.lineItemId.toString();
 
-            if (match) {
-              debugPrint(
-                "✅ MATCH BY lineItemId: "
-                    "${item.lineItemId}",
-              );
-            }
-
-            return match;
+          if (match) {
+            debugPrint(
+              "✅ MATCH BY lineItemId: "
+              "${item.lineItemId}",
+            );
           }
 
-          // FALLBACK compare itemId
-          if (item.itemId != null &&
-              currentItem.itemId != null) {
-            final match =
-                item.itemId.toString() ==
-                    currentItem.itemId.toString();
+          return match;
+        }
 
-            if (match) {
-              debugPrint(
-                "✅ MATCH BY itemId: "
-                    "${item.itemId}",
-              );
-            }
+        // FALLBACK compare itemId
+        if (item.itemId != null && currentItem.itemId != null) {
+          final match = item.itemId.toString() == currentItem.itemId.toString();
 
-            return match;
+          if (match) {
+            debugPrint(
+              "✅ MATCH BY itemId: "
+              "${item.itemId}",
+            );
           }
 
-          return false;
-        },
-        orElse: () => LineItem(),
-      );
+          return match;
+        }
 
-      if (previousItem.itemId == null &&
-          previousItem.lineItemId == null) {
-        debugPrint(
-          "❌ NO MATCH for current item: ${currentItem.name}",
-        );
+        return false;
+      }, orElse: () => LineItem());
+
+      if (previousItem.itemId == null && previousItem.lineItemId == null) {
+        debugPrint("❌ NO MATCH for current item: ${currentItem.name}");
         continue;
       }
 
@@ -255,42 +240,36 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
       debugPrint(
         "📦 ${currentItem.name}: "
-            "oldQty=$oldQty, newQty=$newQty",
+        "oldQty=$oldQty, newQty=$newQty",
       );
 
       if (newQty < oldQty) {
         final removedQty = oldQty - newQty;
 
-        final price =
-            currentItem.itemPrice ??
-                previousItem.itemPrice ??
-                0;
+        final price = currentItem.itemPrice ?? previousItem.itemPrice ?? 0;
 
         final removedAmount = removedQty * price;
 
         debugPrint(
           "🔴 REMOVED: "
-              "${removedQty} × ${currentItem.name} "
-              "= $removedAmount",
+          "${removedQty} × ${currentItem.name} "
+          "= $removedAmount",
         );
 
         result.add({
-          "name": currentItem.name ??
-              previousItem.name ??
-              "-",
+          "name": currentItem.name ?? previousItem.name ?? "-",
           "removedQty": removedQty,
           "amount": removedAmount,
         });
       }
     }
 
-    debugPrint(
-      "========== REMOVED RESULT ==========",
-    );
+    debugPrint("========== REMOVED RESULT ==========");
     debugPrint(result.toString());
 
     return result;
   }
+
   @override
   void initState() {
     super.initState();
@@ -405,70 +384,58 @@ amount: ${item.amount}
     // ==========================================================
 
     final sortedKeys =
-    grouped.keys.toList()..sort((a, b) {
-      final dateA = DateTime.tryParse(a);
-      final dateB = DateTime.tryParse(b);
+        grouped.keys.toList()..sort((a, b) {
+          final dateA = DateTime.tryParse(a);
+          final dateB = DateTime.tryParse(b);
 
-      if (dateA == null && dateB == null) return 0;
-      if (dateA == null) return -1;
-      if (dateB == null) return 1;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return -1;
+          if (dateB == null) return 1;
 
-      return dateA.compareTo(dateB);
-    });
+          return dateA.compareTo(dateB);
+        });
 
     // ==========================================================
     // START FROM ORIGINAL ITEMS
     // ==========================================================
 
     var currentItems =
-    originalItems
-        .map(
-          (item) => LineItem(
-        lineItemId: item.lineItemId,
-        itemId: item.itemId,
-        name: item.name,
+        originalItems
+            .map(
+              (item) => LineItem(
+                lineItemId: item.lineItemId,
+                itemId: item.itemId,
+                name: item.name,
 
-        // IMPORTANT:
-        // Use originalQuantity as the starting quantity.
-        quantity:
-        item.originalQuantity ??
-            item.quantity ??
-            0,
+                // IMPORTANT:
+                // Use originalQuantity as the starting quantity.
+                quantity: item.originalQuantity ?? item.quantity ?? 0,
 
-        originalQuantity:
-        item.originalQuantity ??
-            item.quantity ??
-            0,
+                originalQuantity: item.originalQuantity ?? item.quantity ?? 0,
 
-        voidedQuantity: item.voidedQuantity,
-        voidedAmount: item.voidedAmount,
-        itemPrice: item.itemPrice,
+                voidedQuantity: item.voidedQuantity,
+                voidedAmount: item.voidedAmount,
+                itemPrice: item.itemPrice,
 
-        amount:
-        (item.itemPrice ?? 0) *
-            (item.originalQuantity ??
-                item.quantity ??
-                0),
+                amount:
+                    (item.itemPrice ?? 0) *
+                    (item.originalQuantity ?? item.quantity ?? 0),
 
-        totalWoTax:
-        (item.itemPrice ?? 0) *
-            (item.originalQuantity ??
-                item.quantity ??
-                0),
+                totalWoTax:
+                    (item.itemPrice ?? 0) *
+                    (item.originalQuantity ?? item.quantity ?? 0),
 
-        total:
-        (item.itemPrice ?? 0) *
-            (item.originalQuantity ??
-                item.quantity ??
-                0),
+                total:
+                    (item.itemPrice ?? 0) *
+                    (item.originalQuantity ?? item.quantity ?? 0),
 
-        modifierAmount: item.modifierAmount,
-        modifiers: item.modifiers,
-        tax: item.tax,
-        kotRemarks: item.kotRemarks,
-      ),
-    )
-        .toList();
+                modifierAmount: item.modifierAmount,
+                modifiers: item.modifiers,
+                tax: item.tax,
+                kotRemarks: item.kotRemarks,
+              ),
+            )
+            .toList();
     // ==========================================================
     // REVISION 1 = FIRST MODIFICATION
     // ==========================================================
@@ -480,27 +447,27 @@ amount: ${item.amount}
 
       // Clone previous revision
       final revisionItems =
-      currentItems
-          .map(
-            (item) => LineItem(
-          lineItemId: item.lineItemId,
-          itemId: item.itemId,
-          name: item.name,
-          quantity: item.quantity,
-          originalQuantity: item.originalQuantity,
-          voidedQuantity: item.voidedQuantity,
-          voidedAmount: item.voidedAmount,
-          itemPrice: item.itemPrice,
-          amount: item.amount,
-          totalWoTax: item.totalWoTax,
-          total: item.total,
-          modifierAmount: item.modifierAmount,
-          modifiers: item.modifiers,
-          tax: item.tax,
-          kotRemarks: item.kotRemarks,
-        ),
-      )
-          .toList();
+          currentItems
+              .map(
+                (item) => LineItem(
+                  lineItemId: item.lineItemId,
+                  itemId: item.itemId,
+                  name: item.name,
+                  quantity: item.quantity,
+                  originalQuantity: item.originalQuantity,
+                  voidedQuantity: item.voidedQuantity,
+                  voidedAmount: item.voidedAmount,
+                  itemPrice: item.itemPrice,
+                  amount: item.amount,
+                  totalWoTax: item.totalWoTax,
+                  total: item.total,
+                  modifierAmount: item.modifierAmount,
+                  modifiers: item.modifiers,
+                  tax: item.tax,
+                  kotRemarks: item.kotRemarks,
+                ),
+              )
+              .toList();
 
       // ========================================================
       // APPLY MODIFICATIONS
@@ -509,23 +476,20 @@ amount: ${item.amount}
       for (final modification in modifications) {
         final modificationId = modification.itemId?.toString();
 
-        debugPrint(
-          "🔎 Finding modification ID: $modificationId",
-        );
+        debugPrint("🔎 Finding modification ID: $modificationId");
 
         final index = revisionItems.indexWhere((item) {
           final itemId = item.itemId?.toString();
           final lineItemId = item.lineItemId?.toString();
 
           final match =
-              lineItemId == modificationId ||
-                  itemId == modificationId;
+              lineItemId == modificationId || itemId == modificationId;
 
           debugPrint(
             "   ${item.name}: "
-                "itemId=$itemId, "
-                "lineItemId=$lineItemId, "
-                "match=$match",
+            "itemId=$itemId, "
+            "lineItemId=$lineItemId, "
+            "match=$match",
           );
 
           return match;
@@ -547,7 +511,7 @@ amount: ${item.amount}
           originalQuantity: oldItem.originalQuantity ?? oldItem.quantity,
 
           voidedQuantity:
-          (oldItem.originalQuantity ?? oldItem.quantity ?? 0) - newQty,
+              (oldItem.originalQuantity ?? oldItem.quantity ?? 0) - newQty,
 
           itemPrice: itemPrice,
 
@@ -592,12 +556,12 @@ amount: ${item.amount}
               .join(', '),
 
           modifiedBy:
-          kot.placedByName?.trim().isNotEmpty == true
-              ? kot.placedByName!.trim()
-              : [kot.placedByFirstName, kot.placedByLastName]
-              .whereType<String>()
-              .where((e) => e.trim().isNotEmpty)
-              .join(' '),
+              kot.placedByName?.trim().isNotEmpty == true
+                  ? kot.placedByName!.trim()
+                  : [kot.placedByFirstName, kot.placedByLastName]
+                      .whereType<String>()
+                      .where((e) => e.trim().isNotEmpty)
+                      .join(' '),
 
           modifiedOn: modifications.first.voidedAt?.toString(),
         ),
@@ -706,19 +670,19 @@ amount: ${item.amount}
       transitionDuration: const Duration(milliseconds: 300),
 
       pageBuilder: (
-          BuildContext context,
-          Animation<double> animation,
-          Animation<double> secondaryAnimation,
-          ) {
+        BuildContext context,
+        Animation<double> animation,
+        Animation<double> secondaryAnimation,
+      ) {
         return const SizedBox.shrink();
       },
 
       transitionBuilder: (
-          BuildContext context,
-          Animation<double> animation,
-          Animation<double> secondaryAnimation,
-          Widget child,
-          ) {
+        BuildContext context,
+        Animation<double> animation,
+        Animation<double> secondaryAnimation,
+        Widget child,
+      ) {
         final slideAnimation = Tween<Offset>(
           begin: const Offset(1.0, 0.0),
           end: Offset.zero,
@@ -823,7 +787,7 @@ amount: ${item.amount}
                           "Modification History",
                           style: TextStyle(
                             color:
-                            isDark ? Colors.white : const Color(0xFF1E293B),
+                                isDark ? Colors.white : const Color(0xFF1E293B),
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
@@ -833,9 +797,9 @@ amount: ${item.amount}
                           "Order #${widget.orderId}",
                           style: TextStyle(
                             color:
-                            isDark
-                                ? Colors.white54
-                                : const Color(0xFF64748B),
+                                isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF64748B),
                             fontSize: 9,
                           ),
                         ),
@@ -862,15 +826,12 @@ amount: ${item.amount}
                         // Revision 1 compares against ORIGINAL KOT.
                         // Revision 2+ compares against previous modification.
                         previousRevision:
-                        i == 0
-                            ? originalRevision
-                            : revisions[i - 1],
+                            i == 0 ? originalRevision : revisions[i - 1],
 
                         current: i == revisions.length - 1,
                       ),
 
-                      if (i < revisions.length - 1)
-                        const SizedBox(height: 20),
+                      if (i < revisions.length - 1) const SizedBox(height: 20),
                     ],
                   ],
                 ),
@@ -881,6 +842,7 @@ amount: ${item.amount}
       ),
     );
   }
+
   Widget _buildKotRevisionCard({
     required KotRevision revision,
     required KotRevision? previousRevision,
@@ -899,19 +861,19 @@ amount: ${item.amount}
     final difference = updatedTotal - previousTotal;
 
     final modifiedBy =
-    revision.modifiedBy?.trim().isNotEmpty == true
-        ? revision.modifiedBy!.trim()
-        : "-";
+        revision.modifiedBy?.trim().isNotEmpty == true
+            ? revision.modifiedBy!.trim()
+            : "-";
 
     final reason =
-    revision.reason?.trim().isNotEmpty == true
-        ? revision.reason!.trim()
-        : "-";
+        revision.reason?.trim().isNotEmpty == true
+            ? revision.reason!.trim()
+            : "-";
 
     final date =
-    revision.modifiedOn?.trim().isNotEmpty == true
-        ? revision.modifiedOn!
-        : "-";
+        revision.modifiedOn?.trim().isNotEmpty == true
+            ? revision.modifiedOn!
+            : "-";
 
     final removedItems = _getRemovedItems(
       revision: revision,
@@ -923,10 +885,7 @@ amount: ${item.amount}
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF202433) : Colors.white,
-        border: Border.all(
-          color: const Color(0xFF2563EB),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFF2563EB), width: 1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -945,10 +904,7 @@ amount: ${item.amount}
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color:
-                      isDark
-                          ? Colors.white
-                          : const Color(0xFF1E293B),
+                      color: isDark ? Colors.white : const Color(0xFF1E293B),
                     ),
                   ),
 
@@ -980,10 +936,7 @@ amount: ${item.amount}
                 date,
                 style: TextStyle(
                   fontSize: 8,
-                  color:
-                  isDark
-                      ? Colors.white54
-                      : const Color(0xFF64748B),
+                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
                 ),
               ),
             ],
@@ -996,18 +949,8 @@ amount: ${item.amount}
           // =====================================================
           Row(
             children: [
-              Expanded(
-                child: _historyInfo(
-                  "Modified by",
-                  modifiedBy,
-                ),
-              ),
-              Expanded(
-                child: _historyInfo(
-                  "Reason",
-                  reason,
-                ),
-              ),
+              Expanded(child: _historyInfo("Modified by", modifiedBy)),
+              Expanded(child: _historyInfo("Reason", reason)),
             ],
           ),
 
@@ -1030,69 +973,60 @@ amount: ${item.amount}
           if (removedItems.isEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 7,
-                vertical: 6,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
               color:
-              isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : const Color(0xFFF8FAFC),
+                  isDark
+                      ? Colors.white.withOpacity(0.05)
+                      : const Color(0xFFF8FAFC),
               child: const Text(
                 "No items removed",
-                style: TextStyle(
-                  fontSize: 9,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 9, color: Colors.grey),
               ),
             )
           else
             Column(
               children:
-              removedItems.map((item) {
-                final name =
-                    item["name"]?.toString() ?? "-";
-                final removedQty =
-                    item["removedQty"] ?? 0;
-                final amount =
-                    (item["amount"] as num?) ?? 0;
+                  removedItems.map((item) {
+                    final name = item["name"]?.toString() ?? "-";
+                    final removedQty = item["removedQty"] ?? 0;
+                    final amount = (item["amount"] as num?) ?? 0;
 
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 3),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 6,
-                  ),
-                  color:
-                  isDark
-                      ? Colors.red.withOpacity(0.10)
-                      : const Color(0xFFFFF1F2),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "$removedQty × $name",
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: Colors.red,
-                            fontWeight: FontWeight.w500,
+                    return Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 6,
+                      ),
+                      color:
+                          isDark
+                              ? Colors.red.withOpacity(0.10)
+                              : const Color(0xFFFFF1F2),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "$removedQty × $name",
+                              style: const TextStyle(
+                                fontSize: 9,
+                                color: Colors.red,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
 
-                      Text(
-                        "-${_formatCurrency(amount)}",
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Colors.red,
-                          fontWeight: FontWeight.w700,
-                        ),
+                          Text(
+                            "-${_formatCurrency(amount)}",
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: Colors.red,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
 
           const SizedBox(height: 9),
@@ -1100,17 +1034,11 @@ amount: ${item.amount}
           // =====================================================
           // TOTALS
           // =====================================================
-          _historyAmountRow(
-            "Previous Total",
-            _formatCurrency(previousTotal),
-          ),
+          _historyAmountRow("Previous Total", _formatCurrency(previousTotal)),
 
           const SizedBox(height: 5),
 
-          _historyAmountRow(
-            "Updated Total",
-            _formatCurrency(updatedTotal),
-          ),
+          _historyAmountRow("Updated Total", _formatCurrency(updatedTotal)),
 
           const SizedBox(height: 5),
 
@@ -1118,11 +1046,11 @@ amount: ${item.amount}
             "Difference",
             _formatCurrency(difference),
             valueColor:
-            difference < 0
-                ? Colors.red
-                : difference > 0
-                ? Colors.green
-                : Colors.grey,
+                difference < 0
+                    ? Colors.red
+                    : difference > 0
+                    ? Colors.green
+                    : Colors.grey,
             bold: true,
           ),
         ],
@@ -1225,11 +1153,11 @@ amount: ${item.amount}
   }
 
   Widget _historyAmountRow(
-      String title,
-      String amount, {
-        Color? valueColor,
-        bool bold = false,
-      }) {
+    String title,
+    String amount, {
+    Color? valueColor,
+    bool bold = false,
+  }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -1249,7 +1177,7 @@ amount: ${item.amount}
             fontSize: 9,
             fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
             color:
-            valueColor ?? (isDark ? Colors.white : const Color(0xFF1E293B)),
+                valueColor ?? (isDark ? Colors.white : const Color(0xFF1E293B)),
           ),
         ),
       ],
@@ -1341,11 +1269,11 @@ amount: ${item.amount}
               Theme.of(dialogContext).brightness == Brightness.dark; // ADDED
           return Dialog(
             backgroundColor:
-            isDark
-                ? const Color(
-              0xFF202433,
-            ) // ADDED: dark dialog background, no more white flash
-                : Colors.white,
+                isDark
+                    ? const Color(
+                      0xFF202433,
+                    ) // ADDED: dark dialog background, no more white flash
+                    : Colors.white,
             child: const Padding(
               padding: EdgeInsets.all(24),
               child: CircularProgressIndicator(),
@@ -1369,7 +1297,7 @@ amount: ${item.amount}
 
             await repo.cancelKot(
               parentOrderId:
-              orderModel.orderId!, // endpoint now uses parent order
+                  orderModel.orderId!, // endpoint now uses parent order
               kotOrderId: kot.kotOrderId!, // optional for backend reference
               restaurantId: orderModel.restaurantId!,
               zoneId: orderModel.zoneId!,
@@ -1440,11 +1368,11 @@ amount: ${item.amount}
 
     dynamic raw =
         item['modifiers'] ??
-            item['modifier'] ??
-            item['addons'] ??
-            item['item_modifiers'] ??
-            item['modifier_details'] ??
-            item['modifiers_json'];
+        item['modifier'] ??
+        item['addons'] ??
+        item['item_modifiers'] ??
+        item['modifier_details'] ??
+        item['modifiers_json'];
 
     debugPrint("🟠 RAW MODIFIER DATA → $raw");
 
@@ -1474,19 +1402,19 @@ amount: ${item.amount}
     debugPrint("🟢 PARSED MODIFIER LIST → $modifiersList");
 
     final names =
-    modifiersList
-        .map<String>((m) {
-      if (m is String) return m;
-      if (m is Map) {
-        return m['name']?.toString() ??
-            m['modifier_name']?.toString() ??
-            m['title']?.toString() ??
-            '';
-      }
-      return '';
-    })
-        .where((e) => e.isNotEmpty)
-        .toList();
+        modifiersList
+            .map<String>((m) {
+              if (m is String) return m;
+              if (m is Map) {
+                return m['name']?.toString() ??
+                    m['modifier_name']?.toString() ??
+                    m['title']?.toString() ??
+                    '';
+              }
+              return '';
+            })
+            .where((e) => e.isNotEmpty)
+            .toList();
 
     debugPrint("✅ FINAL MODIFIER NAMES → $names");
 
@@ -1502,9 +1430,9 @@ amount: ${item.amount}
     return Scaffold(
       // backgroundColor: const Color(0xFFE5EFFF),
       backgroundColor:
-      isDark
-          ? const Color(0xFF161A26)
-          : const Color(0xFFF6F6F6), //0xFFF6F6F6
+          isDark
+              ? const Color(0xFF161A26)
+              : const Color(0xFFF6F6F6), //0xFFF6F6F6
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -1533,7 +1461,7 @@ amount: ${item.amount}
 
           //  Pick the correct order by ID
           final orderModel = snapshot.data!.firstWhere(
-                (o) => o.orderId == widget.orderId,
+            (o) => o.orderId == widget.orderId,
             orElse: () => snapshot.data!.first,
           );
 
@@ -1554,14 +1482,14 @@ amount: ${item.amount}
               .cast<Map<String, dynamic>?>()
               .firstWhere(
                 (kot) => kot?["kotNo"] == selectedKotId,
-            orElse: () => null,
-          );
+                orElse: () => null,
+              );
 
           String kotReason = "-"; // default
           if (selectedKot != null && selectedKot["meta_data"] != null) {
             final metaData = (selectedKot["meta_data"] as List<dynamic>);
             final reasonMeta = metaData.firstWhere(
-                  (m) => m["key"] == "kot_reason",
+              (m) => m["key"] == "kot_reason",
               orElse: () => {"value": "-"},
             );
             kotReason = reasonMeta["value"] ?? "-";
@@ -1570,2109 +1498,1922 @@ amount: ${item.amount}
 
           final bool canEditOrder =
               (_userPermissions?.canEditOrder ?? false) &&
-                  (role == 'administrator' ||
-                      role == 'manager' ||
-                      role == 'merchant');
-          return Center(
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(4, 2, 0, 2),
-              padding: const EdgeInsets.fromLTRB(4, 2, 4, 2),
-
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.20 : 0.12),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+              (role == 'administrator' ||
+                  role == 'manager' ||
+                  role == 'merchant');
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4,
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Flexible(
-                    flex: 1,
-                    child: Container(
-                      height: blockHeight,
-                      margin: const EdgeInsets.all(4),
-                      // decoration: BoxDecoration(
-                      //   color:
-                      //       isDark
-                      //           ? const Color(0xFF202433)
-                      //           : const Color(0xFFF6F6F6),
-                      //   borderRadius: BorderRadius.circular(12),
-                      // ),
-                      child: Column(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Left: Back button
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context, true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: ShapeDecoration(
+                            color: const Color(0xFF3B4259),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            shadows: const [
+                              BoxShadow(
+                                color: Color(0x19000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.arrow_back,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                "Back",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      Text(
+                        "Order #${orderModel.orderId ?? '-'}",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+
+                      const Spacer(),
+                      // Right buttons: Edit Order + Cancel Order
+                      Row(
                         children: [
+                          // Edit Order Button
+                          if ((orderModel.status ?? '').toLowerCase() ==
+                              'completed')
+                            ElevatedButton(
+                              onPressed:
+                                  !canEditOrder
+                                      ? null
+                                      : () async {
+                                        // -----------------------------------------
+                                        // 1. MERCHANT DISCOUNT CHECK
+                                        // -----------------------------------------
+                                        if ((orderModel.merchantDiscount ?? 0) >
+                                            0) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Order with Merchant Discount is not editable',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                              duration: Duration(seconds: 1),
+                                              backgroundColor: Colors.redAccent,
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        // -----------------------------------------
+                                        // 2. ROLE + PERMISSION CHECK
+                                        // -----------------------------------------
+                                        final String role =
+                                            (_userPermissions?.role ?? '')
+                                                .toLowerCase();
+
+                                        if (!((_userPermissions?.canEditOrder ??
+                                                false) &&
+                                            (role == 'administrator' ||
+                                                role == 'manager' ||
+                                                role == 'merchant'))) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Only administrators, managers, and merchants can edit orders',
+                                              ),
+                                              duration: Duration(seconds: 1),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          return;
+                                        }
+
+                                        // -----------------------------------------
+                                        // 3. SHOW PIN CONFIRMATION POPUP
+                                        // -----------------------------------------
+
+                                        // -----------------------------------------
+                                        // 3. VERIFY TOP-BAR LOGIN PIN
+                                        // -----------------------------------------
+                                        //
+                                        // widget.pin = PIN used for the current
+                                        // employee/top-bar login session.
+                                        //
+                                        final bool pinMatched =
+                                            await PinConfirmationPopup.show(
+                                              context: context,
+                                              expectedPin: widget.pin,
+                                            );
+
+                                        if (!pinMatched) {
+                                          // User cancelled OR entered the wrong PIN.
+                                          return;
+                                        }
+
+                                        // -----------------------------------------
+                                        // 4. PIN MATCHED → OPEN EDIT ORDER
+                                        // -----------------------------------------
+                                        final bool?
+                                        updated = await Navigator.push<bool>(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (
+                                                  context,
+                                                ) => EditOrdersListScreen(
+                                                  token: widget.token,
+
+                                                  // Use the verified/current login PIN.
+                                                  pin: widget.pin,
+
+                                                  restaurantId:
+                                                      widget.restaurantId,
+
+                                                  restaurantName:
+                                                      widget.restaurantName,
+
+                                                  userPermissions: _permissions,
+
+                                                  orderId: orderModel.orderId!,
+                                                ),
+                                          ),
+                                        );
+
+                                        // -----------------------------------------
+                                        // 5. RELOAD AFTER EDIT
+                                        // -----------------------------------------
+                                        if (updated == true && mounted) {
+                                          _reloadAfterEdit();
+                                        }
+
+                                        // await PinConfirmationPopup.show(
+                                        //   context: context,
+                                        //
+                                        //   onProceed: (
+                                        //     enteredPin,
+                                        //   ) async {
+                                        //     debugPrint(
+                                        //       'PIN entered in confirmation popup: $enteredPin',
+                                        //     );
+                                        //
+                                        //     // TODO:
+                                        //     // Verify enteredPin against your backend/API
+                                        //     // before allowing the edit.
+                                        //
+                                        //     final bool?
+                                        //     updated = await Navigator.push<
+                                        //       bool
+                                        //     >(
+                                        //       context,
+                                        //       MaterialPageRoute(
+                                        //         builder:
+                                        //             (
+                                        //               context,
+                                        //             ) => EditOrdersListScreen(
+                                        //               token:
+                                        //                   widget
+                                        //                       .token,
+                                        //               pin: enteredPin,
+                                        //               restaurantId:
+                                        //                   widget
+                                        //                       .restaurantId,
+                                        //               restaurantName:
+                                        //                   widget
+                                        //                       .restaurantName,
+                                        //               userPermissions:
+                                        //                   _permissions,
+                                        //               orderId:
+                                        //                   orderModel
+                                        //                       .orderId!,
+                                        //             ),
+                                        //       ),
+                                        //     );
+                                        //
+                                        //     if (updated == true &&
+                                        //         mounted) {
+                                        //       _reloadAfterEdit();
+                                        //     }
+                                        //   },
+                                        // );
+                                      },
+
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4C5F7D),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Image.asset(
+                                    'assets/editorder.png',
+                                    width: 18,
+                                    height: 18,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    "Edit Order",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                          const SizedBox(width: 12),
+
+                          // Cancel Order Button
+                          // Cancel Order Button
+                          if ((orderModel.status ?? '').toLowerCase() ==
+                              'completed')
+                            ElevatedButton(
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder:
+                                      (context) => Dialog(
+                                        backgroundColor: theme.cardColor,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        child: SizedBox(
+                                          width: 400,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(20),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Image.asset(
+                                                  'assets/cancelorder.png',
+                                                  height: 90,
+                                                ),
+                                                const SizedBox(height: 16),
+
+                                                Text(
+                                                  'Cancel Order?',
+                                                  textAlign: TextAlign.center,
+                                                  style: theme
+                                                      .textTheme
+                                                      .titleLarge
+                                                      ?.copyWith(
+                                                        fontSize: 22,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                ),
+
+                                                const SizedBox(height: 10),
+
+                                                Text(
+                                                  'Are you sure you want to cancel the order?',
+                                                  textAlign: TextAlign.center,
+                                                  style: theme
+                                                      .textTheme
+                                                      .bodyMedium
+                                                      ?.copyWith(
+                                                        fontSize: 16,
+                                                        color:
+                                                            isDark
+                                                                ? Colors.white70
+                                                                : Colors
+                                                                    .black54,
+                                                      ),
+                                                ),
+
+                                                const SizedBox(height: 24),
+
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 110,
+                                                      child: OutlinedButton(
+                                                        onPressed:
+                                                            () => Navigator.pop(
+                                                              context,
+                                                            ),
+                                                        style: OutlinedButton.styleFrom(
+                                                          minimumSize:
+                                                              const Size(
+                                                                110,
+                                                                40,
+                                                              ),
+                                                          backgroundColor:
+                                                              isDark
+                                                                  ? const Color(
+                                                                    0xFF2A2F3D,
+                                                                  )
+                                                                  : Colors
+                                                                      .white,
+                                                          side: BorderSide(
+                                                            color:
+                                                                theme
+                                                                    .dividerColor,
+                                                          ),
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  8,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        child: Text(
+                                                          'Back',
+                                                          style: TextStyle(
+                                                            color:
+                                                                theme
+                                                                    .textTheme
+                                                                    .bodyLarge
+                                                                    ?.color,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(width: 14),
+
+                                                    SizedBox(
+                                                      width: 130,
+                                                      child: ElevatedButton(
+                                                        onPressed: () {
+                                                          Navigator.pop(
+                                                            context,
+                                                          );
+                                                          _cancelCompletedOrder(
+                                                            orderModel,
+                                                          );
+                                                        },
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              const Color(
+                                                                0xFFFE6464,
+                                                              ),
+                                                          minimumSize:
+                                                              const Size(
+                                                                130,
+                                                                40,
+                                                              ),
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  8,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                        child: const Text(
+                                                          'Yes, Done',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                );
+                              },
+
+                              // 🎨 Button UI
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).cardColor,
+                                elevation: 2,
+                                shadowColor: const Color(0x554C5F7D),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 9,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  side: const BorderSide(
+                                    width: 0.9,
+                                    color: Color(0xFFFE6464),
+                                  ),
+                                ),
+                              ),
+
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.close,
+                                    size: 20,
+                                    color: Color(0xFFFE6464),
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Cancel Order',
+                                    style: TextStyle(
+                                      color: Color(0xFFFE6464),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w400,
+                                      height: 0.75,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          const SizedBox(width: 12),
+
+                          // Modification History Button
+                          SizedBox(
+                            width: 100,
+                            height: 45,
+                            child: OutlinedButton(
+                              onPressed: () {
+                                _showModificationHistory(orderModel);
+                              },
+                              style: OutlinedButton.styleFrom(
+                                backgroundColor: const Color(0xFFF8FAFC),
+                                side: const BorderSide(
+                                  width: 0.8,
+                                  color: Color(0xFF8F9193),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
+                              ),
+                              child: const Text(
+                                '🕐  Mod. History',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF475569),
+                                  fontSize: 11,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.22,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+
+                // ==========================================
+                // MAIN CONTAINER CARD
+                // (Contains Modification Summary, Order Info, Payment Details, KOTs)
+                // ==========================================
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.fromLTRB(4, 2, 0, 2),
+                    padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(isDark ? 0.20 : 0.12),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // ==========================================
+                        // MODIFICATION SUMMARY
+                        // ONLY SHOW AFTER AN UPDATE (FULL WIDTH ROW INSIDE CONTAINER)
+                        // ==========================================
+                        if (orderModel.isUpdated?.toLowerCase() == 'yes')
                           Padding(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 8,
+                              vertical: 4,
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Left: Back button
-                                GestureDetector(
-                                  onTap: () => Navigator.pop(context, true),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    decoration: ShapeDecoration(
-                                      color: const Color(0xFF3B4259),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      shadows: const [
-                                        BoxShadow(
-                                          color: Color(0x19000000),
-                                          blurRadius: 4,
-                                          offset: Offset(0, 1),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: const [
-                                        Icon(
-                                          Icons.arrow_back,
-                                          size: 20,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          "Back",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                            child: _buildModificationSummary(orderModel),
+                          ),
 
-                                const SizedBox(width: 16),
-
-                                Text(
-                                  "Order #${orderModel.orderId ?? '-'}",
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: theme.textTheme.bodyLarge?.color,
-                                  ),
-                                ),
-
-                                const Spacer(),
-                                // Right buttons: Edit Order + Cancel Order
-                                Row(
-                                  children: [
-                                    // Edit Order Button
-                                    if ((orderModel.status ?? '')
-                                        .toLowerCase() ==
-                                        'completed')
-                                      ElevatedButton(
-                                        onPressed:
-                                        !canEditOrder
-                                            ? null
-                                            : () async {
-                                          // -----------------------------------------
-                                          // 1. MERCHANT DISCOUNT CHECK
-                                          // -----------------------------------------
-                                          if ((orderModel
-                                              .merchantDiscount ??
-                                              0) >
-                                              0) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Order with Merchant Discount is not editable',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                                duration: Duration(
-                                                  seconds: 1,
-                                                ),
-                                                backgroundColor:
-                                                Colors.redAccent,
-                                              ),
-                                            );
-                                            return;
-                                          }
-
-                                          // -----------------------------------------
-                                          // 2. ROLE + PERMISSION CHECK
-                                          // -----------------------------------------
-                                          final String role =
-                                          (_userPermissions?.role ??
-                                              '')
-                                              .toLowerCase();
-
-                                          if (!((_userPermissions
-                                              ?.canEditOrder ??
-                                              false) &&
-                                              (role ==
-                                                  'administrator' ||
-                                                  role == 'manager' ||
-                                                  role ==
-                                                      'merchant'))) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Only administrators, managers, and merchants can edit orders',
-                                                ),
-                                                duration: Duration(
-                                                  seconds: 1,
-                                                ),
-                                                backgroundColor:
-                                                Colors.red,
-                                              ),
-                                            );
-                                            return;
-                                          }
-
-                                          // -----------------------------------------
-                                          // 3. SHOW PIN CONFIRMATION POPUP
-                                          // -----------------------------------------
-
-                                          // -----------------------------------------
-                                          // 3. VERIFY TOP-BAR LOGIN PIN
-                                          // -----------------------------------------
-                                          //
-                                          // widget.pin = PIN used for the current
-                                          // employee/top-bar login session.
-                                          //
-                                          final bool pinMatched =
-                                          await PinConfirmationPopup.show(
-                                            context: context,
-                                            expectedPin: widget.pin,
-                                          );
-
-                                          if (!pinMatched) {
-                                            // User cancelled OR entered the wrong PIN.
-                                            return;
-                                          }
-
-                                          // -----------------------------------------
-                                          // 4. PIN MATCHED → OPEN EDIT ORDER
-                                          // -----------------------------------------
-                                          final bool?
-                                          updated = await Navigator.push<
-                                              bool
-                                          >(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder:
-                                                  (
-                                                  context,
-                                                  ) => EditOrdersListScreen(
-                                                token: widget.token,
-
-                                                // Use the verified/current login PIN.
-                                                pin: widget.pin,
-
-                                                restaurantId:
-                                                widget
-                                                    .restaurantId,
-
-                                                restaurantName:
-                                                widget
-                                                    .restaurantName,
-
-                                                userPermissions:
-                                                _permissions,
-
-                                                orderId:
-                                                orderModel
-                                                    .orderId!,
-                                              ),
-                                            ),
-                                          );
-
-                                          // -----------------------------------------
-                                          // 5. RELOAD AFTER EDIT
-                                          // -----------------------------------------
-                                          if (updated == true &&
-                                              mounted) {
-                                            _reloadAfterEdit();
-                                          }
-
-                                          // await PinConfirmationPopup.show(
-                                          //   context: context,
-                                          //
-                                          //   onProceed: (
-                                          //     enteredPin,
-                                          //   ) async {
-                                          //     debugPrint(
-                                          //       'PIN entered in confirmation popup: $enteredPin',
-                                          //     );
-                                          //
-                                          //     // TODO:
-                                          //     // Verify enteredPin against your backend/API
-                                          //     // before allowing the edit.
-                                          //
-                                          //     final bool?
-                                          //     updated = await Navigator.push<
-                                          //       bool
-                                          //     >(
-                                          //       context,
-                                          //       MaterialPageRoute(
-                                          //         builder:
-                                          //             (
-                                          //               context,
-                                          //             ) => EditOrdersListScreen(
-                                          //               token:
-                                          //                   widget
-                                          //                       .token,
-                                          //               pin: enteredPin,
-                                          //               restaurantId:
-                                          //                   widget
-                                          //                       .restaurantId,
-                                          //               restaurantName:
-                                          //                   widget
-                                          //                       .restaurantName,
-                                          //               userPermissions:
-                                          //                   _permissions,
-                                          //               orderId:
-                                          //                   orderModel
-                                          //                       .orderId!,
-                                          //             ),
-                                          //       ),
-                                          //     );
-                                          //
-                                          //     if (updated == true &&
-                                          //         mounted) {
-                                          //       _reloadAfterEdit();
-                                          //     }
-                                          //   },
-                                          // );
-                                        },
-
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFF4C5F7D,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 14,
-                                            vertical: 8,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Image.asset(
-                                              'assets/editorder.png',
-                                              width: 18,
-                                              height: 18,
-                                              color: Colors.white,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            const Text(
-                                              "Edit Order",
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                    const SizedBox(width: 12),
-
-                                    // Cancel Order Button
-                                    // Cancel Order Button
-                                    if ((orderModel.status ?? '')
-                                        .toLowerCase() ==
-                                        'completed')
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          showDialog(
-                                            context: context,
-                                            barrierDismissible: false,
-                                            builder:
-                                                (context) => Dialog(
-                                              backgroundColor:
-                                              theme.cardColor,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(
-                                                  16,
-                                                ),
-                                              ),
-                                              child: SizedBox(
-                                                width: 400,
-                                                child: Padding(
-                                                  padding:
-                                                  const EdgeInsets.all(
-                                                    20,
-                                                  ),
-                                                  child: Column(
-                                                    mainAxisSize:
-                                                    MainAxisSize.min,
-                                                    children: [
-                                                      Image.asset(
-                                                        'assets/cancelorder.png',
-                                                        height: 90,
-                                                      ),
-                                                      const SizedBox(
-                                                        height: 16,
-                                                      ),
-
-                                                      Text(
-                                                        'Cancel Order?',
-                                                        textAlign:
-                                                        TextAlign
-                                                            .center,
-                                                        style: theme
-                                                            .textTheme
-                                                            .titleLarge
-                                                            ?.copyWith(
-                                                          fontSize: 22,
-                                                          fontWeight:
-                                                          FontWeight
-                                                              .w600,
-                                                        ),
-                                                      ),
-
-                                                      const SizedBox(
-                                                        height: 10,
-                                                      ),
-
-                                                      Text(
-                                                        'Are you sure you want to cancel the order?',
-                                                        textAlign:
-                                                        TextAlign
-                                                            .center,
-                                                        style: theme
-                                                            .textTheme
-                                                            .bodyMedium
-                                                            ?.copyWith(
-                                                          fontSize: 16,
-                                                          color:
-                                                          isDark
-                                                              ? Colors
-                                                              .white70
-                                                              : Colors
-                                                              .black54,
-                                                        ),
-                                                      ),
-
-                                                      const SizedBox(
-                                                        height: 24,
-                                                      ),
-
-                                                      Row(
-                                                        mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                        children: [
-                                                          SizedBox(
-                                                            width: 110,
-                                                            child: OutlinedButton(
-                                                              onPressed:
-                                                                  () => Navigator.pop(
-                                                                context,
-                                                              ),
-                                                              style: OutlinedButton.styleFrom(
-                                                                minimumSize:
-                                                                const Size(
-                                                                  110,
-                                                                  40,
-                                                                ),
-                                                                backgroundColor:
-                                                                isDark
-                                                                    ? const Color(
-                                                                  0xFF2A2F3D,
-                                                                )
-                                                                    : Colors.white,
-                                                                side: BorderSide(
-                                                                  color:
-                                                                  theme
-                                                                      .dividerColor,
-                                                                ),
-                                                                shape: RoundedRectangleBorder(
-                                                                  borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    8,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              child: Text(
-                                                                'Back',
-                                                                style: TextStyle(
-                                                                  color:
-                                                                  theme
-                                                                      .textTheme
-                                                                      .bodyLarge
-                                                                      ?.color,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-
-                                                          const SizedBox(
-                                                            width: 14,
-                                                          ),
-
-                                                          SizedBox(
-                                                            width: 130,
-                                                            child: ElevatedButton(
-                                                              onPressed: () {
-                                                                Navigator.pop(
-                                                                  context,
-                                                                );
-                                                                _cancelCompletedOrder(
-                                                                  orderModel,
-                                                                );
-                                                              },
-                                                              style: ElevatedButton.styleFrom(
-                                                                backgroundColor:
-                                                                const Color(
-                                                                  0xFFFE6464,
-                                                                ),
-                                                                minimumSize:
-                                                                const Size(
-                                                                  130,
-                                                                  40,
-                                                                ),
-                                                                shape: RoundedRectangleBorder(
-                                                                  borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    8,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              child: const Text(
-                                                                'Yes, Done',
-                                                                style: TextStyle(
-                                                                  color:
-                                                                  Colors
-                                                                      .white,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-
-                                        // 🎨 Button UI
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                          Theme.of(context).cardColor,
-                                          elevation: 2,
-                                          shadowColor: const Color(0x554C5F7D),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 14,
-                                            vertical: 9,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            side: const BorderSide(
-                                              width: 0.9,
-                                              color: Color(0xFFFE6464),
-                                            ),
-                                          ),
-                                        ),
-
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.close,
-                                              size: 20,
-                                              color: Color(0xFFFE6464),
-                                            ),
-                                            SizedBox(width: 6),
-                                            Text(
-                                              'Cancel Order',
-                                              style: TextStyle(
-                                                color: Color(0xFFFE6464),
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w400,
-                                                height: 0.75,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    const SizedBox(width: 12),
-
-                                    // Modification History Button
-                                    SizedBox(
-                                      width: 100,
-                                      height: 45,
-                                      child: OutlinedButton(
-                                        onPressed: () {
-                                          _showModificationHistory(orderModel);
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xFFF8FAFC,
-                                          ),
-                                          side: const BorderSide(
-                                            width: 0.8,
-                                            color: Color(0xFF8F9193),
-                                          ),
-                                          shape: RoundedRectangleBorder(
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              /// 🔹 LEFT BLOCK (ORDER INFORMATION & PAYMENT DETAILS)
+                              Flexible(
+                                flex: 1,
+                                child: Container(
+                                  margin: const EdgeInsets.all(4),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(10),
+                                    child: Column(
+                                      children: [
+                                        //   children: [
+                                        //     Expanded(
+                                        //       child: Container(
+                                        //         height: 130,
+                                        //         padding: const EdgeInsets.all(12),
+                                        //         decoration: BoxDecoration(
+                                        //           color: theme.cardColor,
+                                        //           borderRadius: BorderRadius.circular(
+                                        //             10,
+                                        //           ),
+                                        //         ),
+                                        //         child: Column(
+                                        //           crossAxisAlignment:
+                                        //               CrossAxisAlignment.start,
+                                        //           children: [
+                                        //             Row(
+                                        //               mainAxisAlignment:
+                                        //                   MainAxisAlignment
+                                        //                       .spaceBetween,
+                                        //               children: [
+                                        //                 Text(
+                                        //                   "Order Details",
+                                        //                   style: TextStyle(
+                                        //                     fontWeight:
+                                        //                         FontWeight.bold,
+                                        //                   ),
+                                        //                 ),
+                                        //
+                                        //                 // Text(
+                                        //                 //   "#${orderModel.orderId ?? '-'}",
+                                        //                 //   style: const TextStyle(
+                                        //                 //     fontWeight:
+                                        //                 //     FontWeight.bold,
+                                        //                 //     fontSize: 16,
+                                        //                 //   ),
+                                        //                 // ),
+                                        //                 Text(
+                                        //                   orderModel.date ?? "-",
+                                        //                   style: theme
+                                        //                       .textTheme
+                                        //                       .bodySmall
+                                        //                       ?.copyWith(
+                                        //                         fontWeight:
+                                        //                             FontWeight.w700,
+                                        //                         fontSize: 13,
+                                        //                         color:
+                                        //                             isDark
+                                        //                                 ? Colors
+                                        //                                     .white70
+                                        //                                 : const Color(
+                                        //                                   0xFF555555,
+                                        //                                 ),
+                                        //                       ),
+                                        //                 ),
+                                        //               ],
+                                        //             ),
+                                        //             const SizedBox(height: 6),
+                                        //             // const Text(
+                                        //             //   "Order Details",
+                                        //             //   style: TextStyle(
+                                        //             //     fontWeight: FontWeight.bold,
+                                        //             //   ),
+                                        //             // ),
+                                        //             RichText(
+                                        //               text: TextSpan(
+                                        //                 children: [
+                                        //                   TextSpan(
+                                        //                     text: "Order ID : ",
+                                        //                     style: Theme.of(
+                                        //                       context,
+                                        //                     ).textTheme.bodyMedium?.copyWith(
+                                        //                       fontWeight:
+                                        //                           FontWeight.w400,
+                                        //                       fontSize: 14,
+                                        //                       color:
+                                        //                           Theme.of(
+                                        //                                     context,
+                                        //                                   ).brightness ==
+                                        //                                   Brightness
+                                        //                                       .dark
+                                        //                               ? Colors.white70
+                                        //                               : Colors.grey,
+                                        //                     ),
+                                        //                   ),
+                                        //                   TextSpan(
+                                        //                     text:
+                                        //                         "${orderModel.orderId ?? '-'}",
+                                        //                     style: Theme.of(
+                                        //                       context,
+                                        //                     ).textTheme.bodyMedium?.copyWith(
+                                        //                       fontWeight:
+                                        //                           FontWeight.bold,
+                                        //                       fontSize: 14,
+                                        //                       color:
+                                        //                           Theme.of(
+                                        //                                     context,
+                                        //                                   ).brightness ==
+                                        //                                   Brightness
+                                        //                                       .dark
+                                        //                               ? Colors.white
+                                        //                               : const Color(
+                                        //                                 0xFF4C5F7D,
+                                        //                               ),
+                                        //                     ),
+                                        //                   ),
+                                        //                 ],
+                                        //               ),
+                                        //             ),
+                                        //             const SizedBox(height: 6),
+                                        //
+                                        //             // Order Details (Order Type + Table)
+                                        //             RichText(
+                                        //               text: TextSpan(
+                                        //                 style: const TextStyle(
+                                        //                   fontSize: 14,
+                                        //                   color:
+                                        //                       Colors
+                                        //                           .grey, // default for label
+                                        //                 ),
+                                        //                 children: [
+                                        //                   const TextSpan(
+                                        //                     text: "Order Type : ",
+                                        //                   ),
+                                        //                   TextSpan(
+                                        //                     text:
+                                        //                         "${orderModel.orderType ?? '-'}"
+                                        //                         "${(orderModel.tableName != null && orderModel.tableName!.trim().isNotEmpty) ? ', ${orderModel.tableName}' : ''}",
+                                        //                     style: Theme.of(
+                                        //                       context,
+                                        //                     ).textTheme.bodyMedium?.copyWith(
+                                        //                       fontWeight:
+                                        //                           FontWeight.w400,
+                                        //                       color:
+                                        //                           Theme.of(
+                                        //                                     context,
+                                        //                                   ).brightness ==
+                                        //                                   Brightness
+                                        //                                       .dark
+                                        //                               ? Colors.white
+                                        //                               : Colors.black,
+                                        //                     ),
+                                        //                   ),
+                                        //                 ],
+                                        //               ),
+                                        //             ),
+                                        //
+                                        //             const SizedBox(height: 6),
+                                        //
+                                        //             // Additional Info: first KOT items names (like your screenshot)
+                                        //             // if (orderModel.kotOrders != null && orderModel.kotOrders!.isNotEmpty)
+                                        //             //   Text(
+                                        //             //     "Additional Info: ${orderModel.kotOrders!.first.lineItems!.map((e) => e.name).join(', ')}",
+                                        //             //     style: const TextStyle(color: Colors.grey),
+                                        //             //     overflow: TextOverflow.ellipsis,
+                                        //             //   ),
+                                        //             // const SizedBox(height: 8),
+                                        //
+                                        //             // Payment Type
+                                        //             RichText(
+                                        //               text: TextSpan(
+                                        //                 style: const TextStyle(
+                                        //                   fontSize: 14,
+                                        //                   color:
+                                        //                       Colors
+                                        //                           .grey, // label color
+                                        //                 ),
+                                        //                 children: [
+                                        //                   const TextSpan(
+                                        //                     text: "Payment Type : ",
+                                        //                   ),
+                                        //                   TextSpan(
+                                        //                     text:
+                                        //                         orderModel
+                                        //                             .paymentType ??
+                                        //                         '-',
+                                        //                     style: Theme.of(
+                                        //                       context,
+                                        //                     ).textTheme.bodyMedium?.copyWith(
+                                        //                       fontWeight:
+                                        //                           FontWeight.w400,
+                                        //                       color:
+                                        //                           Theme.of(
+                                        //                                     context,
+                                        //                                   ).brightness ==
+                                        //                                   Brightness
+                                        //                                       .dark
+                                        //                               ? Colors.white
+                                        //                               : Colors.black,
+                                        //                     ),
+                                        //                   ),
+                                        //                 ],
+                                        //               ),
+                                        //             ),
+                                        //           ],
+                                        //         ),
+                                        //       ),
+                                        //     ),
+                                        //
+                                        //     const SizedBox(width: 12),
+                                        //
+                                        //     // customer details
+                                        //     Expanded(
+                                        //       child: Container(
+                                        //         height: 130,
+                                        //         padding: const EdgeInsets.all(12),
+                                        //         decoration: BoxDecoration(
+                                        //           color: theme.cardColor,
+                                        //           borderRadius: BorderRadius.circular(
+                                        //             10,
+                                        //           ),
+                                        //         ),
+                                        //         child: Column(
+                                        //           crossAxisAlignment:
+                                        //               CrossAxisAlignment.start,
+                                        //           children: [
+                                        //             Row(
+                                        //               crossAxisAlignment:
+                                        //                   CrossAxisAlignment.start,
+                                        //               children: [
+                                        //                 // LEFT → Customer Details
+                                        //                 const Text(
+                                        //                   "Customer Details",
+                                        //                   style: TextStyle(
+                                        //                     fontWeight:
+                                        //                         FontWeight.bold,
+                                        //                   ),
+                                        //                 ),
+                                        //
+                                        //                 const Spacer(),
+                                        //
+                                        //                 // RIGHT → Status badge
+                                        //                 Container(
+                                        //                   padding:
+                                        //                       const EdgeInsets.symmetric(
+                                        //                         horizontal: 8,
+                                        //                         vertical: 4,
+                                        //                       ),
+                                        //                   decoration: BoxDecoration(
+                                        //                     color: _statusColor(
+                                        //                       orderModel.status,
+                                        //                     ),
+                                        //                     borderRadius:
+                                        //                         BorderRadius.circular(
+                                        //                           5,
+                                        //                         ),
+                                        //                   ),
+                                        //                   child: Text(
+                                        //                     orderModel.status ?? '-',
+                                        //                     style: const TextStyle(
+                                        //                       color: Colors.white,
+                                        //                       fontWeight:
+                                        //                           FontWeight.bold,
+                                        //                       fontSize: 12,
+                                        //                     ),
+                                        //                   ),
+                                        //                 ),
+                                        //               ],
+                                        //             ),
+                                        //
+                                        //             // const SizedBox(height: 8),
+                                        //             const SizedBox(height: 4),
+                                        //
+                                        //             // Customer Name
+                                        //             Row(
+                                        //               // mainAxisAlignment:
+                                        //               // MainAxisAlignment
+                                        //               //     .spaceBetween,
+                                        //               children: [
+                                        //                 const Text(
+                                        //                   "Customer Name :",
+                                        //                   style: TextStyle(
+                                        //                     color: Colors.grey,
+                                        //                   ),
+                                        //                 ),
+                                        //                 const SizedBox(width: 8),
+                                        //                 Text(
+                                        //                   orderModel.customerName !=
+                                        //                               null &&
+                                        //                           orderModel
+                                        //                               .customerName!
+                                        //                               .trim()
+                                        //                               .isNotEmpty
+                                        //                       ? orderModel
+                                        //                           .customerName!
+                                        //                       : "Guest", // fallback if empty
+                                        //                   style: const TextStyle(
+                                        //                     fontWeight:
+                                        //                         FontWeight.w700,
+                                        //                   ),
+                                        //                 ),
+                                        //               ],
+                                        //             ),
+                                        //
+                                        //             const SizedBox(height: 4),
+                                        //
+                                        //             // Customer Phone
+                                        //             Row(
+                                        //               // mainAxisAlignment:
+                                        //               // MainAxisAlignment
+                                        //               //     .spaceBetween,
+                                        //               children: [
+                                        //                 const Text(
+                                        //                   "Contact Number :",
+                                        //                   style: TextStyle(
+                                        //                     color: Colors.grey,
+                                        //                   ),
+                                        //                 ),
+                                        //                 const SizedBox(width: 8),
+                                        //                 Text(
+                                        //                   orderModel.customerPhone !=
+                                        //                               null &&
+                                        //                           orderModel
+                                        //                               .customerPhone!
+                                        //                               .trim()
+                                        //                               .isNotEmpty
+                                        //                       ? orderModel
+                                        //                           .customerPhone!
+                                        //                       : "-", // fallback if empty
+                                        //                   style: const TextStyle(
+                                        //                     fontWeight:
+                                        //                         FontWeight.w700,
+                                        //                   ),
+                                        //                 ),
+                                        //               ],
+                                        //             ),
+                                        //           ],
+                                        //         ),
+                                        //       ),
+                                        //     ),
+                                        //   ],
+                                        // ),
+                                        // ================= ORDER INFORMATION =================
+                                        Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: theme.cardColor,
                                             borderRadius: BorderRadius.circular(
                                               10,
                                             ),
-                                          ),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 10,
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          '🕐  Mod. History',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: Color(0xFF475569),
-                                            fontSize: 11,
-                                            fontFamily: 'Inter',
-                                            fontWeight: FontWeight.w600,
-                                            height: 1.22,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Column(
-                                children: [
-                                  //order details
-                                  // Row(
-                                  //   children: [
-                                  //     Expanded(
-                                  //       child: Container(
-                                  //         height: 130,
-                                  //         padding: const EdgeInsets.all(12),
-                                  //         decoration: BoxDecoration(
-                                  //           color: theme.cardColor,
-                                  //           borderRadius: BorderRadius.circular(
-                                  //             10,
-                                  //           ),
-                                  //         ),
-                                  //         child: Column(
-                                  //           crossAxisAlignment:
-                                  //               CrossAxisAlignment.start,
-                                  //           children: [
-                                  //             Row(
-                                  //               mainAxisAlignment:
-                                  //                   MainAxisAlignment
-                                  //                       .spaceBetween,
-                                  //               children: [
-                                  //                 Text(
-                                  //                   "Order Details",
-                                  //                   style: TextStyle(
-                                  //                     fontWeight:
-                                  //                         FontWeight.bold,
-                                  //                   ),
-                                  //                 ),
-                                  //
-                                  //                 // Text(
-                                  //                 //   "#${orderModel.orderId ?? '-'}",
-                                  //                 //   style: const TextStyle(
-                                  //                 //     fontWeight:
-                                  //                 //     FontWeight.bold,
-                                  //                 //     fontSize: 16,
-                                  //                 //   ),
-                                  //                 // ),
-                                  //                 Text(
-                                  //                   orderModel.date ?? "-",
-                                  //                   style: theme
-                                  //                       .textTheme
-                                  //                       .bodySmall
-                                  //                       ?.copyWith(
-                                  //                         fontWeight:
-                                  //                             FontWeight.w700,
-                                  //                         fontSize: 13,
-                                  //                         color:
-                                  //                             isDark
-                                  //                                 ? Colors
-                                  //                                     .white70
-                                  //                                 : const Color(
-                                  //                                   0xFF555555,
-                                  //                                 ),
-                                  //                       ),
-                                  //                 ),
-                                  //               ],
-                                  //             ),
-                                  //             const SizedBox(height: 6),
-                                  //             // const Text(
-                                  //             //   "Order Details",
-                                  //             //   style: TextStyle(
-                                  //             //     fontWeight: FontWeight.bold,
-                                  //             //   ),
-                                  //             // ),
-                                  //             RichText(
-                                  //               text: TextSpan(
-                                  //                 children: [
-                                  //                   TextSpan(
-                                  //                     text: "Order ID : ",
-                                  //                     style: Theme.of(
-                                  //                       context,
-                                  //                     ).textTheme.bodyMedium?.copyWith(
-                                  //                       fontWeight:
-                                  //                           FontWeight.w400,
-                                  //                       fontSize: 14,
-                                  //                       color:
-                                  //                           Theme.of(
-                                  //                                     context,
-                                  //                                   ).brightness ==
-                                  //                                   Brightness
-                                  //                                       .dark
-                                  //                               ? Colors.white70
-                                  //                               : Colors.grey,
-                                  //                     ),
-                                  //                   ),
-                                  //                   TextSpan(
-                                  //                     text:
-                                  //                         "${orderModel.orderId ?? '-'}",
-                                  //                     style: Theme.of(
-                                  //                       context,
-                                  //                     ).textTheme.bodyMedium?.copyWith(
-                                  //                       fontWeight:
-                                  //                           FontWeight.bold,
-                                  //                       fontSize: 14,
-                                  //                       color:
-                                  //                           Theme.of(
-                                  //                                     context,
-                                  //                                   ).brightness ==
-                                  //                                   Brightness
-                                  //                                       .dark
-                                  //                               ? Colors.white
-                                  //                               : const Color(
-                                  //                                 0xFF4C5F7D,
-                                  //                               ),
-                                  //                     ),
-                                  //                   ),
-                                  //                 ],
-                                  //               ),
-                                  //             ),
-                                  //             const SizedBox(height: 6),
-                                  //
-                                  //             // Order Details (Order Type + Table)
-                                  //             RichText(
-                                  //               text: TextSpan(
-                                  //                 style: const TextStyle(
-                                  //                   fontSize: 14,
-                                  //                   color:
-                                  //                       Colors
-                                  //                           .grey, // default for label
-                                  //                 ),
-                                  //                 children: [
-                                  //                   const TextSpan(
-                                  //                     text: "Order Type : ",
-                                  //                   ),
-                                  //                   TextSpan(
-                                  //                     text:
-                                  //                         "${orderModel.orderType ?? '-'}"
-                                  //                         "${(orderModel.tableName != null && orderModel.tableName!.trim().isNotEmpty) ? ', ${orderModel.tableName}' : ''}",
-                                  //                     style: Theme.of(
-                                  //                       context,
-                                  //                     ).textTheme.bodyMedium?.copyWith(
-                                  //                       fontWeight:
-                                  //                           FontWeight.w400,
-                                  //                       color:
-                                  //                           Theme.of(
-                                  //                                     context,
-                                  //                                   ).brightness ==
-                                  //                                   Brightness
-                                  //                                       .dark
-                                  //                               ? Colors.white
-                                  //                               : Colors.black,
-                                  //                     ),
-                                  //                   ),
-                                  //                 ],
-                                  //               ),
-                                  //             ),
-                                  //
-                                  //             const SizedBox(height: 6),
-                                  //
-                                  //             // Additional Info: first KOT items names (like your screenshot)
-                                  //             // if (orderModel.kotOrders != null && orderModel.kotOrders!.isNotEmpty)
-                                  //             //   Text(
-                                  //             //     "Additional Info: ${orderModel.kotOrders!.first.lineItems!.map((e) => e.name).join(', ')}",
-                                  //             //     style: const TextStyle(color: Colors.grey),
-                                  //             //     overflow: TextOverflow.ellipsis,
-                                  //             //   ),
-                                  //             // const SizedBox(height: 8),
-                                  //
-                                  //             // Payment Type
-                                  //             RichText(
-                                  //               text: TextSpan(
-                                  //                 style: const TextStyle(
-                                  //                   fontSize: 14,
-                                  //                   color:
-                                  //                       Colors
-                                  //                           .grey, // label color
-                                  //                 ),
-                                  //                 children: [
-                                  //                   const TextSpan(
-                                  //                     text: "Payment Type : ",
-                                  //                   ),
-                                  //                   TextSpan(
-                                  //                     text:
-                                  //                         orderModel
-                                  //                             .paymentType ??
-                                  //                         '-',
-                                  //                     style: Theme.of(
-                                  //                       context,
-                                  //                     ).textTheme.bodyMedium?.copyWith(
-                                  //                       fontWeight:
-                                  //                           FontWeight.w400,
-                                  //                       color:
-                                  //                           Theme.of(
-                                  //                                     context,
-                                  //                                   ).brightness ==
-                                  //                                   Brightness
-                                  //                                       .dark
-                                  //                               ? Colors.white
-                                  //                               : Colors.black,
-                                  //                     ),
-                                  //                   ),
-                                  //                 ],
-                                  //               ),
-                                  //             ),
-                                  //           ],
-                                  //         ),
-                                  //       ),
-                                  //     ),
-                                  //
-                                  //     const SizedBox(width: 12),
-                                  //
-                                  //     // customer details
-                                  //     Expanded(
-                                  //       child: Container(
-                                  //         height: 130,
-                                  //         padding: const EdgeInsets.all(12),
-                                  //         decoration: BoxDecoration(
-                                  //           color: theme.cardColor,
-                                  //           borderRadius: BorderRadius.circular(
-                                  //             10,
-                                  //           ),
-                                  //         ),
-                                  //         child: Column(
-                                  //           crossAxisAlignment:
-                                  //               CrossAxisAlignment.start,
-                                  //           children: [
-                                  //             Row(
-                                  //               crossAxisAlignment:
-                                  //                   CrossAxisAlignment.start,
-                                  //               children: [
-                                  //                 // LEFT → Customer Details
-                                  //                 const Text(
-                                  //                   "Customer Details",
-                                  //                   style: TextStyle(
-                                  //                     fontWeight:
-                                  //                         FontWeight.bold,
-                                  //                   ),
-                                  //                 ),
-                                  //
-                                  //                 const Spacer(),
-                                  //
-                                  //                 // RIGHT → Status badge
-                                  //                 Container(
-                                  //                   padding:
-                                  //                       const EdgeInsets.symmetric(
-                                  //                         horizontal: 8,
-                                  //                         vertical: 4,
-                                  //                       ),
-                                  //                   decoration: BoxDecoration(
-                                  //                     color: _statusColor(
-                                  //                       orderModel.status,
-                                  //                     ),
-                                  //                     borderRadius:
-                                  //                         BorderRadius.circular(
-                                  //                           5,
-                                  //                         ),
-                                  //                   ),
-                                  //                   child: Text(
-                                  //                     orderModel.status ?? '-',
-                                  //                     style: const TextStyle(
-                                  //                       color: Colors.white,
-                                  //                       fontWeight:
-                                  //                           FontWeight.bold,
-                                  //                       fontSize: 12,
-                                  //                     ),
-                                  //                   ),
-                                  //                 ),
-                                  //               ],
-                                  //             ),
-                                  //
-                                  //             // const SizedBox(height: 8),
-                                  //             const SizedBox(height: 4),
-                                  //
-                                  //             // Customer Name
-                                  //             Row(
-                                  //               // mainAxisAlignment:
-                                  //               // MainAxisAlignment
-                                  //               //     .spaceBetween,
-                                  //               children: [
-                                  //                 const Text(
-                                  //                   "Customer Name :",
-                                  //                   style: TextStyle(
-                                  //                     color: Colors.grey,
-                                  //                   ),
-                                  //                 ),
-                                  //                 const SizedBox(width: 8),
-                                  //                 Text(
-                                  //                   orderModel.customerName !=
-                                  //                               null &&
-                                  //                           orderModel
-                                  //                               .customerName!
-                                  //                               .trim()
-                                  //                               .isNotEmpty
-                                  //                       ? orderModel
-                                  //                           .customerName!
-                                  //                       : "Guest", // fallback if empty
-                                  //                   style: const TextStyle(
-                                  //                     fontWeight:
-                                  //                         FontWeight.w700,
-                                  //                   ),
-                                  //                 ),
-                                  //               ],
-                                  //             ),
-                                  //
-                                  //             const SizedBox(height: 4),
-                                  //
-                                  //             // Customer Phone
-                                  //             Row(
-                                  //               // mainAxisAlignment:
-                                  //               // MainAxisAlignment
-                                  //               //     .spaceBetween,
-                                  //               children: [
-                                  //                 const Text(
-                                  //                   "Contact Number :",
-                                  //                   style: TextStyle(
-                                  //                     color: Colors.grey,
-                                  //                   ),
-                                  //                 ),
-                                  //                 const SizedBox(width: 8),
-                                  //                 Text(
-                                  //                   orderModel.customerPhone !=
-                                  //                               null &&
-                                  //                           orderModel
-                                  //                               .customerPhone!
-                                  //                               .trim()
-                                  //                               .isNotEmpty
-                                  //                       ? orderModel
-                                  //                           .customerPhone!
-                                  //                       : "-", // fallback if empty
-                                  //                   style: const TextStyle(
-                                  //                     fontWeight:
-                                  //                         FontWeight.w700,
-                                  //                   ),
-                                  //                 ),
-                                  //               ],
-                                  //             ),
-                                  //           ],
-                                  //         ),
-                                  //       ),
-                                  //     ),
-                                  //   ],
-                                  // ),
-                                  // ================= ORDER INFORMATION =================
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: theme.cardColor,
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(
-                                        color:
-                                        isDark
-                                            ? Colors.white12
-                                            : const Color(0xFFE1E4EA),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "ORDER INFORMATION",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color:
-                                            isDark
-                                                ? Colors.white70
-                                                : const Color(0xFF60708D),
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 14),
-
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _orderInfoRow(
-                                                "Order ID",
-                                                "#${orderModel.orderId ?? '-'}",
-                                                isDark,
-                                              ),
+                                            border: Border.all(
+                                              color:
+                                                  isDark
+                                                      ? Colors.white12
+                                                      : const Color(0xFFE1E4EA),
                                             ),
-
-                                            Expanded(
-                                              child: _orderInfoRow(
-                                                "Order Type",
-                                                "${orderModel.orderType ?? '-'}"
-                                                    "${orderModel.tableName != null && orderModel.tableName!.trim().isNotEmpty ? ', ${orderModel.tableName}' : ''}",
-                                                isDark,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-
-                                        const SizedBox(height: 12),
-
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: _orderInfoRow(
-                                                "Payment Type",
-                                                orderModel.paymentType ?? "-",
-                                                isDark,
-                                              ),
-                                            ),
-
-                                            Expanded(
-                                              child: Row(
-                                                children: [
-                                                  Text(
-                                                    "Order Status",
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      color:
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                "ORDER INFORMATION",
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color:
                                                       isDark
-                                                          ? Colors.white54
+                                                          ? Colors.white70
                                                           : const Color(
-                                                        0xFF8490A5,
-                                                      ),
+                                                            0xFF60708D,
+                                                          ),
+                                                  letterSpacing: 0.3,
+                                                ),
+                                              ),
+
+                                              const SizedBox(height: 14),
+
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _orderInfoRow(
+                                                      "Order ID",
+                                                      "#${orderModel.orderId ?? '-'}",
+                                                      isDark,
                                                     ),
                                                   ),
 
-                                                  const SizedBox(width: 12),
-
-                                                  Container(
-                                                    padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: const Color(
-                                                        0xFFDFF7E8,
-                                                      ),
-                                                      borderRadius:
-                                                      BorderRadius.circular(
-                                                        20,
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      orderModel.status ?? "-",
-                                                      style: const TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                        FontWeight.w600,
-                                                        color: Color(
-                                                          0xFF24A148,
-                                                        ),
-                                                      ),
+                                                  Expanded(
+                                                    child: _orderInfoRow(
+                                                      "Order Type",
+                                                      "${orderModel.orderType ?? '-'}"
+                                                          "${orderModel.tableName != null && orderModel.tableName!.trim().isNotEmpty ? ', ${orderModel.tableName}' : ''}",
+                                                      isDark,
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
 
-                                  // payment summary
-                                  Flexible(
-                                    fit: FlexFit.tight,
-                                    child: Container(
-                                      width: double.infinity,
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                      ),
-                                      padding: const EdgeInsets.fromLTRB(
-                                        12,
-                                        10,
-                                        12,
-                                        12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: theme.cardColor,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color:
-                                          isDark
-                                              ? Colors.white12
-                                              : const Color(0xFFE1E4EA),
-                                        ),
-                                      ),
-                                      child: SingleChildScrollView(
-                                        physics: const ClampingScrollPhysics(),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                          children: [
-                                            // =========================================================
-                                            // PAYMENT DETAILS HEADER
-                                            // =========================================================
-                                            Row(
-                                              mainAxisAlignment:
-                                              MainAxisAlignment
-                                                  .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "PAYMENT DETAILS",
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: 0.4,
-                                                    color:
-                                                    isDark
-                                                        ? Colors.white70
-                                                        : const Color(
-                                                      0xFF60708D,
+                                              const SizedBox(height: 12),
+
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _orderInfoRow(
+                                                      "Payment Type",
+                                                      orderModel.paymentType ??
+                                                          "-",
+                                                      isDark,
                                                     ),
                                                   ),
-                                                ),
 
-                                                if (orderModel.isUpdated
-                                                    ?.toLowerCase() ==
-                                                    'yes')
+                                                  Expanded(
+                                                    child: Row(
+                                                      children: [
+                                                        Text(
+                                                          "Order Status",
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            color:
+                                                                isDark
+                                                                    ? Colors
+                                                                        .white54
+                                                                    : const Color(
+                                                                      0xFF8490A5,
+                                                                    ),
+                                                          ),
+                                                        ),
+
+                                                        const SizedBox(
+                                                          width: 12,
+                                                        ),
+
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 10,
+                                                                vertical: 4,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: const Color(
+                                                              0xFFDFF7E8,
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  20,
+                                                                ),
+                                                          ),
+                                                          child: Text(
+                                                            orderModel.status ??
+                                                                "-",
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 11,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Color(
+                                                                    0xFF24A148,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+
+                                        // payment summary
+                                        Flexible(
+                                          fit: FlexFit.tight,
+                                          child: Container(
+                                            width: double.infinity,
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            padding: const EdgeInsets.fromLTRB(
+                                              12,
+                                              10,
+                                              12,
+                                              12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: theme.cardColor,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color:
+                                                    isDark
+                                                        ? Colors.white12
+                                                        : const Color(
+                                                          0xFFE1E4EA,
+                                                        ),
+                                              ),
+                                            ),
+                                            child: SingleChildScrollView(
+                                              physics:
+                                                  const ClampingScrollPhysics(),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  // =========================================================
+                                                  // PAYMENT DETAILS HEADER
+                                                  // =========================================================
                                                   Row(
-                                                    mainAxisSize:
-                                                    MainAxisSize.min,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
                                                     children: [
-                                                      Image.asset(
-                                                        'assets/refreshicon.png',
-                                                        width: 11,
-                                                        height: 11,
-                                                        color: Colors.orange,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      const Text(
-                                                        "Updated",
+                                                      Text(
+                                                        "PAYMENT DETAILS",
                                                         style: TextStyle(
-                                                          color: Colors.orange,
-                                                          fontWeight:
-                                                          FontWeight.w600,
                                                           fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          letterSpacing: 0.4,
+                                                          color:
+                                                              isDark
+                                                                  ? Colors
+                                                                      .white70
+                                                                  : const Color(
+                                                                    0xFF60708D,
+                                                                  ),
                                                         ),
                                                       ),
+
+                                                      if (orderModel.isUpdated
+                                                              ?.toLowerCase() ==
+                                                          'yes')
+                                                        Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
+                                                          children: [
+                                                            Image.asset(
+                                                              'assets/refreshicon.png',
+                                                              width: 11,
+                                                              height: 11,
+                                                              color:
+                                                                  Colors.orange,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 4,
+                                                            ),
+                                                            const Text(
+                                                              "Updated",
+                                                              style: TextStyle(
+                                                                color:
+                                                                    Colors
+                                                                        .orange,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                fontSize: 10,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
                                                     ],
                                                   ),
-                                              ],
-                                            ),
 
-                                            const SizedBox(height: 10),
+                                                  const SizedBox(height: 10),
 
-                                            // =========================================================
-                                            // GROSS TOTAL
-                                            // =========================================================
-                                            paymentRow(
-                                              "Gross Total",
-                                              "$_currency${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
-                                              fontWeight: FontWeight.w500,
-                                              fontSize: 11,
-                                            ),
+                                                  // =========================================================
+                                                  // GROSS TOTAL
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Gross Total",
+                                                    "$_currency${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
+                                                    fontWeight: FontWeight.w500,
+                                                    fontSize: 11,
+                                                  ),
 
-                                            // =========================================================
-                                            // COUPON / DISCOUNTS
-                                            // =========================================================
-                                            paymentRow(
-                                              "Coupon / Discounts",
-                                              "-$_currency${orderModel.totalCouponDiscount.toDouble().toStringAsFixed(2)}",
-                                              color: Colors.green,
-                                              fontSize: 11,
-                                            ),
+                                                  // =========================================================
+                                                  // COUPON / DISCOUNTS
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Coupon / Discounts",
+                                                    "-$_currency${orderModel.totalCouponDiscount.toDouble().toStringAsFixed(2)}",
+                                                    color: Colors.green,
+                                                    fontSize: 11,
+                                                  ),
 
-                                            const SizedBox(height: 4),
+                                                  const SizedBox(height: 4),
 
-                                            // =========================================================
-                                            // DIVIDER
-                                            // =========================================================
-                                            ShaderMask(
-                                              shaderCallback: (Rect bounds) {
-                                                final baseColor =
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black;
+                                                  // =========================================================
+                                                  // DIVIDER
+                                                  // =========================================================
+                                                  ShaderMask(
+                                                    shaderCallback: (
+                                                      Rect bounds,
+                                                    ) {
+                                                      final baseColor =
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black;
 
-                                                return LinearGradient(
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                  colors: [
-                                                    baseColor.withOpacity(0.1),
-                                                    baseColor.withOpacity(0.7),
-                                                    baseColor.withOpacity(0.1),
-                                                  ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ).createShader(bounds);
-                                              },
-                                              blendMode: BlendMode.srcIn,
-                                              child: DottedLine(
-                                                dashLength: 6,
-                                                dashGapLength: 4,
-                                                lineThickness: 1,
-                                                direction: Axis.horizontal,
-                                                dashColor:
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ),
-                                            ),
+                                                      return LinearGradient(
+                                                        begin:
+                                                            Alignment
+                                                                .centerLeft,
+                                                        end:
+                                                            Alignment
+                                                                .centerRight,
+                                                        colors: [
+                                                          baseColor.withOpacity(
+                                                            0.1,
+                                                          ),
+                                                          baseColor.withOpacity(
+                                                            0.7,
+                                                          ),
+                                                          baseColor.withOpacity(
+                                                            0.1,
+                                                          ),
+                                                        ],
+                                                        stops: const [
+                                                          0.0,
+                                                          0.5,
+                                                          1.0,
+                                                        ],
+                                                      ).createShader(bounds);
+                                                    },
+                                                    blendMode: BlendMode.srcIn,
+                                                    child: DottedLine(
+                                                      dashLength: 6,
+                                                      dashGapLength: 4,
+                                                      lineThickness: 1,
+                                                      direction:
+                                                          Axis.horizontal,
+                                                      dashColor:
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black,
+                                                    ),
+                                                  ),
 
-                                            const SizedBox(height: 4),
+                                                  const SizedBox(height: 4),
 
-                                            // =========================================================
-                                            // SUB TOTAL
-                                            // =========================================================
-                                            paymentRow(
-                                              "Sub Total",
-                                              "$_currency${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                                  // =========================================================
+                                                  // SUB TOTAL
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Sub Total",
+                                                    "$_currency${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
 
-                                            const SizedBox(height: 3),
+                                                  const SizedBox(height: 3),
 
-                                            // =========================================================
-                                            // TAX FOOD
-                                            // =========================================================
-                                            paymentRow(
-                                              "Tax @5% Food",
-                                              "",
-                                              color:
-                                              isDark
-                                                  ? Colors.white54
-                                                  : const Color(0xFF8190A8),
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                                  // =========================================================
+                                                  // TAX FOOD
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Tax @5% Food",
+                                                    "",
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white54
+                                                            : const Color(
+                                                              0xFF8190A8,
+                                                            ),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
 
-                                            // =========================================================
-                                            // CGST
-                                            // =========================================================
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 18,
-                                              ),
-                                              child: paymentRow(
-                                                "CGST 2.5%",
-                                                "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
-                                                fontSize: 9,
-                                                color:
-                                                isDark
-                                                    ? Colors.white54
-                                                    : const Color(
-                                                  0xFF8190A8,
-                                                ),
-                                              ),
-                                            ),
+                                                  // =========================================================
+                                                  // CGST
+                                                  // =========================================================
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          left: 18,
+                                                        ),
+                                                    child: paymentRow(
+                                                      "CGST 2.5%",
+                                                      "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                      fontSize: 9,
+                                                      color:
+                                                          isDark
+                                                              ? Colors.white54
+                                                              : const Color(
+                                                                0xFF8190A8,
+                                                              ),
+                                                    ),
+                                                  ),
 
-                                            // =========================================================
-                                            // SGST
-                                            // =========================================================
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                left: 18,
-                                              ),
-                                              child: paymentRow(
-                                                "SGST 2.5%",
-                                                "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
-                                                fontSize: 9,
-                                                color:
-                                                isDark
-                                                    ? Colors.white54
-                                                    : const Color(
-                                                  0xFF8190A8,
-                                                ),
-                                              ),
-                                            ),
+                                                  // =========================================================
+                                                  // SGST
+                                                  // =========================================================
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          left: 18,
+                                                        ),
+                                                    child: paymentRow(
+                                                      "SGST 2.5%",
+                                                      "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                      fontSize: 9,
+                                                      color:
+                                                          isDark
+                                                              ? Colors.white54
+                                                              : const Color(
+                                                                0xFF8190A8,
+                                                              ),
+                                                    ),
+                                                  ),
 
-                                            // =========================================================
-                                            // ALCOHOL TAX
-                                            // =========================================================
-                                            paymentRow(
-                                              "Tax Alcohol @Nil",
-                                              "${_currency}0.00",
-                                              fontSize: 10,
-                                              color:
-                                              isDark
-                                                  ? Colors.white54
-                                                  : const Color(0xFF8190A8),
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                                  // =========================================================
+                                                  // ALCOHOL TAX
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Tax Alcohol @Nil",
+                                                    "${_currency}0.00",
+                                                    fontSize: 10,
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white54
+                                                            : const Color(
+                                                              0xFF8190A8,
+                                                            ),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
 
-                                            const SizedBox(height: 4),
+                                                  const SizedBox(height: 4),
 
-                                            // =========================================================
-                                            // DIVIDER
-                                            // =========================================================
-                                            ShaderMask(
-                                              shaderCallback: (Rect bounds) {
-                                                final baseColor =
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black;
+                                                  // =========================================================
+                                                  // DIVIDER
+                                                  // =========================================================
+                                                  ShaderMask(
+                                                    shaderCallback: (
+                                                      Rect bounds,
+                                                    ) {
+                                                      final baseColor =
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black;
 
-                                                return LinearGradient(
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                  colors: [
-                                                    baseColor.withOpacity(0.1),
-                                                    baseColor.withOpacity(0.7),
-                                                    baseColor.withOpacity(0.1),
-                                                  ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ).createShader(bounds);
-                                              },
-                                              blendMode: BlendMode.srcIn,
-                                              child: DottedLine(
-                                                dashLength: 6,
-                                                dashGapLength: 4,
-                                                lineThickness: 1,
-                                                direction: Axis.horizontal,
-                                                dashColor:
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
+                                                      return LinearGradient(
+                                                        begin:
+                                                            Alignment
+                                                                .centerLeft,
+                                                        end:
+                                                            Alignment
+                                                                .centerRight,
+                                                        colors: [
+                                                          baseColor.withOpacity(
+                                                            0.1,
+                                                          ),
+                                                          baseColor.withOpacity(
+                                                            0.7,
+                                                          ),
+                                                          baseColor.withOpacity(
+                                                            0.1,
+                                                          ),
+                                                        ],
+                                                        stops: const [
+                                                          0.0,
+                                                          0.5,
+                                                          1.0,
+                                                        ],
+                                                      ).createShader(bounds);
+                                                    },
+                                                    blendMode: BlendMode.srcIn,
+                                                    child: DottedLine(
+                                                      dashLength: 6,
+                                                      dashGapLength: 4,
+                                                      lineThickness: 1,
+                                                      direction:
+                                                          Axis.horizontal,
+                                                      dashColor:
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
 
-                                            // =========================================================
-                                            // TOTAL TAX
-                                            // =========================================================
-                                            paymentRow(
-                                              "Total Tax",
-                                              "$_currency${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                                  // =========================================================
+                                                  // TOTAL TAX
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Total Tax",
+                                                    "$_currency${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
 
-                                            const SizedBox(height: 4),
+                                                  const SizedBox(height: 4),
 
-                                            // =========================================================
-                                            // DIVIDER
-                                            // =========================================================
-                                            ShaderMask(
-                                              shaderCallback: (Rect bounds) {
-                                                final baseColor =
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black;
+                                                  // =========================================================
+                                                  // DIVIDER
+                                                  // =========================================================
+                                                  ShaderMask(
+                                                    shaderCallback: (
+                                                      Rect bounds,
+                                                    ) {
+                                                      final baseColor =
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black;
 
-                                                return LinearGradient(
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                  colors: [
-                                                    baseColor.withOpacity(0.1),
-                                                    baseColor.withOpacity(0.7),
-                                                    baseColor.withOpacity(0.1),
-                                                  ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ).createShader(bounds);
-                                              },
-                                              blendMode: BlendMode.srcIn,
-                                              child: DottedLine(
-                                                dashLength: 6,
-                                                dashGapLength: 4,
-                                                lineThickness: 1,
-                                                direction: Axis.horizontal,
-                                                dashColor:
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ),
-                                            ),
+                                                      return LinearGradient(
+                                                        begin:
+                                                            Alignment
+                                                                .centerLeft,
+                                                        end:
+                                                            Alignment
+                                                                .centerRight,
+                                                        colors: [
+                                                          baseColor.withOpacity(
+                                                            0.1,
+                                                          ),
+                                                          baseColor.withOpacity(
+                                                            0.7,
+                                                          ),
+                                                          baseColor.withOpacity(
+                                                            0.1,
+                                                          ),
+                                                        ],
+                                                        stops: const [
+                                                          0.0,
+                                                          0.5,
+                                                          1.0,
+                                                        ],
+                                                      ).createShader(bounds);
+                                                    },
+                                                    blendMode: BlendMode.srcIn,
+                                                    child: DottedLine(
+                                                      dashLength: 6,
+                                                      dashGapLength: 4,
+                                                      lineThickness: 1,
+                                                      direction:
+                                                          Axis.horizontal,
+                                                      dashColor:
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black,
+                                                    ),
+                                                  ),
 
-                                            const SizedBox(height: 4),
+                                                  const SizedBox(height: 4),
 
-                                            // =========================================================
-                                            // NET TOTAL
-                                            // =========================================================
-                                            paymentRow(
-                                              "Net Total",
-                                              "$_currency${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 11,
-                                            ),
+                                                  // =========================================================
+                                                  // NET TOTAL
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Net Total",
+                                                    "$_currency${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 11,
+                                                  ),
 
-                                            // =========================================================
-                                            // MERCHANT DISCOUNT
-                                            // =========================================================
-                                            paymentRow(
-                                              "Merchant Discount",
-                                              "-$_currency${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
-                                              color: Colors.blue,
-                                              fontSize: 10,
-                                            ),
+                                                  // =========================================================
+                                                  // MERCHANT DISCOUNT
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Merchant Discount",
+                                                    "-$_currency${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
+                                                    color: Colors.blue,
+                                                    fontSize: 10,
+                                                  ),
 
-                                            // =========================================================
-                                            // TIP
-                                            // =========================================================
-                                            if ((orderModel.tipAmount ?? 0) > 0)
-                                              paymentRow(
-                                                "Tip Amount",
-                                                "$_currency${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
-                                                color: Colors.green,
-                                                fontSize: 10,
-                                              ),
+                                                  // =========================================================
+                                                  // TIP
+                                                  // =========================================================
+                                                  if ((orderModel.tipAmount ??
+                                                          0) >
+                                                      0)
+                                                    paymentRow(
+                                                      "Tip Amount",
+                                                      "$_currency${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
+                                                      color: Colors.green,
+                                                      fontSize: 10,
+                                                    ),
 
-                                            // =========================================================
-                                            // SERVICE CHARGE
-                                            // =========================================================
-                                            if ((orderModel
-                                                .serviceChargeValue ??
-                                                0) >
-                                                0)
-                                              paymentRow(
-                                                "Service Charges",
-                                                "$_currency${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
-                                                color: Colors.blue,
-                                                fontSize: 10,
-                                              ),
+                                                  // =========================================================
+                                                  // SERVICE CHARGE
+                                                  // =========================================================
+                                                  if ((orderModel
+                                                              .serviceChargeValue ??
+                                                          0) >
+                                                      0)
+                                                    paymentRow(
+                                                      "Service Charges",
+                                                      "$_currency${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
+                                                      color: Colors.blue,
+                                                      fontSize: 10,
+                                                    ),
 
-                                            // =========================================================
-                                            // ROUND OFF
-                                            // =========================================================
-                                            paymentRow(
-                                              "Round Off",
-                                              "${(orderModel.roundOff ?? 0) >= 0 ? '+' : '-'}₹${(orderModel.roundOff ?? 0).abs().toStringAsFixed(2)}",
-                                              color:
-                                              isDark
-                                                  ? Colors.white54
-                                                  : const Color(0xFF8190A8),
-                                              fontSize: 10,
-                                            ),
+                                                  // =========================================================
+                                                  // ROUND OFF
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Round Off",
+                                                    "${(orderModel.roundOff ?? 0) >= 0 ? '+' : '-'}₹${(orderModel.roundOff ?? 0).abs().toStringAsFixed(2)}",
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white54
+                                                            : const Color(
+                                                              0xFF8190A8,
+                                                            ),
+                                                    fontSize: 10,
+                                                  ),
 
-                                            const SizedBox(height: 4),
+                                                  const SizedBox(height: 4),
 
-                                            // =========================================================
-                                            // FINAL DIVIDER
-                                            // =========================================================
-                                            ShaderMask(
-                                              shaderCallback: (Rect bounds) {
-                                                final baseColor =
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black;
+                                                  // =========================================================
+                                                  // FINAL DIVIDER
+                                                  // =========================================================
+                                                  ShaderMask(
+                                                    shaderCallback: (
+                                                      Rect bounds,
+                                                    ) {
+                                                      final baseColor =
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black;
 
-                                                return LinearGradient(
-                                                  begin: Alignment.centerLeft,
-                                                  end: Alignment.centerRight,
-                                                  colors: [
-                                                    baseColor.withOpacity(0.1),
-                                                    baseColor.withOpacity(0.7),
-                                                    baseColor.withOpacity(0.1),
-                                                  ],
-                                                  stops: const [0.0, 0.5, 1.0],
-                                                ).createShader(bounds);
-                                              },
-                                              blendMode: BlendMode.srcIn,
-                                              child: DottedLine(
-                                                dashLength: 6,
-                                                dashGapLength: 4,
-                                                lineThickness: 1,
-                                                direction: Axis.horizontal,
-                                                dashColor:
-                                                isDark
-                                                    ? Colors.white
-                                                    : Colors.black,
-                                              ),
-                                            ),
+                                                      return LinearGradient(
+                                                        begin:
+                                                            Alignment
+                                                                .centerLeft,
+                                                        end:
+                                                            Alignment
+                                                                .centerRight,
+                                                        colors: [
+                                                          baseColor.withOpacity(
+                                                            0.1,
+                                                          ),
+                                                          baseColor.withOpacity(
+                                                            0.7,
+                                                          ),
+                                                          baseColor.withOpacity(
+                                                            0.1,
+                                                          ),
+                                                        ],
+                                                        stops: const [
+                                                          0.0,
+                                                          0.5,
+                                                          1.0,
+                                                        ],
+                                                      ).createShader(bounds);
+                                                    },
+                                                    blendMode: BlendMode.srcIn,
+                                                    child: DottedLine(
+                                                      dashLength: 6,
+                                                      dashGapLength: 4,
+                                                      lineThickness: 1,
+                                                      direction:
+                                                          Axis.horizontal,
+                                                      dashColor:
+                                                          isDark
+                                                              ? Colors.white
+                                                              : Colors.black,
+                                                    ),
+                                                  ),
 
-                                            const SizedBox(height: 7),
+                                                  const SizedBox(height: 7),
 
-                                            // =========================================================
-                                            // NET PAYABLE
-                                            // =========================================================
-                                            paymentRow(
-                                              "Net Payable",
-                                              "$_currency${(orderModel.netPayable ?? 0).toDouble().toStringAsFixed(2)}",
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 12,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Padding(
-                                    padding: const EdgeInsets.only(
-                                      top: 4,
-                                      bottom: 4,
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        SizedBox(
-                                          width: 155,
-                                          height: 40,
-                                          child: OutlinedButton(
-                                            onPressed: () {
-                                              // your existing Add Tip logic
-                                            },
-                                            style: OutlinedButton.styleFrom(
-                                              backgroundColor: Colors.white,
-                                              side: const BorderSide(
-                                                color: Color(0xFFD5DCE8),
-                                                width: 1,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(8),
-                                              ),
-                                              padding: EdgeInsets.zero,
-                                            ),
-                                            child: const Text(
-                                              "Add Tip",
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Color(0xFF3B4259),
+                                                  // =========================================================
+                                                  // NET PAYABLE
+                                                  // =========================================================
+                                                  paymentRow(
+                                                    "Net Payable",
+                                                    "$_currency${(orderModel.netPayable ?? 0).toDouble().toStringAsFixed(2)}",
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize: 12,
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ),
                                         ),
-
-                                        const SizedBox(width: 14),
-
-                                        SizedBox(
-                                          width: 155,
-                                          height: 40,
-                                          child: ElevatedButton.icon(
-                                            onPressed: () async {
-                                              try {
-                                                Map<
-                                                    String,
-                                                    Map<String, dynamic>
-                                                >
-                                                consolidated = {};
-                                                if (orderModel.kotOrders !=
-                                                    null) {
-                                                  for (var kot
-                                                  in orderModel
-                                                      .kotOrders!) {
-                                                    if (kot.lineItems != null) {
-                                                      for (var lineItem
-                                                      in kot.lineItems!) {
-                                                        final name =
-                                                            lineItem.name ?? '';
-                                                        final modifiers =
-                                                            lineItem
-                                                                .modifiers ??
-                                                                [];
-                                                        final key =
-                                                            "$name-${modifiers.join(',')}";
-                                                        if (consolidated
-                                                            .containsKey(key)) {
-                                                          final existing =
-                                                          consolidated[key]!;
-                                                          final currentQty =
-                                                              int.tryParse(
-                                                                existing['qty']
-                                                                    .toString(),
-                                                              ) ??
-                                                                  0;
-                                                          final addedQty =
-                                                              lineItem
-                                                                  .quantity ??
-                                                                  0;
-                                                          final newQty =
-                                                              currentQty +
-                                                                  addedQty;
-                                                          existing['qty'] =
-                                                              newQty;
-                                                          existing['amount'] =
-                                                              (double.tryParse(
-                                                                existing['price']
-                                                                    .toString(),
-                                                              ) ??
-                                                                  0.0) *
-                                                                  newQty;
-                                                        } else {
-                                                          consolidated[key] = {
-                                                            "name": name,
-                                                            "qty":
-                                                            lineItem
-                                                                .quantity ??
-                                                                0,
-                                                            "price":
-                                                            lineItem
-                                                                .itemPrice ??
-                                                                0.0,
-                                                            "amount":
-                                                            lineItem
-                                                                .amount ??
-                                                                0.0,
-                                                            "modifiers":
-                                                            modifiers,
-                                                          };
-                                                        }
-                                                      }
-                                                    }
-                                                  }
-                                                }
-
-                                                final paymentSummaryObj = psm.PaymentSummary(
-                                                  restaurantId:
-                                                  orderModel.restaurantId ??
-                                                      0,
-                                                  orderId:
-                                                  orderModel.orderId ?? 0,
-                                                  grossTotal:
-                                                  (orderModel.grossTotal ??
-                                                      0)
-                                                      .toDouble(),
-                                                  tax:
-                                                  (orderModel.totalTax ?? 0)
-                                                      .toDouble(),
-                                                  fees: 0.0,
-                                                  discount:
-                                                  (orderModel.merchantDiscount ??
-                                                      0)
-                                                      .toDouble(),
-                                                  coupons:
-                                                  orderModel
-                                                      .totalCouponDiscount
-                                                      .toDouble(),
-                                                  tipAmount:
-                                                  (orderModel.tipAmount ??
-                                                      0)
-                                                      .toDouble(),
-                                                  netTotal:
-                                                  (orderModel.netPayable ??
-                                                      orderModel
-                                                          .netTotal ??
-                                                      0)
-                                                      .toDouble(),
-                                                  lineItems:
-                                                  consolidated.values.map((
-                                                      item,
-                                                      ) {
-                                                    return psm.LineItem(
-                                                      productId: 0,
-                                                      variationId: 0,
-                                                      name:
-                                                      item['name']
-                                                          .toString(),
-                                                      qty:
-                                                      int.tryParse(
-                                                        item['qty']
-                                                            .toString(),
-                                                      ) ??
-                                                          0,
-                                                      price:
-                                                      double.tryParse(
-                                                        item['price']
-                                                            .toString(),
-                                                      ) ??
-                                                          0.0,
-                                                      total:
-                                                      double.tryParse(
-                                                        item['amount']
-                                                            .toString(),
-                                                      ) ??
-                                                          0.0,
-                                                      tax: 0.0,
-                                                      taxClass: 'food',
-                                                      modifiers: List<
-                                                          String
-                                                      >.from(
-                                                        item['modifiers'] ??
-                                                            [],
-                                                      ),
-                                                      modifierAmount: 0.0,
-                                                    );
-                                                  }).toList(),
-                                                  tableId:
-                                                  orderModel.tableId ?? 0,
-                                                  tableName:
-                                                  orderModel.tableName ??
-                                                      "",
-                                                  zoneId:
-                                                  orderModel.zoneId ?? 0,
-                                                  modifiersTaxable: false,
-                                                  isNoCharge: false,
-                                                  couponDetails:
-                                                  orderModel.couponDetails?.map((
-                                                      e,
-                                                      ) {
-                                                    return psm.CouponDetail(
-                                                      code: e.code ?? "",
-                                                      value:
-                                                      (e.value ?? 0)
-                                                          .toDouble(),
-                                                    );
-                                                  }).toList() ??
-                                                      [],
-                                                  serviceChargePercentage:
-                                                  (orderModel.serviceChargePercentage ??
-                                                      0)
-                                                      .toDouble(),
-                                                  serviceChargeValue:
-                                                  (orderModel.serviceChargeValue ??
-                                                      0)
-                                                      .toDouble(),
-                                                  roundOff:
-                                                  (orderModel.roundOff ?? 0)
-                                                      .toDouble(),
-                                                );
-
-                                                showDialog(
-                                                  context: context,
-                                                  barrierDismissible: false,
-                                                  builder:
-                                                      (context) => Dialog(
+                                        const SizedBox(height: 10),
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 4,
+                                            bottom: 4,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              SizedBox(
+                                                width: 155,
+                                                height: 40,
+                                                child: OutlinedButton(
+                                                  onPressed: () {
+                                                    // your existing Add Tip logic
+                                                  },
+                                                  style: OutlinedButton.styleFrom(
                                                     backgroundColor:
-                                                    Colors.transparent,
-                                                    insetPadding:
-                                                    EdgeInsets.zero,
-                                                    child: Align(
-                                                      alignment:
-                                                      Alignment
-                                                          .centerLeft,
-                                                      child: Padding(
-                                                        padding:
-                                                        const EdgeInsets.only(
-                                                          left: 330,
-                                                          top: 60,
-                                                          bottom: 60,
-                                                        ),
-                                                        child: PrintRecipt(
-                                                          loadedTables:
-                                                          const [],
-                                                          pin: widget.pin,
-                                                          token:
-                                                          widget.token,
-                                                          restaurantId:
-                                                          widget
-                                                              .restaurantId,
-                                                          restaurantName:
-                                                          widget
-                                                              .restaurantName,
-                                                          zoneId:
-                                                          orderModel
-                                                              .zoneId,
-                                                          paymentSummary:
-                                                          paymentSummaryObj,
-                                                          cashierName:
-                                                          widget
-                                                              .userPermissions
-                                                              ?.displayName ??
-                                                              'Admin',
-                                                          isTakeAway:
-                                                          orderModel
-                                                              .orderType
-                                                              ?.toLowerCase()
-                                                              .contains(
-                                                            "take",
-                                                          ) ??
-                                                              false,
-                                                          isFromOrderDetails:
-                                                          true,
-                                                          isCopy: true,
-                                                        ),
-                                                      ),
+                                                        Colors.white,
+                                                    side: const BorderSide(
+                                                      color: Color(0xFFD5DCE8),
+                                                      width: 1,
+                                                    ),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                    ),
+                                                    padding: EdgeInsets.zero,
+                                                  ),
+                                                  child: const Text(
+                                                    "Add Tip",
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Color(0xFF3B4259),
                                                     ),
                                                   ),
-                                                );
-                                              } catch (e) {
-                                                debugPrint(
-                                                  "Print Bill Error: $e",
-                                                );
-                                              }
-                                            },
-                                            icon: const Icon(
-                                              Icons.print,
-                                              size: 14,
-                                              color: Colors.white,
-                                            ),
-                                            label: const Text(
-                                              "Print Bill",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
+                                                ),
                                               ),
-                                            ),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFF173B6B,
+
+                                              const SizedBox(width: 14),
+
+                                              SizedBox(
+                                                width: 155,
+                                                height: 40,
+                                                child: ElevatedButton.icon(
+                                                  onPressed: () async {
+                                                    try {
+                                                      Map<
+                                                        String,
+                                                        Map<String, dynamic>
+                                                      >
+                                                      consolidated = {};
+                                                      if (orderModel
+                                                              .kotOrders !=
+                                                          null) {
+                                                        for (var kot
+                                                            in orderModel
+                                                                .kotOrders!) {
+                                                          if (kot.lineItems !=
+                                                              null) {
+                                                            for (var lineItem
+                                                                in kot
+                                                                    .lineItems!) {
+                                                              final name =
+                                                                  lineItem
+                                                                      .name ??
+                                                                  '';
+                                                              final modifiers =
+                                                                  lineItem
+                                                                      .modifiers ??
+                                                                  [];
+                                                              final key =
+                                                                  "$name-${modifiers.join(',')}";
+                                                              if (consolidated
+                                                                  .containsKey(
+                                                                    key,
+                                                                  )) {
+                                                                final existing =
+                                                                    consolidated[key]!;
+                                                                final currentQty =
+                                                                    int.tryParse(
+                                                                      existing['qty']
+                                                                          .toString(),
+                                                                    ) ??
+                                                                    0;
+                                                                final addedQty =
+                                                                    lineItem
+                                                                        .quantity ??
+                                                                    0;
+                                                                final newQty =
+                                                                    currentQty +
+                                                                    addedQty;
+                                                                existing['qty'] =
+                                                                    newQty;
+                                                                existing['amount'] =
+                                                                    (double.tryParse(
+                                                                          existing['price']
+                                                                              .toString(),
+                                                                        ) ??
+                                                                        0.0) *
+                                                                    newQty;
+                                                              } else {
+                                                                consolidated[key] = {
+                                                                  "name": name,
+                                                                  "qty":
+                                                                      lineItem
+                                                                          .quantity ??
+                                                                      0,
+                                                                  "price":
+                                                                      lineItem
+                                                                          .itemPrice ??
+                                                                      0.0,
+                                                                  "amount":
+                                                                      lineItem
+                                                                          .amount ??
+                                                                      0.0,
+                                                                  "modifiers":
+                                                                      modifiers,
+                                                                };
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+
+                                                      final paymentSummaryObj = psm.PaymentSummary(
+                                                        restaurantId:
+                                                            orderModel
+                                                                .restaurantId ??
+                                                            0,
+                                                        orderId:
+                                                            orderModel
+                                                                .orderId ??
+                                                            0,
+                                                        grossTotal:
+                                                            (orderModel.grossTotal ??
+                                                                    0)
+                                                                .toDouble(),
+                                                        tax:
+                                                            (orderModel.totalTax ??
+                                                                    0)
+                                                                .toDouble(),
+                                                        fees: 0.0,
+                                                        discount:
+                                                            (orderModel.merchantDiscount ??
+                                                                    0)
+                                                                .toDouble(),
+                                                        coupons:
+                                                            orderModel
+                                                                .totalCouponDiscount
+                                                                .toDouble(),
+                                                        tipAmount:
+                                                            (orderModel.tipAmount ??
+                                                                    0)
+                                                                .toDouble(),
+                                                        netTotal:
+                                                            (orderModel.netPayable ??
+                                                                    orderModel
+                                                                        .netTotal ??
+                                                                    0)
+                                                                .toDouble(),
+                                                        lineItems:
+                                                            consolidated.values.map((
+                                                              item,
+                                                            ) {
+                                                              return psm.LineItem(
+                                                                productId: 0,
+                                                                variationId: 0,
+                                                                name:
+                                                                    item['name']
+                                                                        .toString(),
+                                                                qty:
+                                                                    int.tryParse(
+                                                                      item['qty']
+                                                                          .toString(),
+                                                                    ) ??
+                                                                    0,
+                                                                price:
+                                                                    double.tryParse(
+                                                                      item['price']
+                                                                          .toString(),
+                                                                    ) ??
+                                                                    0.0,
+                                                                total:
+                                                                    double.tryParse(
+                                                                      item['amount']
+                                                                          .toString(),
+                                                                    ) ??
+                                                                    0.0,
+                                                                tax: 0.0,
+                                                                taxClass:
+                                                                    'food',
+                                                                modifiers: List<
+                                                                  String
+                                                                >.from(
+                                                                  item['modifiers'] ??
+                                                                      [],
+                                                                ),
+                                                                modifierAmount:
+                                                                    0.0,
+                                                              );
+                                                            }).toList(),
+                                                        tableId:
+                                                            orderModel
+                                                                .tableId ??
+                                                            0,
+                                                        tableName:
+                                                            orderModel
+                                                                .tableName ??
+                                                            "",
+                                                        zoneId:
+                                                            orderModel.zoneId ??
+                                                            0,
+                                                        modifiersTaxable: false,
+                                                        isNoCharge: false,
+                                                        couponDetails:
+                                                            orderModel.couponDetails?.map((
+                                                              e,
+                                                            ) {
+                                                              return psm.CouponDetail(
+                                                                code:
+                                                                    e.code ??
+                                                                    "",
+                                                                value:
+                                                                    (e.value ??
+                                                                            0)
+                                                                        .toDouble(),
+                                                              );
+                                                            }).toList() ??
+                                                            [],
+                                                        serviceChargePercentage:
+                                                            (orderModel.serviceChargePercentage ??
+                                                                    0)
+                                                                .toDouble(),
+                                                        serviceChargeValue:
+                                                            (orderModel.serviceChargeValue ??
+                                                                    0)
+                                                                .toDouble(),
+                                                        roundOff:
+                                                            (orderModel.roundOff ??
+                                                                    0)
+                                                                .toDouble(),
+                                                      );
+
+                                                      showDialog(
+                                                        context: context,
+                                                        barrierDismissible:
+                                                            false,
+                                                        builder:
+                                                            (context) => Dialog(
+                                                              backgroundColor:
+                                                                  Colors
+                                                                      .transparent,
+                                                              insetPadding:
+                                                                  EdgeInsets
+                                                                      .zero,
+                                                              child: Align(
+                                                                alignment:
+                                                                    Alignment
+                                                                        .centerLeft,
+                                                                child: Padding(
+                                                                  padding:
+                                                                      const EdgeInsets.only(
+                                                                        left:
+                                                                            330,
+                                                                        top: 60,
+                                                                        bottom:
+                                                                            60,
+                                                                      ),
+                                                                  child: PrintRecipt(
+                                                                    loadedTables:
+                                                                        const [],
+                                                                    pin:
+                                                                        widget
+                                                                            .pin,
+                                                                    token:
+                                                                        widget
+                                                                            .token,
+                                                                    restaurantId:
+                                                                        widget
+                                                                            .restaurantId,
+                                                                    restaurantName:
+                                                                        widget
+                                                                            .restaurantName,
+                                                                    zoneId:
+                                                                        orderModel
+                                                                            .zoneId,
+                                                                    paymentSummary:
+                                                                        paymentSummaryObj,
+                                                                    cashierName:
+                                                                        widget
+                                                                            .userPermissions
+                                                                            ?.displayName ??
+                                                                        'Admin',
+                                                                    isTakeAway:
+                                                                        orderModel
+                                                                            .orderType
+                                                                            ?.toLowerCase()
+                                                                            .contains(
+                                                                              "take",
+                                                                            ) ??
+                                                                        false,
+                                                                    isFromOrderDetails:
+                                                                        true,
+                                                                    isCopy:
+                                                                        true,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                      );
+                                                    } catch (e) {
+                                                      debugPrint(
+                                                        "Print Bill Error: $e",
+                                                      );
+                                                    }
+                                                  },
+                                                  icon: const Icon(
+                                                    Icons.print,
+                                                    size: 14,
+                                                    color: Colors.white,
+                                                  ),
+                                                  label: const Text(
+                                                    "Print Bill",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        const Color(0xFF173B6B),
+                                                    elevation: 0,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                    ),
+                                                    padding: EdgeInsets.zero,
+                                                  ),
+                                                ),
                                               ),
-                                              elevation: 0,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(8),
-                                              ),
-                                              padding: EdgeInsets.zero,
-                                            ),
+                                            ],
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  // SizedBox(
-                                  //   width: double.infinity,
-                                  //   height: 40,
-                                  //   child: ElevatedButton(
-                                  //     style: ElevatedButton.styleFrom(
-                                  //       backgroundColor: const Color(
-                                  //         0xFF3F65A1,
-                                  //       ),
-                                  //       shape: RoundedRectangleBorder(
-                                  //         borderRadius: BorderRadius.circular(
-                                  //           10,
-                                  //         ),
-                                  //       ),
-                                  //     ),
-                                  //     onPressed: () async {
-                                  //       try {
-                                  //         Map<String, Map<String, dynamic>>
-                                  //         consolidated = {};
-                                  //         if (orderModel.kotOrders != null) {
-                                  //           for (var kot
-                                  //               in orderModel.kotOrders!) {
-                                  //             if (kot.lineItems != null) {
-                                  //               for (var lineItem
-                                  //                   in kot.lineItems!) {
-                                  //                 final name =
-                                  //                     lineItem.name ?? '';
-                                  //                 final modifiers =
-                                  //                     lineItem.modifiers ?? [];
-                                  //                 final key =
-                                  //                     "$name-${modifiers.join(',')}";
-                                  //                 if (consolidated.containsKey(
-                                  //                   key,
-                                  //                 )) {
-                                  //                   final existing =
-                                  //                       consolidated[key]!;
-                                  //                   final currentQty =
-                                  //                       int.tryParse(
-                                  //                         existing['qty']
-                                  //                             .toString(),
-                                  //                       ) ??
-                                  //                       0;
-                                  //                   final addedQty =
-                                  //                       lineItem.quantity ?? 0;
-                                  //                   final newQty =
-                                  //                       currentQty + addedQty;
-                                  //                   existing['qty'] = newQty;
-                                  //                   existing['amount'] =
-                                  //                       (double.tryParse(
-                                  //                             existing['price']
-                                  //                                 .toString(),
-                                  //                           ) ??
-                                  //                           0.0) *
-                                  //                       newQty;
-                                  //                 } else {
-                                  //                   consolidated[key] = {
-                                  //                     "name": name,
-                                  //                     "qty":
-                                  //                         lineItem.quantity ??
-                                  //                         0,
-                                  //                     "price":
-                                  //                         lineItem.itemPrice ??
-                                  //                         0.0,
-                                  //                     "amount":
-                                  //                         lineItem.amount ??
-                                  //                         0.0,
-                                  //                     "modifiers": modifiers,
-                                  //                   };
-                                  //                 }
-                                  //               }
-                                  //             }
-                                  //           }
-                                  //         }
-                                  //
-                                  //         final paymentSummaryObj = psm.PaymentSummary(
-                                  //           restaurantId:
-                                  //               orderModel.restaurantId ?? 0,
-                                  //           orderId: orderModel.orderId ?? 0,
-                                  //           grossTotal:
-                                  //               (orderModel.grossTotal ?? 0)
-                                  //                   .toDouble(),
-                                  //           tax:
-                                  //               (orderModel.totalTax ?? 0)
-                                  //                   .toDouble(),
-                                  //           fees: 0.0,
-                                  //           discount:
-                                  //               (orderModel.merchantDiscount ??
-                                  //                       0)
-                                  //                   .toDouble(),
-                                  //           coupons:
-                                  //               orderModel.totalCouponDiscount
-                                  //                   .toDouble(),
-                                  //           tipAmount:
-                                  //               (orderModel.tipAmount ?? 0)
-                                  //                   .toDouble(),
-                                  //           netTotal:
-                                  //               (orderModel.netPayable ??
-                                  //                       orderModel.netTotal ??
-                                  //                       0)
-                                  //                   .toDouble(),
-                                  //           lineItems:
-                                  //               consolidated.values.map((item) {
-                                  //                 return psm.LineItem(
-                                  //                   productId: 0,
-                                  //                   variationId: 0,
-                                  //                   name:
-                                  //                       item['name'].toString(),
-                                  //                   qty:
-                                  //                       int.tryParse(
-                                  //                         item['qty']
-                                  //                             .toString(),
-                                  //                       ) ??
-                                  //                       0,
-                                  //                   price:
-                                  //                       double.tryParse(
-                                  //                         item['price']
-                                  //                             .toString(),
-                                  //                       ) ??
-                                  //                       0.0,
-                                  //                   total:
-                                  //                       double.tryParse(
-                                  //                         item['amount']
-                                  //                             .toString(),
-                                  //                       ) ??
-                                  //                       0.0,
-                                  //                   tax: 0.0,
-                                  //                   taxClass: 'food',
-                                  //                   modifiers:
-                                  //                       List<String>.from(
-                                  //                         item['modifiers'] ??
-                                  //                             [],
-                                  //                       ),
-                                  //                   modifierAmount: 0.0,
-                                  //                 );
-                                  //               }).toList(),
-                                  //           tableId: orderModel.tableId ?? 0,
-                                  //           tableName:
-                                  //               orderModel.tableName ?? "",
-                                  //           zoneId: orderModel.zoneId ?? 0,
-                                  //           modifiersTaxable: false,
-                                  //           isNoCharge: false,
-                                  //           couponDetails:
-                                  //               orderModel.couponDetails?.map((
-                                  //                 e,
-                                  //               ) {
-                                  //                 return psm.CouponDetail(
-                                  //                   code: e.code ?? "",
-                                  //                   value:
-                                  //                       (e.value ?? 0)
-                                  //                           .toDouble(),
-                                  //                 );
-                                  //               }).toList() ??
-                                  //               [],
-                                  //           serviceChargePercentage:
-                                  //               (orderModel.serviceChargePercentage ??
-                                  //                       0)
-                                  //                   .toDouble(),
-                                  //           serviceChargeValue:
-                                  //               (orderModel.serviceChargeValue ??
-                                  //                       0)
-                                  //                   .toDouble(),
-                                  //           roundOff:
-                                  //               (orderModel.roundOff ?? 0)
-                                  //                   .toDouble(),
-                                  //         );
-                                  //
-                                  //         showDialog(
-                                  //           context: context,
-                                  //           barrierDismissible: false,
-                                  //           builder:
-                                  //               (context) => Dialog(
-                                  //                 backgroundColor:
-                                  //                     Colors.transparent,
-                                  //                 insetPadding: EdgeInsets.zero,
-                                  //                 child: Align(
-                                  //                   alignment:
-                                  //                       Alignment.centerLeft,
-                                  //                   child: Padding(
-                                  //                     padding:
-                                  //                         const EdgeInsets.only(
-                                  //                           left: 330,
-                                  //                           top: 60,
-                                  //                           bottom: 60,
-                                  //                         ),
-                                  //                     child: PrintRecipt(
-                                  //                       loadedTables: const [],
-                                  //                       pin: widget.pin,
-                                  //                       token: widget.token,
-                                  //                       restaurantId:
-                                  //                           widget.restaurantId,
-                                  //                       restaurantName:
-                                  //                           widget
-                                  //                               .restaurantName,
-                                  //                       zoneId:
-                                  //                           orderModel.zoneId,
-                                  //                       paymentSummary:
-                                  //                           paymentSummaryObj,
-                                  //                       cashierName:
-                                  //                           widget
-                                  //                               .userPermissions
-                                  //                               ?.displayName ??
-                                  //                           'Admin',
-                                  //                       isTakeAway:
-                                  //                           orderModel.orderType
-                                  //                               ?.toLowerCase()
-                                  //                               .contains(
-                                  //                                 "take",
-                                  //                               ) ??
-                                  //                           false,
-                                  //                       isFromOrderDetails:
-                                  //                           true,
-                                  //                       isCopy: true,
-                                  //                     ),
-                                  //                   ),
-                                  //                 ),
-                                  //               ),
-                                  //         );
-                                  //       } catch (e) {
-                                  //         debugPrint("Print Bill Error: $e");
-                                  //       }
-                                  //     },
-                                  //     child: const Row(
-                                  //       mainAxisAlignment:
-                                  //           MainAxisAlignment.center,
-                                  //       children: [
-                                  //         Icon(
-                                  //           Icons.print,
-                                  //           color: Colors.white,
-                                  //           size: 18,
-                                  //         ),
-                                  //         SizedBox(width: 8),
-                                  //         Text(
-                                  //           "Print Bill",
-                                  //           style: TextStyle(
-                                  //             fontSize: 16,
-                                  //             fontWeight: FontWeight.bold,
-                                  //             color: Colors.white,
-                                  //           ),
-                                  //         ),
-                                  //       ],
-                                  //     ),
-                                  //   ),
-                                  // ),
-                                ],
+                                ),
                               ),
-                            ),
+
+                              /// 🔹 RIGHT BLOCK (KOTs)
+                              Flexible(
+                                flex: 1,
+                                child: Container(
+                                  margin: const EdgeInsets.all(6),
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // KOT TABLE
+                                      Expanded(
+                                        child: buildSelectedKotCard(
+                                          order,
+                                          orderModel,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-
-                          // const SizedBox(height: 4),
-
-                          // Container(
-                          //   margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                          //
-                          //   child: SizedBox(
-                          //     width: double.infinity,
-                          //     height: 36,
-                          //     child: ElevatedButton(
-                          //       style: ElevatedButton.styleFrom(
-                          //         backgroundColor: const  Color(0xFFF7C127),
-                          //         shape: RoundedRectangleBorder(
-                          //           borderRadius: BorderRadius.circular(10),
-                          //         ),
-                          //       ),
-                          //       onPressed: () {
-                          //
-                          //       },
-                          //       child: const Text(
-                          //         "Print Bill",
-                          //         style: TextStyle(
-                          //           fontSize: 16,
-                          //           fontWeight: FontWeight.bold,
-                          //           color: Colors.white,
-                          //         ),
-                          //       ),
-                          //     ),
-                          //   ),
-                          // ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-
-                  /// 🔹 RIGHT BLOCK (KOTs)
-                  Flexible(
-                    flex: 1,
-                    child: Container(
-                      height: blockHeight,
-                      margin: const EdgeInsets.all(6),
-                      padding: const EdgeInsets.all(12),
-                      // decoration: BoxDecoration(
-                      //   color:
-                      //       isDark
-                      //           ? const Color(0xFF202433)
-                      //           : const Color(0xFFF6F6F6),
-                      //   borderRadius: BorderRadius.circular(12),
-                      // ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ==========================================
-                          // MODIFICATION SUMMARY
-                          // ONLY SHOW AFTER AN UPDATE
-                          // ==========================================
-                          if (orderModel.isUpdated?.toLowerCase() == 'yes')
-                            _buildModificationSummary(orderModel),
-
-                          const SizedBox(height: 12),
-
-                          // KOT TABLE
-                          Expanded(
-                            child: buildSelectedKotCard(order, orderModel),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           );
         },
@@ -3713,19 +3454,19 @@ amount: ${item.amount}
     final additionalDue = difference > 0 ? difference : 0;
 
     final modifiedBy =
-    orderModel.placedByName?.trim().isNotEmpty == true
-        ? orderModel.placedByName!
-        : orderModel.completedByUserId?.trim().isNotEmpty == true
-        ? orderModel.completedByUserId!
-        : '-';
+        orderModel.placedByName?.trim().isNotEmpty == true
+            ? orderModel.placedByName!
+            : orderModel.completedByUserId?.trim().isNotEmpty == true
+            ? orderModel.completedByUserId!
+            : '-';
 
     final modifiedOn =
-    orderModel.date?.trim().isNotEmpty == true ? orderModel.date! : '-';
+        orderModel.date?.trim().isNotEmpty == true ? orderModel.date! : '-';
 
     final reason =
-    orderModel.updated_remarks?.trim().isNotEmpty == true
-        ? orderModel.updated_remarks!
-        : '-';
+        orderModel.updated_remarks?.trim().isNotEmpty == true
+            ? orderModel.updated_remarks!
+            : '-';
 
     return Container(
       width: double.infinity,
@@ -3865,7 +3606,7 @@ amount: ${item.amount}
             textAlign: TextAlign.right,
             style: TextStyle(
               color:
-              isRefund ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                  isRefund ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
               fontSize: 17,
               fontWeight: FontWeight.w700,
             ),
@@ -3875,8 +3616,8 @@ amount: ${item.amount}
 
           Text(
             '$_currency${previousTotal.toStringAsFixed(2)}'
-                ' → '
-                '$_currency${currentTotal.toStringAsFixed(2)}',
+            ' → '
+            '$_currency${currentTotal.toStringAsFixed(2)}',
             textAlign: TextAlign.right,
             style: const TextStyle(
               color: Color(0xFF94A3B8),
@@ -3962,9 +3703,9 @@ amount: ${item.amount}
   }
 
   Widget buildSelectedKotCard(
-      Map<String, dynamic> order,
-      OrderlistModel orderModel,
-      ) {
+    Map<String, dynamic> order,
+    OrderlistModel orderModel,
+  ) {
     final kots = (order["kots"] as List<dynamic>?) ?? [];
 
     //  Auto select first KOT if not selected
@@ -3978,7 +3719,7 @@ amount: ${item.amount}
     }
 
     final selectedKot = kots.cast<Map<String, dynamic>?>().firstWhere(
-          (kot) => kot?["kotNo"] == selectedKotId,
+      (kot) => kot?["kotNo"] == selectedKotId,
       orElse: () => null,
     );
 
@@ -3992,21 +3733,21 @@ amount: ${item.amount}
   }
 
   Widget buildKOTCard(
-      Map<String, dynamic> selectedKot,
-      List<dynamic> kots,
-      OrderlistModel orderModel,
-      ) {
+    Map<String, dynamic> selectedKot,
+    List<dynamic> kots,
+    OrderlistModel orderModel,
+  ) {
     final items = (selectedKot["items"] as List<dynamic>?) ?? [];
 
     final bool showVoided = orderModel.isUpdated?.toLowerCase() == 'yes';
 
     final List<Map<String, dynamic>> normalItems =
-    items.whereType<Map<String, dynamic>>().toList();
+        items.whereType<Map<String, dynamic>>().toList();
 
     final List<VoidedItem> voidedItems =
-    (showVoided && !isVoidedLoading && voidedItemsResponse != null)
-        ? voidedItemsResponse!.items
-        : [];
+        (showVoided && !isVoidedLoading && voidedItemsResponse != null)
+            ? voidedItemsResponse!.items
+            : [];
 
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -4112,18 +3853,18 @@ amount: ${item.amount}
                     borderRadius: BorderRadius.circular(8),
 
                     items:
-                    kots.map((kot) {
-                      return DropdownMenuItem<int>(
-                        value: kot["kotNo"],
-                        child: Text(
-                          "${kot["kotNumber"]}",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                        kots.map((kot) {
+                          return DropdownMenuItem<int>(
+                            value: kot["kotNo"],
+                            child: Text(
+                              "${kot["kotNumber"]}",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                            ),
+                          );
+                        }).toList(),
 
                     onChanged: (value) {
                       if (value == null) return;
@@ -4233,87 +3974,87 @@ amount: ${item.amount}
               ),
 
               child:
-              isVoidedLoading && showVoided
-                  ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              )
-                  : ListView.builder(
-                padding: EdgeInsets.zero,
-
-                itemCount: normalItems.length + voidedItems.length,
-
-                itemBuilder: (context, index) {
-                  // ==========================================
-                  // NORMAL ITEM
-                  // ==========================================
-
-                  if (index < normalItems.length) {
-                    final item = normalItems[index];
-
-                    return Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                      ),
-
-                      decoration: BoxDecoration(
-                        color:
-                        isDark
-                            ? const Color(0xFF202433)
-                            : Colors.white,
-
-                        border: Border(
-                          bottom: BorderSide(
-                            color:
-                            isDark
-                                ? Colors.white12
-                                : const Color(0xFFE1E4EA),
-                          ),
+                  isVoidedLoading && showVoided
+                      ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
+                      )
+                      : ListView.builder(
+                        padding: EdgeInsets.zero,
+
+                        itemCount: normalItems.length + voidedItems.length,
+
+                        itemBuilder: (context, index) {
+                          // ==========================================
+                          // NORMAL ITEM
+                          // ==========================================
+
+                          if (index < normalItems.length) {
+                            final item = normalItems[index];
+
+                            return Container(
+                              height: 44,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+
+                              decoration: BoxDecoration(
+                                color:
+                                    isDark
+                                        ? const Color(0xFF202433)
+                                        : Colors.white,
+
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color:
+                                        isDark
+                                            ? Colors.white12
+                                            : const Color(0xFFE1E4EA),
+                                  ),
+                                ),
+                              ),
+
+                              child: _buildNormalRow(item, index),
+                            );
+                          }
+
+                          // ==========================================
+                          // VOIDED ITEM
+                          // ==========================================
+
+                          final voidedIndex = index - normalItems.length;
+
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+
+                            decoration: BoxDecoration(
+                              color:
+                                  isDark
+                                      ? const Color(0xFF2A2F3D)
+                                      : Colors.grey.shade200,
+
+                              border: Border(
+                                bottom: BorderSide(
+                                  color:
+                                      isDark
+                                          ? Colors.white12
+                                          : const Color(0xFFE1E4EA),
+                                ),
+                              ),
+                            ),
+
+                            child: _buildVoidedRow(
+                              voidedItems[voidedIndex],
+                              index,
+                            ),
+                          );
+                        },
                       ),
-
-                      child: _buildNormalRow(item, index),
-                    );
-                  }
-
-                  // ==========================================
-                  // VOIDED ITEM
-                  // ==========================================
-
-                  final voidedIndex = index - normalItems.length;
-
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-
-                    decoration: BoxDecoration(
-                      color:
-                      isDark
-                          ? const Color(0xFF2A2F3D)
-                          : Colors.grey.shade200,
-
-                      border: Border(
-                        bottom: BorderSide(
-                          color:
-                          isDark
-                              ? Colors.white12
-                              : const Color(0xFFE1E4EA),
-                        ),
-                      ),
-                    ),
-
-                    child: _buildVoidedRow(
-                      voidedItems[voidedIndex],
-                      index,
-                    ),
-                  );
-                },
-              ),
             ),
           ),
 
@@ -4377,12 +4118,12 @@ amount: ${item.amount}
 
   // payment summary
   Widget paymentRow(
-      String title,
-      String amount, {
-        Color? color,
-        double fontSize = 14,
-        FontWeight fontWeight = FontWeight.normal,
-      }) {
+    String title,
+    String amount, {
+    Color? color,
+    double fontSize = 14,
+    FontWeight fontWeight = FontWeight.normal,
+  }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
