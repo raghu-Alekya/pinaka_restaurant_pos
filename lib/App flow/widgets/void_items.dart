@@ -11,6 +11,7 @@ import '../../blocs/Bloc Logic/void_item_bloc.dart';
 import '../../blocs/Bloc State/void_item_state.dart';
 import '../../models/order/void_kot_items.dart';
 import '../../repositories/void_item_repository.dart';
+import '../../services/kds_seivices.dart';
 import '../../utils/theme_provider.dart';
 
 class VoidItemsDialog extends StatefulWidget {
@@ -51,7 +52,8 @@ class VoidItemsDialog extends StatefulWidget {
 class _VoidItemsDialogState extends State<VoidItemsDialog> {
   // LEFT PANEL -> Original KOT items (never changes)
   late final List<KotItem> originalKotItems;
-
+  // items which are reduced to 0
+  final Map<int, VoidedKotItem> voidedItemsMap = {};
   // final repo = editkotRepository(baseUrl: '');
 
   // RIGHT PANEL -> Editable items
@@ -64,7 +66,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
   String? selectedReason;
   bool _showReasonError = false;
-
+  final VoidItemRepository _voidItemRepository = VoidItemRepository();
+  List<Map<String, dynamic>> _modifiedItems = [];
+  bool _isLoadingLineItems = false;
   bool _hasQuantityChanged = false;
   final List<String> voidReasons = [
     "Wrong Item",
@@ -78,6 +82,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
   void initState() {
     super.initState();
 
+    _fetchVoidLineItems();
     // LEFT PANEL (fixed copy)
     originalKotItems = widget.items.map((e) => e.copyWith()).toList();
 
@@ -95,7 +100,58 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
     _leftScrollController.dispose();
     super.dispose();
   }
+  Future<void> _fetchVoidLineItems() async {
+    setState(() {
+      _isLoadingLineItems = true;
+    });
 
+    try {
+      final response = await _voidItemRepository.getKotLineItems(
+        kotId: widget.kotId,
+        restaurantId: widget.restaurantId,
+        zoneId: widget.zoneId,
+        token: widget.token,
+      );
+
+      debugPrint("Initial KOT Items: ${response.initialKotItems}");
+      debugPrint("Voided Items: ${response.voidedItems}");
+      debugPrint("Current Items: ${response.items}");
+
+      // LEFT PANEL
+      final initialItems = response.initialKotItems;
+
+      // RIGHT PANEL
+      final currentItems = response.items;
+
+      if (mounted) {
+        setState(() {
+          originalKotItems.clear();
+
+          // IMPORTANT:
+          // InitialKotItem -> KotItem
+          originalKotItems.addAll(
+            initialItems.map((e) => e.toKotItem()),
+          );
+
+          // Already KotItem, so copyWith() is correct here
+          itemsNotifier.value = currentItems
+              .map((e) => e.copyWith())
+              .toList();
+
+          _hasQuantityChanged = false;
+          _isLoadingLineItems = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("❌ Failed to fetch KOT line items: $e");
+
+      if (mounted) {
+        setState(() {
+          _isLoadingLineItems = false;
+        });
+      }
+    }
+  }
   double get subtotal =>
       itemsNotifier.value.fold(0.0, (sum, item) => sum + item.amount);
 
@@ -963,22 +1019,26 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                             final modifiedAt = DateTime.now();
 
                             final selectedItems = itemsNotifier.value;
-
                             final modifiedItems = <Map<String, dynamic>>[];
 
-                            for (int i = 0; i < originalKotItems.length; i++) {
-                              final originalItem = originalKotItems[i];
-                              final modifiedItem = selectedItems[i];
+                            for (final originalItem in originalKotItems) {
+                              final modifiedItem = selectedItems.firstWhere(
+                                    (item) => item.id == originalItem.id,
+                                orElse: () => originalItem.copyWith(
+                                  quantity: 0,
+                                  amount: 0,
+                                ),
+                              );
 
-                              if (originalItem.quantity != modifiedItem.quantity) {
+                              if (originalItem.originalQuantity != modifiedItem.quantity) {
                                 modifiedItems.add({
-                                  "itemId": modifiedItem.id,
-                                  "productId": modifiedItem.productId,
-                                  "itemName": modifiedItem.productName,
-                                  "originalQuantity": originalItem.quantity,
+                                  "itemId": originalItem.id,
+                                  "productId": originalItem.productId,
+                                  "itemName": originalItem.productName,
+                                  "originalQuantity": originalItem.originalQuantity,
                                   "modifiedQuantity": modifiedItem.quantity,
                                   "voidQuantity":
-                                  originalItem.quantity - modifiedItem.quantity,
+                                  originalItem.originalQuantity - modifiedItem.quantity,
                                   "amount": modifiedItem.amount,
                                 });
                               }
@@ -1077,21 +1137,26 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return BlocListener<UpdatekotBloc, UpdatekotState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is UpdatekotSuccess) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("KOT Updated Successfully"),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 1),
-            ),
-          );
+          debugPrint('========== KOT UPDATE SUCCESS ==========');
 
-          /// ✅ Refresh KOT list using KotBloc
+          for (final item in _modifiedItems) {
+            await KdsMqttPublisher.notifyKotItemQuantityUpdated(
+              restaurantId: widget.restaurantId.toString(),
+              kotId: widget.kotId,
+              kotNumber: widget.kotNo,
+              itemId: item['itemId'],
+              quantity: item['modifiedQuantity'],
+              parentOrderId: widget.parentOrderId,
+            );
+          }
+
+          debugPrint('✅ QUANTITY MQTT SENT');
+
           context.read<KotBloc>().add(
             FetchKots(
               parentOrderId: widget.parentOrderId,
-              // if you have in response
               restaurantId: widget.restaurantId,
               zoneId: widget.zoneId,
               token: widget.token,
@@ -1100,7 +1165,6 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
           Navigator.pop(context, true);
         }
-
         if (state is UpdatekotFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

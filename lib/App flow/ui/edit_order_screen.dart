@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dotted_line/dotted_line.dart';
 import 'package:flutter/material.dart';
+import 'package:pinaka_restaurant_pos/App%20flow/ui/view_order_details_screen.dart';
 import '../../constants/constants.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/order_list/edit_order_list_model.dart';
@@ -55,11 +56,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   String _currency = "₹";
   String? selectedReason;
   final TextEditingController _remarksController = TextEditingController();
-
+  String _formatCurrency(num value) {
+    return "$_currency${value.toStringAsFixed(2)}";
+  }
   UserPermissions? _userPermissions;
   int _selectedIndex = 4;
   bool _isUpdateEnabled = false; // initially disabled
-
+  OrderlistModel? _updatedOrder;
+  DateTime? _modifiedAt;
   Future<List<OrderlistModel>>? _ordersFuture;
 
   int? _selectedKotId;
@@ -201,7 +205,46 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       },
     );
   }
+  String _monthName(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
 
+    return months[month - 1];
+  }
+
+  String _formatTime(DateTime time) {
+    final hour = time.hour == 0
+        ? 12
+        : time.hour > 12
+        ? time.hour - 12
+        : time.hour;
+
+    final minute = time.minute.toString().padLeft(2, '0');
+
+    final period = time.hour >= 12 ? 'PM' : 'AM';
+
+    return '$hour:$minute $period';
+  }
+  double _calculateRefundDue(OrderlistModel order) {
+    final previous = order.orderPrevTotal?.toDouble() ?? 0;
+    final current = order.netPayable?.toDouble() ?? 0;
+
+    final refund = previous - current;
+
+    return refund > 0 ? refund : 0;
+  }
   void _onItemTapped(int index) {
     // NavigationHelper.handleNavigation(
     //   context,
@@ -481,17 +524,44 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       // 8️⃣ FETCH VOIDED AFTER REFRESH
       await _fetchVoidedItemsAfterUpdate(kotId);
+// Get the freshly updated order
+      final refreshedOrders = await _orderRepo.fetchOrders(widget.token);
+
+      OrderlistModel? updatedOrder;
+
+      try {
+        updatedOrder = refreshedOrders.firstWhere(
+              (o) => o.orderId == widget.orderId,
+        );
+      } catch (_) {
+        updatedOrder = null;
+      }
+
+      if (!mounted) return;
 
       setState(() {
         _isUpdatingKot = false;
-        _kotUpdated = true; // ADDED: mark that a real update happened
-        _updateMessage = "KOT updated Successfully. Final Net payable updated.";
+        _kotUpdated = true;
+        _updatedOrder = updatedOrder;
+        _modifiedAt = DateTime.now();
       });
 
-      Future.delayed(const Duration(seconds: 1), () {
-        if (!mounted) return;
-        setState(() => _updateMessage = null);
-      });
+// Show success popup
+      if (updatedOrder != null && mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: _orderModifiedPopup(
+                context,
+                updatedOrder!,
+              ),
+            );
+          },
+        );
+      }
     } catch (e) {
       print("❌ KOT Update Failed => $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -650,7 +720,17 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
               //     .fold(0.0, (sum, i) => sum + (i.totalWoTax ?? 0));
             }
           }
+          int _getChangeCount(List<LineItem> items) {
+            return items.where((item) {
+              final originalQty = item.originalQuantity ?? item.quantity ?? 0;
+              final currentQty = item.quantity ?? 0;
 
+              return originalQty != currentQty;
+            }).length;
+          }
+          final editedItems = _editedKotItems[_selectedKotId] ?? [];
+
+          final changeCount = _getChangeCount(editedItems);
           return Padding(
             padding: const EdgeInsets.all(10),
             child: Column(
@@ -1291,6 +1371,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                     // =====================================================
                                     // CHANGE COUNT
                                     // =====================================================
+
                                     Container(
                                       height: 40,
                                       padding: const EdgeInsets.symmetric(
@@ -1303,7 +1384,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                       ),
                                       alignment: Alignment.center,
                                       child: Text(
-                                        "1 change",
+                                        '$changeCount ${changeCount == 1 ? 'change' : 'changes'}',
                                         style: const TextStyle(
                                           color: Color(0xFF94A3B8),
                                           fontSize: 16,
@@ -1848,8 +1929,80 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       onPressed: _isUpdatingKot
           ? null
           : () {
+        if (_selectedKot == null || _selectedKotId == null) {
+          return;
+        }
+
+        // Restore the original KOT items
+        final originalItems = _selectedKot!.lineItems ?? [];
+
+        final resetItems = originalItems.map((item) {
+          final qty = item.quantity ?? 0;
+          final unitPrice = (item.itemPrice ?? 0).toDouble();
+
+          return LineItem(
+            lineItemId: item.lineItemId,
+            itemId: item.itemId,
+            name: item.name,
+
+            quantity: qty,
+            originalQuantity: item.originalQuantity ?? qty,
+            maxQty: qty,
+
+            itemPrice: unitPrice,
+            unitPrice: unitPrice,
+
+            amount: item.amount,
+            totalWoTax: item.totalWoTax,
+            modifierAmount: item.modifierAmount,
+            tax: item.tax,
+            total: item.total,
+
+            modifiers: parseModifiers(item.modifiers),
+            kotRemarks: item.kotRemarks,
+            voidedAt: item.voidedAt,
+          );
+        }).toList();
+
         setState(() {
+          // Restore edited panel
+          _editedKotItems[_selectedKotId!] = resetItems;
+
+          // Restore left panel if required
+          _leftPanelItems = resetItems.map((item) {
+            return LineItem(
+              lineItemId: item.lineItemId,
+              itemId: item.itemId,
+              name: item.name,
+              quantity: item.quantity,
+              originalQuantity: item.originalQuantity,
+              maxQty: item.maxQty,
+              itemPrice: item.itemPrice,
+              unitPrice: item.unitPrice,
+              amount: item.amount,
+              totalWoTax: item.totalWoTax,
+              modifierAmount: item.modifierAmount,
+              tax: item.tax,
+              total: item.total,
+              modifiers: item.modifiers,
+              kotRemarks: item.kotRemarks,
+              voidedAt: item.voidedAt,
+            );
+          }).toList();
+
+          // Restore total
+          _dynamicNetPayable =
+              originalItems.fold<double>(
+                0.0,
+                    (sum, item) =>
+                sum + (item.totalWoTax ?? 0).toDouble(),
+              );
+
+          // Clear selected reason
           selectedReason = null;
+
+          // Clear update message
+          _updateMessage = null;
         });
       },
       style: OutlinedButton.styleFrom(
@@ -2116,7 +2269,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           Expanded(
             flex: 2,
             child: Text(
-              "${item.quantity ?? 0} × ${(item.unitPrice ?? 0).toStringAsFixed(0)}",
+              "${item.quantity ?? 0} × ${(item.itemPrice ?? 0).toStringAsFixed(0)}",
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
@@ -2427,7 +2580,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                         vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: isVoided
+                        color: isVoided || isRemoved
                             ? (isDark
                             ? const Color(0xFF4A2528)
                             : const Color(0xFFFFEEEE))
@@ -2440,8 +2593,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                             : const Color(0xFFFBFCFD)),
                         border: Border(
                           bottom: BorderSide(
-                            color: isVoided
+                            color: isVoided || isRemoved
                                 ? const Color(0xFFFFB0B0)
+                                : isReduced
+                                ? const Color(0xFFE6C76A)
                                 : const Color(0xFFE9ECF1),
                             width: 0.6,
                           ),
@@ -2547,44 +2702,26 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 // MINUS
-                                SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: Material(
-                                    color: isVoided
-                                        ? Colors.transparent
-                                        : const Color(0xFFFFE4E4),
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(3),
-                                      onTap: !isVoided &&
-                                          (item.quantity ?? 0) > 0
-                                          ? () {
-                                        setInnerState(() {
-                                          item.quantity =
-                                              (item.quantity ?? 0) - 1;
-
-                                          item.totalWoTax =
-                                              item.unitPrice! *
-                                                  item.quantity!;
-                                        });
-
-                                        setState(() {
-                                          _dynamicNetPayable -=
-                                          item.unitPrice!;
-                                        });
-                                      }
-                                          : null,
-                                      child: Icon(
-                                        Icons.remove,
-                                        size: 9,
-                                        color: isVoided
-                                            ? Colors.grey
-                                            : const Color(0xFFFF6B6B),
-                                      ),
-                                    ),
-                                  ),
+                                _qtyButton(
+                                  Icons.remove,
+                                  onTap:
+                                  !isVoided && (item.quantity ?? 0) > 0
+                                      ? () {
+                                    setInnerState(() {
+                                      item.quantity =
+                                          (item.quantity ?? 0) - 1;
+                                      item.totalWoTax =
+                                          item.unitPrice! *
+                                              item.quantity!;
+                                    });
+                                    setState(() {
+                                      _dynamicNetPayable -=
+                                      item.unitPrice!;
+                                    });
+                                  }
+                                      : null,
                                 ),
+
 
                                 const SizedBox(width: 6),
 
@@ -2606,44 +2743,26 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                 const SizedBox(width: 6),
 
                                 // PLUS
-                                SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: Material(
-                                    color: isVoided
-                                        ? Colors.transparent
-                                        : const Color(0xFFE2F7EA),
-                                    borderRadius: BorderRadius.circular(3),
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(3),
-                                      onTap: !isVoided &&
-                                          (item.quantity ?? 0) <
-                                              (item.maxQty ?? 0)
-                                          ? () {
-                                        setInnerState(() {
-                                          item.quantity =
-                                              (item.quantity ?? 0) + 1;
-
-                                          item.totalWoTax =
-                                              item.unitPrice! *
-                                                  item.quantity!;
-                                        });
-
-                                        setState(() {
-                                          _dynamicNetPayable +=
-                                          item.unitPrice!;
-                                        });
-                                      }
-                                          : null,
-                                      child: Icon(
-                                        Icons.add,
-                                        size: 9,
-                                        color: isVoided
-                                            ? Colors.grey
-                                            : const Color(0xFF35B96B),
-                                      ),
-                                    ),
-                                  ),
+                                _qtyButton(
+                                  Icons.add,
+                                  onTap:
+                                  !isVoided &&
+                                      (item.quantity ?? 0) <
+                                          (item.maxQty ?? 0)
+                                      ? () {
+                                    setInnerState(() {
+                                      item.quantity =
+                                          (item.quantity ?? 0) + 1;
+                                      item.totalWoTax =
+                                          item.unitPrice! *
+                                              item.quantity!;
+                                    });
+                                    setState(() {
+                                      _dynamicNetPayable +=
+                                      item.unitPrice!;
+                                    });
+                                  }
+                                      : null,
                                 ),
                               ],
                             ),
@@ -2682,121 +2801,246 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       },
     );
   }
-  Widget _orderModifiedPopup(BuildContext context) {
-    return Container(
-      width: 480,
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x38000000),
-            blurRadius: 60,
-            offset: Offset(0, 24),
-          ),
-        ],
+  Widget _orderModifiedPopup(
+      BuildContext context,
+      OrderlistModel order,
+      ) {
+    final updatedTotal =
+    (order.netPayable ?? order.displayTotal ?? 0).toDouble();
+
+    // ============================================================
+    // MODIFIED BY = NAME · ROLE
+    // Example: manager 2 · manager
+    // ============================================================
+    final name = order.placedByName?.trim() ?? '';
+    final role = order.placedByRole?.trim() ?? '';
+
+    final modifiedBy = () {
+      if (name.isNotEmpty && role.isNotEmpty) {
+        return '$name · $role';
+      }
+
+      if (name.isNotEmpty) {
+        return name;
+      }
+
+      if (role.isNotEmpty) {
+        return role;
+      }
+
+      return '-';
+    }();
+
+    final modifiedAt = _modifiedAt ?? DateTime.now();
+
+    final formattedDate =
+        "${modifiedAt.day.toString().padLeft(2, '0')} "
+        "${_monthName(modifiedAt.month)} "
+        "${modifiedAt.year} · "
+        "${_formatTime(modifiedAt)}";
+
+    final refundDue = _calculateRefundDue(order);
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxWidth: 430,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Success icon
-          Container(
-            width: 52,
-            height: 52,
-            decoration: const BoxDecoration(
-              color: Color(0xFFDCFCE7),
-              shape: BoxShape.circle,
+      child: Container(
+        width: 430,
+        padding: const EdgeInsets.fromLTRB(
+          26,
+          26,
+          26,
+          22,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x38000000),
+              blurRadius: 60,
+              offset: Offset(0, 24),
             ),
-            child: const Center(
-              child: Text(
-                '✓',
-                style: TextStyle(
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ============================================================
+            // SUCCESS ICON
+            // ============================================================
+            Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                color: Color(0xFFDCFCE7),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.check,
+                  size: 22,
                   color: Color(0xFF16A34A),
-                  fontSize: 22,
                 ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 14),
+            const SizedBox(height: 13),
 
-          const Text(
-            'Order Modified Successfully',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF16A34A),
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          const Text(
-            'Order #21450 · Revision 2',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 13,
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _popupInfo('Updated Total', '₹1250.00'),
-                const SizedBox(height: 12),
-                _popupInfo('Refund Due', '₹200.00'),
-                const SizedBox(height: 12),
-                _popupInfo('Modified By', 'Manager · EMP102'),
-                const SizedBox(height: 12),
-                _popupInfo(
-                  'Modified At',
-                  '11 Aug 2026 · 10:25 AM',
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          SizedBox(
-            width: double.infinity,
-            height: 47,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-
-                // Navigate to updated order here
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A5F),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'View Updated Order →',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
+            // ============================================================
+            // TITLE
+            // ============================================================
+            const Text(
+              'Order Modified Successfully',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF16A34A),
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                height: 1.3,
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 4),
+
+            // ============================================================
+            // ORDER ID
+            // ============================================================
+            Text(
+              'Order #${order.orderId} · Revision 2',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                height: 1.4,
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            // ============================================================
+            // DETAILS CARD
+            // ============================================================
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 11,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  // ------------------------------------------------------
+                  // ROW 1
+                  // ------------------------------------------------------
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _popupInfo(
+                          'Updated Total',
+                          _formatCurrency(updatedTotal),
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: _popupInfo(
+                          'Refund Due',
+                          _formatCurrency(refundDue),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 11),
+
+                  // ------------------------------------------------------
+                  // ROW 2
+                  // ------------------------------------------------------
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _popupInfo(
+                          'Modified By',
+                          modifiedBy,
+                        ),
+                      ),
+                      const SizedBox(width: 18),
+                      Expanded(
+                        child: _popupInfo(
+                          'Modified At',
+                          formattedDate,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ============================================================
+            // VIEW UPDATED ORDER BUTTON
+            // ============================================================
+            SizedBox(
+              width: double.infinity,
+              height: 43,
+              child: ElevatedButton(
+                onPressed: () {
+                  // Close the success popup first
+                  Navigator.pop(context);
+
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OrdersDetailsScreen(
+                        token: widget.token,
+                        pin: widget.pin,
+                        restaurantId: widget.restaurantId,
+                        restaurantName: widget.restaurantName,
+                        orderId: order.orderId!,
+                        initialOrder: order,
+                        userPermissions: _userPermissions,
+                        onPermissionsReceived: (permissions) {
+                          setState(() {
+                            _userPermissions = permissions;
+                          });
+                        },
+                      ),
+                    ),
+                        (route) => route.isFirst,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E3A5F),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+                child: const Text(
+                  'View Updated Order →',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

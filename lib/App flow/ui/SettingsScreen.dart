@@ -492,17 +492,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Save printers to DB first
       await _savePrintersToDB();
 
-      // Get selected printer names
-      final selectedPrinterNames = _connectedPrinters
+      // Build print_settings list → prefer IP/address, fallback to name
+      final selectedPrinterSettings = _connectedPrinters
           .where((p) => p.isSelected)
-          .map((p) => p.name)
-          .join(', ');
+          .map((p) {
+        // Send IP/address if available, otherwise send the printer name
+        if (p.address.trim().isNotEmpty) {
+          return p.address.trim();
+        }
+        return p.name;
+      })
+          .toList();
 
       final request = SaveGeneralSettingsRequest(
         headerText: _headerController.text.trim(),
         footerText: _footerController.text.trim(),
-        printSettings: selectedPrinterNames.isEmpty ? "" : selectedPrinterNames,
-        receiptLogoUrl: "",
+        printSettings: selectedPrinterSettings,   // ← List of IPs / names
+        receiptLogoUrl: _receiptLogoUrl ?? "",
       );
 
       final response = await _settingsRepository.saveGeneralSettings(
@@ -513,13 +519,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _saveSettings();
       await _saveSelectedPrinters();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(response.message),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 1),
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(
+      //     content: Text(response.message),
+      //     backgroundColor: Colors.green,
+      //     duration: const Duration(seconds: 1),
+      //   ),
+      // );
 
       await _loadGeneralSettings();
     } catch (e) {
@@ -527,7 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SnackBar(
           content: Text(e.toString()),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 1),
+          duration: const Duration(seconds: 1),
         ),
       );
     }

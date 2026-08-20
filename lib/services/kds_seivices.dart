@@ -191,6 +191,70 @@ class KdsMqttPublisher {
       print(stack);
     }
   }
+  static Future<void> notifyKotItemQuantityUpdated({
+    required String restaurantId,
+    required int kotId,
+    required String kotNumber,
+    required int itemId,
+    required int quantity,
+    int? parentOrderId,
+  }) async {
+    try {
+      await _ensureConnected();
+
+      if (!_connected || _client == null) {
+        print(
+          'MQTT not connected - cannot send quantity update',
+        );
+        return;
+      }
+
+      final payload = {
+        'event': 'kot_quantity_updated',
+        'restaurant_id': restaurantId,
+        'kot_id': kotId,
+        'kot_number': kotNumber,
+        'item_id': itemId,
+        'quantity': quantity,
+        'parent_order_id': parentOrderId,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print(
+        '========== PUBLISH KOT QUANTITY UPDATED ==========',
+      );
+
+      print(
+        'Topic: ${_topic(restaurantId)}',
+      );
+
+      print(
+        'Payload: ${jsonEncode(payload)}',
+      );
+
+      print(
+        '==================================================',
+      );
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _topic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print(
+        '✅ KOT quantity update published successfully',
+      );
+    } catch (e, stack) {
+      print(
+        '❌ Quantity MQTT publish failed: $e',
+      );
+      print(stack);
+    }
+  }
   static Future<void> publishKotStatus({
     required String restaurantId,
     required int? kotId,

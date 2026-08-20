@@ -10,7 +10,9 @@ class GeneralSettingsModel {
   factory GeneralSettingsModel.fromJson(Map<String, dynamic> json) {
     return GeneralSettingsModel(
       success: json['success'] ?? false,
-      data: GeneralSettingsData.fromJson(json['data'] ?? {}),
+      data: GeneralSettingsData.fromJson(
+        json['data'] ?? {},
+      ),
     );
   }
 }
@@ -21,12 +23,20 @@ class GeneralSettingsData {
   final String email;
   final String? phoneNumber;
   final String? userDeviceId;
-  final bool gstin;
+
+  // API returns string
+  final String gstin;
+
   final String companyName;
   final String profileUrl;
-  final bool headerText;
-  final bool footerText;
-  final bool printSettings;
+
+  // API returns string
+  final String headerText;
+  final String footerText;
+
+  // API returns array of printer names/IPs
+  final List<String> printSettings;
+
   final String receiptLogo;
 
   GeneralSettingsData({
@@ -44,33 +54,63 @@ class GeneralSettingsData {
     required this.receiptLogo,
   });
 
-  factory GeneralSettingsData.fromJson(Map<String, dynamic> json) {
+  factory GeneralSettingsData.fromJson(
+      Map<String, dynamic> json,
+      ) {
     return GeneralSettingsData(
       userId: json['user_id'] ?? 0,
+
       fullName: json['full_name'] ?? '',
+
       email: json['email'] ?? '',
+
       phoneNumber: json['phone_number'],
+
       userDeviceId: json['user_device_id'],
-      gstin: json['gstin'] ?? false,
+
+      gstin: json['gstin']?.toString() ?? '',
+
       companyName: json['company_name'] ?? '',
+
       profileUrl: json['profile_url'] ?? '',
-      headerText: json['header_text'] ?? false,
-      footerText: json['footer_text'] ?? false,
-      printSettings: json['print_settings'] ?? false,
+
+      headerText: json['header_text']?.toString() ?? '',
+
+      footerText: json['footer_text']?.toString() ?? '',
+
+      // IMPORTANT:
+      // print_settings is an array
+      printSettings: json['print_settings'] != null
+          ? List<String>.from(
+        (json['print_settings'] as List)
+            .map((e) => e.toString()),
+      )
+          : [],
+
       receiptLogo: json['receipt_logo'] ?? '',
     );
   }
 }
+
+
+// ============================================================
+// SAVE REQUEST
+// ============================================================
+
 class SaveGeneralSettingsRequest {
   final String? headerText;
   final String? footerText;
-  final String? printSettings;
+
+  // IMPORTANT:
+  // This is now a List<String>, not String
+  final List<String> printSettings;
+
   final String? receiptLogoUrl;
 
   SaveGeneralSettingsRequest({
     this.headerText,
     this.footerText,
-    this.printSettings,
+    this.printSettings = const [],
     this.receiptLogoUrl,
   });
 
@@ -78,11 +118,20 @@ class SaveGeneralSettingsRequest {
     return {
       "header_text": headerText,
       "footer_text": footerText,
+
+      // Send printer names/IPs as an array
       "print_settings": printSettings,
+
       "receipt_logo_url": receiptLogoUrl,
     };
   }
 }
+
+
+// ============================================================
+// SAVE RESPONSE
+// ============================================================
+
 class SaveGeneralSettingsResponse {
   final bool success;
   final String message;
@@ -95,14 +144,22 @@ class SaveGeneralSettingsResponse {
   });
 
   factory SaveGeneralSettingsResponse.fromJson(
-      Map<String, dynamic> json) {
+      Map<String, dynamic> json,
+      ) {
     return SaveGeneralSettingsResponse(
-      success: json["success"],
+      success: json["success"] ?? false,
       message: json["message"] ?? "",
-      data: SaveGeneralSettingsData.fromJson(json["data"]),
+      data: SaveGeneralSettingsData.fromJson(
+        json["data"] ?? {},
+      ),
     );
   }
 }
+
+
+// ============================================================
+// SAVE RESPONSE DATA
+// ============================================================
 
 class SaveGeneralSettingsData {
   final int userId;
@@ -115,7 +172,11 @@ class SaveGeneralSettingsData {
   final String? profileUrl;
   final String? headerText;
   final String? footerText;
-  final String? printSettings;
+
+  // IMPORTANT:
+  // Printer settings are an array
+  final List<String> printSettings;
+
   final String? receiptLogo;
 
   SaveGeneralSettingsData({
@@ -129,24 +190,42 @@ class SaveGeneralSettingsData {
     this.profileUrl,
     this.headerText,
     this.footerText,
-    this.printSettings,
+    required this.printSettings,
     this.receiptLogo,
   });
 
   factory SaveGeneralSettingsData.fromJson(
-      Map<String, dynamic> json) {
+      Map<String, dynamic> json,
+      ) {
     return SaveGeneralSettingsData(
       userId: json["user_id"] ?? 0,
+
       fullName: json["full_name"],
+
       email: json["email"],
+
       phoneNumber: json["phone_number"],
+
       userDeviceId: json["user_device_id"],
+
       gstin: json["gstin"],
+
       companyName: json["company_name"],
+
       profileUrl: json["profile_url"],
+
       headerText: json["header_text"],
+
       footerText: json["footer_text"],
-      printSettings: json["print_settings"],
+
+      // IMPORTANT
+      printSettings: json["print_settings"] != null
+          ? List<String>.from(
+        (json["print_settings"] as List)
+            .map((e) => e.toString()),
+      )
+          : [],
+
       receiptLogo: json["receipt_logo"],
     );
   }

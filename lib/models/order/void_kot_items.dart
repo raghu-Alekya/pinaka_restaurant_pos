@@ -8,7 +8,7 @@ class KotLineItemsResponse {
 
   // Current/editable items
   final List<KotItem> items;
-
+  final List<VoidedKotItem> voidedItems;
   // Original KOT items
   final List<InitialKotItem> initialKotItems;
 
@@ -21,6 +21,7 @@ class KotLineItemsResponse {
     required this.items,
     required this.initialKotItems,
     required this.placedByName,
+    required this.voidedItems,
   });
 
   factory KotLineItemsResponse.fromJson(Map<String, dynamic> json) {
@@ -36,7 +37,9 @@ class KotLineItemsResponse {
       items: (json["items"] as List? ?? [])
           .map((e) => KotItem.fromJson(e))
           .toList(),
-
+      voidedItems: (json['voided_items'] as List? ?? [])
+          .map((e) => VoidedKotItem.fromJson(e))
+          .toList(),
       // Original KOT items
       initialKotItems: (json["initial_kot_items"] as List? ?? [])
           .map((e) => InitialKotItem.fromJson(e))
@@ -246,6 +249,77 @@ class InitialKotItem {
       totalWoTax: (json["total_wo_tax"] ?? 0).toDouble(),
       taxTotal: (json["tax_total"] ?? 0).toDouble(),
       totalWithTax: (json["total_with_tax"] ?? 0).toDouble(),
+    );
+  }
+
+  // ADD THIS
+  InitialKotItem copyWith({
+    int? kotOrderId,
+    int? lineItemId,
+    int? productId,
+    String? name,
+    int? quantity,
+    double? modifierAmount,
+    List<String>? modifiers,
+    List<dynamic>? comboItems,
+    double? totalWoTax,
+    double? taxTotal,
+    double? totalWithTax,
+  }) {
+    return InitialKotItem(
+      kotOrderId: kotOrderId ?? this.kotOrderId,
+      lineItemId: lineItemId ?? this.lineItemId,
+      productId: productId ?? this.productId,
+      name: name ?? this.name,
+      quantity: quantity ?? this.quantity,
+      modifierAmount: modifierAmount ?? this.modifierAmount,
+      modifiers: modifiers ?? List<String>.from(this.modifiers),
+      comboItems: comboItems ?? List<dynamic>.from(this.comboItems),
+      totalWoTax: totalWoTax ?? this.totalWoTax,
+      taxTotal: taxTotal ?? this.taxTotal,
+      totalWithTax: totalWithTax ?? this.totalWithTax,
+    );
+  }
+  KotItem toKotItem() {
+    return KotItem(
+      id: lineItemId,
+      productId: productId,
+      productName: name,
+      attributes: List<dynamic>.from(comboItems),
+      quantity: quantity,
+      originalQuantity: quantity,
+      price: quantity > 0 ? totalWithTax / quantity : 0.0,
+      amount: totalWithTax,
+      modifiers: List<String>.from(modifiers),
+    );
+  }
+}
+
+class VoidedKotItem {
+  final int itemId;
+  final String product;
+  final int newQty;
+  final String remarks;
+  final int voidedBy;
+  final String voidedAt;
+
+  VoidedKotItem({
+    required this.itemId,
+    required this.product,
+    required this.newQty,
+    required this.remarks,
+    required this.voidedBy,
+    required this.voidedAt,
+  });
+
+  factory VoidedKotItem.fromJson(Map<String, dynamic> json) {
+    return VoidedKotItem(
+      itemId: json['item_id'] ?? 0,
+      product: json['product'] ?? '',
+      newQty: json['new_qty'] ?? 0,
+      remarks: json['remarks'] ?? '',
+      voidedBy: json['voided_by'] ?? 0,
+      voidedAt: json['voided_at'] ?? '',
     );
   }
 }

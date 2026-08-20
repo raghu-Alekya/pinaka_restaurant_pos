@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:core';
 
+import 'package:flutter/cupertino.dart';
+
 import 'edit_order_list_model.dart';
 
 class OrderlistModel {
@@ -43,7 +45,7 @@ class OrderlistModel {
 
 
   String? placedByName;
-
+  String? placedByRole;
   List<KotOrder>? kotOrders;
   num? serviceChargeValue;
   num? serviceChargePercentage;
@@ -87,9 +89,15 @@ class OrderlistModel {
     this.tipAmount,
     this.couponDetails,
     this.placedByName,
+    this.placedByRole, // ADD THIS
   });
 
   factory OrderlistModel.fromJson(Map<String, dynamic> json) {
+    debugPrint("========== ORDER JSON ==========");
+    debugPrint("order_id: ${json['order_id']}");
+    debugPrint("placed_by_name: ${json['placed_by_name']}");
+    debugPrint("placed_by_role: ${json['placed_by_role']}");
+    debugPrint("ALL KEYS: ${json.keys.toList()}");
     String? parsedOrderType = json['order_type'] ?? json['type'];
     final createdViaStr = json['created_via']?.toString().toLowerCase() ?? '';
     final isOnlineFlag = json['_online_order']?.toString().toLowerCase() == 'yes' ||
@@ -278,7 +286,8 @@ class OrderlistModel {
       }(),
       serviceChargeValue:
       num.tryParse(json['service_charge_value']?.toString() ?? "0") ?? 0,
-
+      placedByRole: json['placed_by_role']?.toString(),
+      placedByName: json['placed_by_name']?.toString(),
       serviceChargePercentage:
       num.tryParse(json['service_charge_percentage']?.toString() ?? "0") ?? 0,
       tipAmount:
@@ -487,6 +496,11 @@ class LineItem {
       name: json['name'] ??
           json['product_name'],
 
+      unitPrice: double.tryParse(
+        json['item_price']?.toString() ??
+            json['price']?.toString() ??
+            '0',
+      ) ?? 0.0,
       quantity: num.tryParse(
         json['quantity']?.toString() ?? '0',
       ) ?? 0,
@@ -692,5 +706,16 @@ class KotRevision {
     this.reason,
     this.modifiedBy,
     this.modifiedOn,
+  });
+}
+class OrderModificationRevision {
+  final int? kotOrderId;
+  final int revisionNumber;
+  final KotRevision revision;
+
+  OrderModificationRevision({
+    required this.kotOrderId,
+    required this.revisionNumber,
+    required this.revision,
   });
 }

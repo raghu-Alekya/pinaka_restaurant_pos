@@ -150,22 +150,37 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     );
   }
 
-  KotOrder? _getSelectedKot() {
-    if (selectedKotId == null) return null;
+  KotOrder? _getSelectedKot(OrderlistModel orderModel) {
+    final kots = orderModel.kotOrders ?? [];
+    if (kots.isEmpty) return null;
 
-    final orders = _OrdersCache.cachedOrders ?? [];
+    final kotId = selectedKotId ?? kots.first.kotOrderId;
+    if (kotId == null) return kots.first;
 
-    for (final order in orders) {
-      final kots = order.kotOrders ?? [];
-
-      for (final kot in kots) {
-        if (kot.kotOrderId == selectedKotId) {
-          return kot;
-        }
+    for (final kot in kots) {
+      if (kot.kotOrderId == kotId) {
+        return kot;
       }
     }
 
-    return null;
+    return kots.first;
+  }
+
+  List<VoidedItem> _voidedItemsForKot(int? kotOrderId) {
+    if (kotOrderId == null) return const [];
+
+    final cached = _voidedItemsCache[kotOrderId];
+    if (cached != null && cached.items.isNotEmpty) {
+      return cached.items;
+    }
+
+    if (voidedItemsResponse != null &&
+        voidedItemsResponse!.kotId == kotOrderId &&
+        voidedItemsResponse!.items.isNotEmpty) {
+      return voidedItemsResponse!.items;
+    }
+
+    return const [];
   }
 
   String _formatCurrency(num value) {
@@ -264,10 +279,67 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
       }
     }
 
+    for (final previousItem in previousRevision.items) {
+      final stillExists = revision.items.any((item) {
+        if (item.lineItemId != null && previousItem.lineItemId != null) {
+          return item.lineItemId.toString() ==
+              previousItem.lineItemId.toString();
+        }
+        if (item.itemId != null && previousItem.itemId != null) {
+          return item.itemId.toString() == previousItem.itemId.toString();
+        }
+        return false;
+      });
+
+      if (stillExists) continue;
+
+      final oldQty = previousItem.quantity ?? 0;
+      if (oldQty <= 0) continue;
+
+      final price = previousItem.itemPrice ?? 0;
+      final removedAmount = oldQty * price;
+
+      result.add({
+        "name": previousItem.name ?? "-",
+        "removedQty": oldQty,
+        "amount": removedAmount,
+      });
+    }
+
     debugPrint("========== REMOVED RESULT ==========");
     debugPrint(result.toString());
 
     return result;
+  }
+
+  List<Map<String, dynamic>> _getRemovedItemsFromApiRevision(
+    KotRevision revision,
+    List<VoidedItem> apiItems,
+  ) {
+    if (apiItems.isEmpty || revision.modifiedOn == null) return [];
+
+    final revisionTime = revision.modifiedOn!.trim();
+
+    return apiItems
+        .where((item) {
+          final itemTime = item.voidedAt.toString();
+          return itemTime == revisionTime ||
+              itemTime.startsWith(revisionTime.split('.').first);
+        })
+        .where((item) => item.origQty > item.newQty)
+        .map((item) {
+          final removedQty = item.origQty - item.newQty;
+          final unitPrice =
+              item.origQty > 0 ? item.itemTotal / item.origQty : 0.0;
+
+          return {
+            "name": item.product.isNotEmpty ? item.product : "-",
+            "removedQty": removedQty,
+            "amount":
+                item.itemTotal > 0 ? item.itemTotal : removedQty * unitPrice,
+          };
+        })
+        .toList();
   }
 
   @override
@@ -300,7 +372,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     return orders;
   }
 
-  List<KotRevision> buildKotRevisions(KotOrder kot) {
+  List<KotRevision> buildKotRevisions(
+    KotOrder kot, {
+    List<VoidedItem>? apiVoidedItems,
+    OrderlistModel? orderModel,
+  }) {
     debugPrint("========== BUILD KOT REVISIONS ==========");
     debugPrint("KOT ID: ${kot.kotOrderId}");
 
@@ -360,7 +436,12 @@ amount: ${item.amount}
     // VOIDED / MODIFICATION HISTORY
     // ==========================================================
 
-    final voidedItems = List<VoidedItem>.from(kot.voidedItems ?? []);
+    var voidedItems = List<VoidedItem>.from(kot.voidedItems ?? []);
+    if (voidedItems.isEmpty &&
+        apiVoidedItems != null &&
+        apiVoidedItems.isNotEmpty) {
+      voidedItems = List<VoidedItem>.from(apiVoidedItems);
+    }
 
     if (voidedItems.isEmpty) {
       return revisions;
@@ -494,7 +575,30 @@ amount: ${item.amount}
 
           return match;
         });
-        if (index == -1) continue;
+        if (index == -1) {
+          final origQty = modification.origQty;
+          final newQty = modification.newQty;
+          if (origQty <= newQty) continue;
+
+          final unitPrice =
+              origQty > 0 ? modification.itemTotal / origQty : 0.0;
+
+          revisionItems.add(
+            LineItem(
+              itemId: modification.itemId,
+              name: modification.product,
+              quantity: newQty,
+              originalQuantity: origQty,
+              voidedQuantity: origQty - newQty,
+              itemPrice: unitPrice,
+              amount: unitPrice * newQty,
+              totalWoTax: unitPrice * newQty,
+              total: unitPrice * newQty,
+              kotRemarks: modification.remarks,
+            ),
+          );
+          continue;
+        }
 
         final oldItem = revisionItems[index];
 
@@ -539,6 +643,25 @@ amount: ${item.amount}
         return sum + (item.totalWoTax ?? 0);
       });
 
+      final previousRevisionTotal = revisionNumber == 1
+          ? currentItems.fold<num>(
+            0,
+            (sum, item) => sum + (item.totalWoTax ?? 0),
+          )
+          : revisions.last.total;
+
+      num displayPreviousTotal = previousRevisionTotal;
+      num displayUpdatedTotal = revisionTotal;
+
+      if (revisionNumber == sortedKeys.length && orderModel != null) {
+        if ((orderModel.orderPrevTotal ?? 0) > 0) {
+          displayPreviousTotal = orderModel.orderPrevTotal!;
+        }
+        if (orderModel.netPayable != null) {
+          displayUpdatedTotal = orderModel.netPayable!;
+        }
+      }
+
       // ========================================================
       // ADD REVISION
       // ========================================================
@@ -547,7 +670,10 @@ amount: ${item.amount}
         KotRevision(
           revisionNumber: revisionNumber,
           items: revisionItems,
-          total: revisionTotal,
+          total: displayUpdatedTotal,
+          previousTotal: displayPreviousTotal,
+          updatedTotal: displayUpdatedTotal,
+          difference: displayUpdatedTotal - displayPreviousTotal,
 
           reason: modifications
               .map((e) => e.remarks)
@@ -661,7 +787,17 @@ amount: ${item.amount}
     }
   }
 
-  void _showModificationHistory(OrderlistModel orderModel) {
+
+  void _showModificationHistory(OrderlistModel orderModel) async {
+    final kotId = selectedKotId ??
+        (orderModel.kotOrders != null && orderModel.kotOrders!.isNotEmpty
+            ? orderModel.kotOrders!.first.kotOrderId
+            : null);
+    if (kotId != null && !_voidedItemsCache.containsKey(kotId)) {
+      await loadVoidedItems(kotId);
+    }
+    if (!mounted) return;
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -670,19 +806,19 @@ amount: ${item.amount}
       transitionDuration: const Duration(milliseconds: 300),
 
       pageBuilder: (
-        BuildContext context,
-        Animation<double> animation,
-        Animation<double> secondaryAnimation,
-      ) {
+          BuildContext context,
+          Animation<double> animation,
+          Animation<double> secondaryAnimation,
+          ) {
         return const SizedBox.shrink();
       },
 
       transitionBuilder: (
-        BuildContext context,
-        Animation<double> animation,
-        Animation<double> secondaryAnimation,
-        Widget child,
-      ) {
+          BuildContext context,
+          Animation<double> animation,
+          Animation<double> secondaryAnimation,
+          Widget child,
+          ) {
         final slideAnimation = Tween<Offset>(
           begin: const Offset(1.0, 0.0),
           end: Offset.zero,
@@ -712,7 +848,7 @@ amount: ${item.amount}
   Widget _buildModificationHistoryPanel(OrderlistModel orderModel) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final selectedKot = _getSelectedKot();
+    final selectedKot = _getSelectedKot(orderModel);
 
     if (selectedKot == null) {
       return Material(
@@ -721,9 +857,79 @@ amount: ${item.amount}
       );
     }
 
-    final revisions = buildKotRevisions(selectedKot);
+    final apiVoidedItems = _voidedItemsForKot(selectedKot.kotOrderId);
+    final revisions = buildKotRevisions(
+      selectedKot,
+      apiVoidedItems: apiVoidedItems,
+      orderModel: orderModel,
+    );
     // Original KOT is the "previous revision" for Revision 1.
     final originalRevision = _buildOriginalRevision(selectedKot);
+
+    if (revisions.isEmpty) {
+      return Material(
+        color: isDark ? const Color(0xFF202433) : Colors.white,
+        elevation: 12,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                height: 70,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color:
+                          isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      height: 40,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF263653),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.arrow_back,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: 5),
+                            Text(
+                              "Back",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Expanded(
+                child: Center(
+                  child: Text("No modification history found for this KOT"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Material(
       color: isDark ? const Color(0xFF202433) : Colors.white,
       elevation: 12,
@@ -787,7 +993,7 @@ amount: ${item.amount}
                           "Modification History",
                           style: TextStyle(
                             color:
-                                isDark ? Colors.white : const Color(0xFF1E293B),
+                            isDark ? Colors.white : const Color(0xFF1E293B),
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                           ),
@@ -797,9 +1003,9 @@ amount: ${item.amount}
                           "Order #${widget.orderId}",
                           style: TextStyle(
                             color:
-                                isDark
-                                    ? Colors.white54
-                                    : const Color(0xFF64748B),
+                            isDark
+                                ? Colors.white54
+                                : const Color(0xFF64748B),
                             fontSize: 9,
                           ),
                         ),
@@ -826,12 +1032,15 @@ amount: ${item.amount}
                         // Revision 1 compares against ORIGINAL KOT.
                         // Revision 2+ compares against previous modification.
                         previousRevision:
-                            i == 0 ? originalRevision : revisions[i - 1],
+                        i == 0
+                            ? originalRevision
+                            : revisions[i - 1],
 
                         current: i == revisions.length - 1,
                       ),
 
-                      if (i < revisions.length - 1) const SizedBox(height: 20),
+                      if (i < revisions.length - 1)
+                        const SizedBox(height: 20),
                     ],
                   ],
                 ),
@@ -842,7 +1051,6 @@ amount: ${item.amount}
       ),
     );
   }
-
   Widget _buildKotRevisionCard({
     required KotRevision revision,
     required KotRevision? previousRevision,
@@ -852,40 +1060,70 @@ amount: ${item.amount}
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Use the actual order previous total from backend.
-    final previousTotal = orderModel.orderPrevTotal ?? 0;
+    // Use per-revision totals; fall back to order-level totals on latest revision.
+    final previousTotal =
+        revision.previousTotal ??
+        previousRevision?.total ??
+        orderModel.orderPrevTotal ??
+        0;
 
-    final updatedTotal = orderModel.netPayable ?? 0;
+    final updatedTotal =
+        revision.updatedTotal ?? revision.total;
 
-    // Calculate from the actual previous and updated totals.
-    final difference = updatedTotal - previousTotal;
+    final difference =
+        revision.difference ?? (updatedTotal - previousTotal);
 
-    final modifiedBy =
-        revision.modifiedBy?.trim().isNotEmpty == true
-            ? revision.modifiedBy!.trim()
-            : "-";
+    final modifiedBy = () {
+      final name = orderModel.placedByName?.trim() ?? '';
+      final role = orderModel.placedByRole?.trim() ?? '';
+
+      if (name.isNotEmpty && role.isNotEmpty) {
+        return '$name · $role';
+      }
+
+      if (name.isNotEmpty) {
+        return name;
+      }
+
+      if (role.isNotEmpty) {
+        return role;
+      }
+
+      return '-';
+    }();
 
     final reason =
-        revision.reason?.trim().isNotEmpty == true
-            ? revision.reason!.trim()
-            : "-";
+    revision.reason?.trim().isNotEmpty == true
+        ? revision.reason!.trim()
+        : "-";
 
     final date =
-        revision.modifiedOn?.trim().isNotEmpty == true
-            ? revision.modifiedOn!
-            : "-";
+    revision.modifiedOn?.trim().isNotEmpty == true
+        ? revision.modifiedOn!
+        : "-";
 
-    final removedItems = _getRemovedItems(
-      revision: revision,
-      previousRevision: previousRevision,
-    );
+    final removedItems = () {
+      final diffItems = _getRemovedItems(
+        revision: revision,
+        previousRevision: previousRevision,
+      );
+      if (diffItems.isNotEmpty) return diffItems;
+
+      return _getRemovedItemsFromApiRevision(
+        revision,
+        _voidedItemsForKot(selectedKotId),
+      );
+    }();
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF202433) : Colors.white,
-        border: Border.all(color: const Color(0xFF2563EB), width: 1),
+        border: Border.all(
+          color: const Color(0xFF2563EB),
+          width: 1,
+        ),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -904,7 +1142,10 @@ amount: ${item.amount}
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                      color:
+                      isDark
+                          ? Colors.white
+                          : const Color(0xFF1E293B),
                     ),
                   ),
 
@@ -936,7 +1177,10 @@ amount: ${item.amount}
                 date,
                 style: TextStyle(
                   fontSize: 8,
-                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                  color:
+                  isDark
+                      ? Colors.white54
+                      : const Color(0xFF64748B),
                 ),
               ),
             ],
@@ -949,8 +1193,18 @@ amount: ${item.amount}
           // =====================================================
           Row(
             children: [
-              Expanded(child: _historyInfo("Modified by", modifiedBy)),
-              Expanded(child: _historyInfo("Reason", reason)),
+              Expanded(
+                child: _historyInfo(
+                  "Modified by",
+                  modifiedBy,
+                ),
+              ),
+              Expanded(
+                child: _historyInfo(
+                  "Reason",
+                  reason,
+                ),
+              ),
             ],
           ),
 
@@ -973,60 +1227,69 @@ amount: ${item.amount}
           if (removedItems.isEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 7,
+                vertical: 6,
+              ),
               color:
-                  isDark
-                      ? Colors.white.withOpacity(0.05)
-                      : const Color(0xFFF8FAFC),
+              isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : const Color(0xFFF8FAFC),
               child: const Text(
                 "No items removed",
-                style: TextStyle(fontSize: 9, color: Colors.grey),
+                style: TextStyle(
+                  fontSize: 9,
+                  color: Colors.grey,
+                ),
               ),
             )
           else
             Column(
               children:
-                  removedItems.map((item) {
-                    final name = item["name"]?.toString() ?? "-";
-                    final removedQty = item["removedQty"] ?? 0;
-                    final amount = (item["amount"] as num?) ?? 0;
+              removedItems.map((item) {
+                final name =
+                    item["name"]?.toString() ?? "-";
+                final removedQty =
+                    item["removedQty"] ?? 0;
+                final amount =
+                    (item["amount"] as num?) ?? 0;
 
-                    return Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 3),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 6,
-                      ),
-                      color:
-                          isDark
-                              ? Colors.red.withOpacity(0.10)
-                              : const Color(0xFFFFF1F2),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "$removedQty × $name",
-                              style: const TextStyle(
-                                fontSize: 9,
-                                color: Colors.red,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                return Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 6,
+                  ),
+                  color:
+                  isDark
+                      ? Colors.red.withOpacity(0.10)
+                      : const Color(0xFFFFF1F2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "$removedQty × $name",
+                          style: const TextStyle(
+                            fontSize: 9,
+                            color: Colors.red,
+                            fontWeight: FontWeight.w500,
                           ),
+                        ),
+                      ),
 
-                          Text(
-                            "-${_formatCurrency(amount)}",
-                            style: const TextStyle(
-                              fontSize: 9,
-                              color: Colors.red,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        "-${_formatCurrency(amount)}",
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    );
-                  }).toList(),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
 
           const SizedBox(height: 9),
@@ -1034,11 +1297,17 @@ amount: ${item.amount}
           // =====================================================
           // TOTALS
           // =====================================================
-          _historyAmountRow("Previous Total", _formatCurrency(previousTotal)),
+          _historyAmountRow(
+            "Previous Total",
+            _formatCurrency(previousTotal),
+          ),
 
           const SizedBox(height: 5),
 
-          _historyAmountRow("Updated Total", _formatCurrency(updatedTotal)),
+          _historyAmountRow(
+            "Updated Total",
+            _formatCurrency(updatedTotal),
+          ),
 
           const SizedBox(height: 5),
 
@@ -1046,11 +1315,11 @@ amount: ${item.amount}
             "Difference",
             _formatCurrency(difference),
             valueColor:
-                difference < 0
-                    ? Colors.red
-                    : difference > 0
-                    ? Colors.green
-                    : Colors.grey,
+            difference < 0
+                ? Colors.red
+                : difference > 0
+                ? Colors.green
+                : Colors.grey,
             bold: true,
           ),
         ],
@@ -1153,11 +1422,11 @@ amount: ${item.amount}
   }
 
   Widget _historyAmountRow(
-    String title,
-    String amount, {
-    Color? valueColor,
-    bool bold = false,
-  }) {
+      String title,
+      String amount, {
+        Color? valueColor,
+        bool bold = false,
+      }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -1177,12 +1446,13 @@ amount: ${item.amount}
             fontSize: 9,
             fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
             color:
-                valueColor ?? (isDark ? Colors.white : const Color(0xFF1E293B)),
+            valueColor ?? (isDark ? Colors.white : const Color(0xFF1E293B)),
           ),
         ),
       ],
     );
   }
+
 
   //
   // Future<void> cancelOrder(OrderlistModel orderModel) async {
@@ -1420,7 +1690,60 @@ amount: ${item.amount}
 
     return names;
   }
+  List<OrderModificationRevision> buildOrderModificationHistory(
+      OrderlistModel orderModel,
+      ) {
+    final result = <OrderModificationRevision>[];
 
+    final kots = orderModel.kotOrders ?? [];
+
+    for (final kot in kots) {
+      final kotId = kot.kotOrderId;
+
+      if (kotId == null) {
+        continue;
+      }
+
+      // Get API voided items for THIS KOT.
+      final apiVoidedItems = _voidedItemsForKot(kotId);
+
+      // Build revisions for this KOT.
+      //
+      // IMPORTANT:
+      // We don't want the overall order totals applied here.
+      // Therefore pass a copy without using order-level totals,
+      // or preferably make orderModel optional in buildKotRevisions.
+      final kotRevisions = buildKotRevisions(
+        kot,
+        apiVoidedItems: apiVoidedItems,
+        orderModel: null,
+      );
+
+      for (final revision in kotRevisions) {
+        result.add(
+          OrderModificationRevision(
+            kotOrderId: kotId,
+            revisionNumber: revision.revisionNumber,
+            revision: revision,
+          ),
+        );
+      }
+    }
+
+    // Combine ALL KOT histories and sort by actual modification time.
+    result.sort((a, b) {
+      final aDate = DateTime.tryParse(a.revision.modifiedOn ?? '');
+      final bDate = DateTime.tryParse(b.revision.modifiedOn ?? '');
+
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+
+      return aDate.compareTo(bDate);
+    });
+
+    return result;
+  }
   @override
   Widget build(BuildContext context) {
     final blockHeight = MediaQuery.of(context).size.height * 0.9;
@@ -1972,20 +2295,24 @@ amount: ${item.amount}
 
                           // Modification History Button
                           SizedBox(
-                            width: 100,
+                            width: 150,
                             height: 45,
                             child: OutlinedButton(
                               onPressed: () {
                                 _showModificationHistory(orderModel);
                               },
                               style: OutlinedButton.styleFrom(
-                                backgroundColor: const Color(0xFFF8FAFC),
+                                backgroundColor: const Color(
+                                  0xFFF8FAFC,
+                                ),
                                 side: const BorderSide(
                                   width: 0.8,
                                   color: Color(0xFF8F9193),
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(
+                                    10,
+                                  ),
                                 ),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -1997,10 +2324,10 @@ amount: ${item.amount}
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: Color(0xFF475569),
-                                  fontSize: 11,
                                   fontFamily: 'Inter',
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.22,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                  height: 0.75,
                                 ),
                               ),
                             ),
@@ -3453,13 +3780,24 @@ amount: ${item.amount}
     final refundDue = difference < 0 ? difference.abs() : 0;
     final additionalDue = difference > 0 ? difference : 0;
 
-    final modifiedBy =
-        orderModel.placedByName?.trim().isNotEmpty == true
-            ? orderModel.placedByName!
-            : orderModel.completedByUserId?.trim().isNotEmpty == true
-            ? orderModel.completedByUserId!
-            : '-';
+    final modifiedBy = () {
+      final name = orderModel.placedByName?.trim() ?? '';
+      final role = orderModel.placedByRole?.trim() ?? '';
 
+      if (name.isNotEmpty && role.isNotEmpty) {
+        return '$name · $role';
+      }
+
+      if (name.isNotEmpty) {
+        return name;
+      }
+
+      if (role.isNotEmpty) {
+        return role;
+      }
+
+      return '-';
+    }();
     final modifiedOn =
         orderModel.date?.trim().isNotEmpty == true ? orderModel.date! : '-';
 
@@ -3470,7 +3808,7 @@ amount: ${item.amount}
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 4),
+      margin: const EdgeInsets.only(bottom: 0),
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF332A17) : const Color(0xFFFFFBEB),
@@ -3485,7 +3823,7 @@ amount: ${item.amount}
           // =========================================================
           _buildModificationHeader(orderModel),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
 
           // =========================================================
           // ALL INFORMATION IN ONE ROW
@@ -3638,7 +3976,7 @@ amount: ${item.amount}
             'MODIFICATION SUMMARY',
             style: TextStyle(
               color: Color(0xFFB45309),
-              fontSize: 15,
+              fontSize: 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.8,
             ),
@@ -3646,7 +3984,7 @@ amount: ${item.amount}
         ),
 
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
           decoration: BoxDecoration(
             color: const Color(0xFFFEF3C7),
             borderRadius: BorderRadius.circular(20),
