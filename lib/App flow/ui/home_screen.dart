@@ -711,22 +711,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 state.tableId == 0 &&
                                                 state.tableName.isEmpty;
                                             final activeOrderCount =
-<<<<<<< HEAD
-=======
-// <<<<<<< HEAD
->>>>>>> f0262edb21fe25838f43b3c7a55cc994a8e60c33
+
                                                 (state.orderItems.isNotEmpty &&
                                                         isTakeAwayOrder)
                                                     ? "1"
                                                     : "0";
-<<<<<<< HEAD
-=======
-// =======
+
                                             state.orderItems.isNotEmpty
                                                 ? "1"
                                                 : "0";
-// >>>>>>> 1475e96ef9396877b9273eabcd3232d8c754025e
->>>>>>> f0262edb21fe25838f43b3c7a55cc994a8e60c33
+
 
                                             return SizedBox(
                                               width: 250,

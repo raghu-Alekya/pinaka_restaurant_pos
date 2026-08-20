@@ -1,4 +1,7 @@
 import 'dart:convert';
+import 'dart:core';
+
+import 'edit_order_list_model.dart';
 
 class OrderlistModel {
   final String? completedByUserId;
@@ -34,13 +37,13 @@ class OrderlistModel {
 
   String? status;
   bool? isParent;
-<<<<<<< HEAD
+
   String? createdVia;
   String? externalOrderId;
 
-=======
+
   String? placedByName;
->>>>>>> f0262edb21fe25838f43b3c7a55cc994a8e60c33
+
   List<KotOrder>? kotOrders;
   num? serviceChargeValue;
   num? serviceChargePercentage;
@@ -196,7 +199,7 @@ class OrderlistModel {
 
     return OrderlistModel(
       completedByUserId: json['completed_by_user_id']?.toString(),
-<<<<<<< HEAD
+
       orderId: json['order_id'] is int ? json['order_id'] : int.tryParse(json['order_id']?.toString() ?? json['id']?.toString() ?? ''),
       orderType: parsedOrderType,
       date: json['date'] ?? json['date_created'] ?? json['created_at'],
@@ -212,23 +215,9 @@ class OrderlistModel {
       merchantDiscount: parseAmount(json['merchant_discount']),
       netPayable: effectiveAmount,
       roundOff: parseAmount(json['round_off']),
-=======
-      orderId: json['order_id'],
-      orderType: json['order_type'],
-      date: json['date'],
-      customerName: json['customer_name'],
-      customerPhone: json['customer_phone'],
-      paymentType: json['payment_type'],
-      kotOrderId: json['kot_order_id'],
-      placedByName: json['placed_by_name']?.toString(),
-      grossTotal: num.tryParse(json['gross_total']?.toString() ?? "0") ?? 0,
-      subTotal: num.tryParse(json['sub_total']?.toString() ?? "0") ?? 0,
-      totalTax: num.tryParse(json['total_tax']?.toString() ?? "0") ?? 0,
-      netTotal: num.tryParse(json['net_total']?.toString() ?? "0") ?? 0,
-      merchantDiscount: num.tryParse(json['merchant_discount']?.toString() ?? "0") ?? 0,
-      netPayable: num.tryParse(json['net_payable']?.toString() ?? "0") ?? 0,
-      roundOff: num.tryParse(json['round_off']?.toString() ?? "0") ?? 0,
->>>>>>> f0262edb21fe25838f43b3c7a55cc994a8e60c33
+
+
+
 
       amount: effectiveAmount,
       discount: parseAmount(json['discount']),
@@ -268,8 +257,8 @@ class OrderlistModel {
             }).whereType<LineItem>().toList();
 
             if (lineItems.isNotEmpty) {
-              final parentOrderId = json['order_id'] is int 
-                  ? json['order_id'] 
+              final parentOrderId = json['order_id'] is int
+                  ? json['order_id']
                   : int.tryParse(json['order_id']?.toString() ?? json['id']?.toString() ?? '');
 
               list = [
@@ -326,36 +315,100 @@ class OrderlistModel {
 
 class KotOrder {
   int? kotOrderId;
+  String? kotNumber;
   String? status;
   num? total;
   String? createdAt;
   bool? isParent;
+
+  // Original KOT data
+  List<LineItem>? initialKotItems;
+
+  // Current KOT line items
   List<LineItem>? lineItems;
+
+  // Voided/modification history
+  List<VoidedItem>? voidedItems;
+
   List<Map<String, dynamic>>? metaData;
 
+  // User who created the KOT
+  String? placedByFirstName;
+  String? placedByLastName;
+  final String? placedByName;
   KotOrder({
     this.kotOrderId,
+    this.kotNumber,
     this.status,
     this.total,
     this.createdAt,
     this.isParent,
+    this.initialKotItems,
     this.lineItems,
+    this.voidedItems,
     this.metaData,
+    this.placedByFirstName,
+    this.placedByLastName,
+    this.placedByName,
   });
 
   factory KotOrder.fromJson(Map<String, dynamic> json) {
     return KotOrder(
-      kotOrderId: json['id'] ?? json['kot_order_id'],
-      status: json['status'],
-      total: num.tryParse(json['total']?.toString() ?? "0") ?? 0,
-      createdAt: json['created_at'],
+      kotOrderId: json['kot_order_id'] ?? json['id'],
+      kotNumber: json['kot_number']?.toString(),
+      status: json['status']?.toString(),
+      placedByName: json["placed_by_name"]?.toString(),
+      total: num.tryParse(
+        json['total']?.toString() ?? '0',
+      ) ?? 0,
+
+      createdAt: json['created_at']?.toString(),
+
       isParent: json['is_parent'],
 
-      lineItems: (json['line_items'] as List?)
-          ?.map((v) => LineItem.fromJson(v))
+      placedByFirstName:
+      json['placed_by_first_name']?.toString(),
+
+      placedByLastName:
+      json['placed_by_last_name']?.toString(),
+
+      // =====================================================
+      // ORIGINAL KOT ITEMS
+      // =====================================================
+      initialKotItems: (json['initial_kot_items'] as List?)
+          ?.map(
+            (e) => LineItem.fromJson(
+          Map<String, dynamic>.from(e),
+        ),
+      )
           .toList(),
+
+      // =====================================================
+      // CURRENT LINE ITEMS
+      // =====================================================
+      lineItems: (json['line_items'] as List?)
+          ?.map(
+            (e) => LineItem.fromJson(
+          Map<String, dynamic>.from(e),
+        ),
+      )
+          .toList(),
+
+      // =====================================================
+      // VOIDED ITEMS
+      // =====================================================
+      voidedItems: (json['voided_items'] as List?)
+          ?.map(
+            (e) => VoidedItem.fromJson(
+          Map<String, dynamic>.from(e),
+        ),
+      )
+          .toList(),
+
       metaData: (json['meta_data'] as List?)
-          ?.map((e) => Map<String, dynamic>.from(e))
+          ?.map(
+            (e) => Map<String, dynamic>.from(e),
+      )
           .toList(),
     );
   }
@@ -367,79 +420,128 @@ class LineItem {
   int? lineItemId;
   int? itemId;
   String? name;
+
   num? quantity;
+  num? originalQuantity;
+  num? voidedQuantity;
+  num? voidedAmount;
+
   num? maxQty;
   num? amount;
   num? total;
   num? modifierAmount;
   num? itemPrice;
+  num? tax;
+  num? totalWoTax;
+
+  String? kotRemarks;
+  String? voidedAt;
+
   List<String>? modifiers;
+
   double? originalAmount;
   double? unitPrice;
-  num? totalWoTax;
 
   LineItem({
     this.lineItemId,
     this.itemId,
     this.name,
     this.quantity,
+    this.originalQuantity,
+    this.voidedQuantity,
+    this.voidedAmount,
     this.maxQty,
     this.amount,
     this.total,
     this.modifierAmount,
-    this.modifiers,
     this.itemPrice,
+    this.tax,
+    this.totalWoTax,
+    this.kotRemarks,
+    this.voidedAt,
+    this.modifiers,
     this.originalAmount,
     this.unitPrice,
-    this.totalWoTax,
   });
 
   factory LineItem.fromJson(Map<String, dynamic> json) {
     List<String> parsedModifiers = [];
 
-    // Case 1: direct array
-    if (json['modifiers'] != null && (json['modifiers'] as List).isNotEmpty) {
+    if (json['modifiers'] != null &&
+        json['modifiers'] is List &&
+        (json['modifiers'] as List).isNotEmpty) {
       parsedModifiers = (json['modifiers'] as List)
-          .map((e) => e is Map ? e['name'].toString() : e.toString())
+          .map(
+            (e) => e is Map
+            ? e['name']?.toString() ?? ''
+            : e.toString(),
+      )
           .toList();
     }
-    // Case 2: in meta_data
-    else if (json['meta_data'] != null && json['meta_data'] is List) {
-      for (var meta in json['meta_data']) {
-        if (meta['key'] == 'modifiers' && meta['value'] != null) {
-          try {
-            final decoded = jsonDecode(meta['value']);
-            if (decoded is List) {
-              parsedModifiers.addAll(decoded
-                  .map<String>((e) => e is Map ? e['name'].toString() : e.toString())
-                  .toList());
-            }
-          } catch (e) {
-            print("⚠️ Failed to parse modifiers from meta_data: $e");
-          }
-        }
-      }
-    }
-
-    final qty = num.tryParse(json['quantity']?.toString() ?? json['qty']?.toString() ?? "0") ?? 0;
-    final itemTotal = num.tryParse(json['total']?.toString() ?? json['amount']?.toString() ?? json['price']?.toString() ?? "0") ?? 0;
-    final unitPrice = num.tryParse(json['item_price']?.toString() ?? json['price']?.toString() ?? "0") ?? 0;
 
     return LineItem(
       lineItemId: json['line_item_id'] ?? json['id'],
-      itemId: json['product_id'] ?? json['item_id'] ?? json['id'],
-      name: json['name'] ?? json['product_name'] ?? 'Item',
-      quantity: qty,
-      amount: itemTotal,
-      total: itemTotal,
-      modifierAmount: num.tryParse(json['modifier_amount']?.toString() ?? "0") ?? 0,
-      itemPrice: unitPrice > 0 ? unitPrice : (qty > 0 ? itemTotal / qty : itemTotal),
+
+      itemId: json['product_id'] ?? json['item_id'],
+
+      name: json['name'] ??
+          json['product_name'],
+
+      quantity: num.tryParse(
+        json['quantity']?.toString() ?? '0',
+      ) ?? 0,
+
+      originalQuantity: num.tryParse(
+        json['original_quantity']?.toString() ?? '0',
+      ) ?? 0,
+
+      voidedQuantity: num.tryParse(
+        json['voided_quantity']?.toString() ?? '0',
+      ) ?? 0,
+
+      voidedAmount: num.tryParse(
+        json['voided_amount']?.toString() ?? '0',
+      ) ?? 0,
+
+      amount: num.tryParse(
+        json['amount']?.toString() ?? '0',
+      ) ?? 0,
+
+      total: num.tryParse(
+        json['total']?.toString() ?? '0',
+      ) ?? 0,
+
+      modifierAmount: num.tryParse(
+        json['modifier_amount']?.toString() ?? '0',
+      ) ?? 0,
+
+      itemPrice: num.tryParse(
+        json['item_price']?.toString() ??
+            json['price']?.toString() ??
+            '0',
+      ) ?? 0,
+
+      tax: num.tryParse(
+        json['tax']?.toString() ??
+            json['tax_total']?.toString() ??
+            '0',
+      ) ?? 0,
+
+      totalWoTax: num.tryParse(
+        json['total_wo_tax']?.toString() ?? '0',
+      ) ?? 0,
+
+      kotRemarks:
+      json['kot_remarks']?.toString(),
+
+      voidedAt:
+      json['voided_at']?.toString(),
+
       modifiers: parsedModifiers,
-      totalWoTax: num.tryParse(json['total_wo_tax']?.toString() ?? itemTotal.toString()) ?? itemTotal,
     );
   }
-
 }
+
 
 // ================== VIEW MAPPING =====================
 
@@ -465,7 +567,9 @@ extension KotOrderMapping on KotOrder {
   Map<String, dynamic> toMapForView() {
     final parts = (createdAt ?? "").split(" ");
     return {
-      "kotNo": kotOrderId ?? 1,
+      "kotNo": kotOrderId,
+      // Display number
+      "kotNumber": kotNumber ?? "KOT#${kotOrderId ?? ''}",
       "date": parts.isNotEmpty ? parts[0] : "-",
       "time": parts.length > 1 ? parts[1] : "-",
       "items": lineItems?.map((l) => l.toMapForView()).toList() ?? [],
@@ -563,4 +667,30 @@ class CouponDetail {
       value: num.tryParse(json["value"].toString()) ?? 0,
     );
   }
+}
+class KotRevision {
+  final int revisionNumber;
+  final List<LineItem> items;
+
+  final num total;
+
+  final num? previousTotal;
+  final num? updatedTotal;
+  final num? difference;
+
+  final String? reason;
+  final String? modifiedBy;
+  final String? modifiedOn;
+
+  KotRevision({
+    required this.revisionNumber,
+    required this.items,
+    required this.total,
+    this.previousTotal,
+    this.updatedTotal,
+    this.difference,
+    this.reason,
+    this.modifiedBy,
+    this.modifiedOn,
+  });
 }

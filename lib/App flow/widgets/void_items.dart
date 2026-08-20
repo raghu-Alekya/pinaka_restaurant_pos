@@ -101,12 +101,18 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
   int get totalItems =>
       itemsNotifier.value.fold(0, (sum, item) => sum + item.quantity);
-
   int get leftTotalItems =>
-      originalKotItems.fold(0, (sum, item) => sum + item.quantity);
+      originalKotItems.fold(
+        0,
+            (sum, item) => sum + item.originalQuantity,
+      );
 
   double get leftTotalAmount =>
-      originalKotItems.fold(0.0, (sum, item) => sum + item.amount);
+      originalKotItems.fold(
+        0.0,
+            (sum, item) =>
+        sum + (item.originalQuantity * item.price),
+      );
 
   // ─── Header ────────────────────────────────
   Widget _dialogHeader(BuildContext context) {
@@ -359,12 +365,13 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                             itemCount: originalKotItems.length,
                             separatorBuilder:
                                 (_, __) => Divider(
-                                  height: 1,
-                                  color: Theme.of(context).dividerColor,
-                                ),
+                              height: 1,
+                              color: Theme.of(context).dividerColor,
+                            ),
                             itemBuilder: (context, index) {
                               final item = originalKotItems[index];
-
+                              final originalAmount =
+                                  item.originalQuantity * item.price;
                               return Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -379,7 +386,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                       flex: 4,
                                       child: Column(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                        CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             item.productName,
@@ -401,11 +408,11 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w500,
                                                   color:
-                                                      isDark
-                                                          ? Colors
-                                                              .lightBlue
-                                                              .shade200
-                                                          : Colors.blueGrey,
+                                                  isDark
+                                                      ? Colors
+                                                      .lightBlue
+                                                      .shade200
+                                                      : Colors.blueGrey,
                                                 ),
                                               ),
                                             ),
@@ -418,7 +425,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                       flex: 2,
                                       child: Center(
                                         child: Text(
-                                          "${item.quantity}",
+                                          "${item.originalQuantity}",
                                           style: Theme.of(
                                             context,
                                           ).textTheme.bodyMedium?.copyWith(
@@ -435,13 +442,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                       child: Align(
                                         alignment: Alignment.centerRight,
                                         child: Text(
-                                          item.amount.toStringAsFixed(2),
-                                          style: TextStyle(
+                                          originalAmount.toStringAsFixed(2),
+                                          style: const TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            color:
-                                                Theme.of(
-                                                  context,
-                                                ).textTheme.bodyLarge?.color,
                                           ),
                                         ),
                                       ),
@@ -487,9 +490,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                       ),
                       decoration: BoxDecoration(
                         color:
-                            isDark
-                                ? const Color(0xFF2A2F3D)
-                                : const Color(0xFFF3F6FF),
+                        isDark
+                            ? const Color(0xFF2A2F3D)
+                            : const Color(0xFFF3F6FF),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Column(
@@ -501,9 +504,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                 "Enter Reason :",
                                 style: TextStyle(
                                   color:
-                                      Theme.of(
-                                        context,
-                                      ).textTheme.bodyLarge?.color,
+                                  Theme.of(
+                                    context,
+                                  ).textTheme.bodyLarge?.color,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -517,14 +520,14 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                   ),
                                   decoration: BoxDecoration(
                                     color:
-                                        isDark
-                                            ? const Color(0xFF202433)
-                                            : Colors.white,
+                                    isDark
+                                        ? const Color(0xFF202433)
+                                        : Colors.white,
                                     border: Border.all(
                                       color:
-                                          _showReasonError
-                                              ? Colors.red
-                                              : Theme.of(context).dividerColor,
+                                      _showReasonError
+                                          ? Colors.red
+                                          : Theme.of(context).dividerColor,
                                     ),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
@@ -546,22 +549,22 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                       icon: Icon(
                                         Icons.keyboard_arrow_down,
                                         color:
-                                            _showReasonError
-                                                ? Colors.red
-                                                : null,
+                                        _showReasonError
+                                            ? Colors.red
+                                            : null,
                                       ),
                                       items:
-                                          voidReasons.map((reason) {
-                                            return DropdownMenuItem(
-                                              value: reason,
-                                              child: Text(
-                                                reason,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
+                                      voidReasons.map((reason) {
+                                        return DropdownMenuItem(
+                                          value: reason,
+                                          child: Text(
+                                            reason,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
                                       onChanged: (value) {
                                         setState(() {
                                           selectedReason = value;
@@ -704,10 +707,10 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                       itemCount: rightItems.length,
                                       separatorBuilder:
                                           (_, __) => Divider(
-                                            height: 1,
-                                            color:
-                                                Theme.of(context).dividerColor,
-                                          ),
+                                        height: 1,
+                                        color:
+                                        Theme.of(context).dividerColor,
+                                      ),
                                       itemBuilder: (context, index) {
                                         final item = rightItems[index];
 
@@ -724,10 +727,10 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                   "${index + 1}",
                                                   style: TextStyle(
                                                     color:
-                                                        Theme.of(context)
-                                                            .textTheme
-                                                            .bodyLarge
-                                                            ?.color,
+                                                    Theme.of(context)
+                                                        .textTheme
+                                                        .bodyLarge
+                                                        ?.color,
                                                   ),
                                                 ),
                                               ),
@@ -735,19 +738,19 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                 flex: 4,
                                                 child: Column(
                                                   crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
+                                                  CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
                                                       item.productName,
                                                       style: TextStyle(
                                                         fontSize: 13,
                                                         fontWeight:
-                                                            FontWeight.w500,
+                                                        FontWeight.w500,
                                                         color:
-                                                            Theme.of(context)
-                                                                .textTheme
-                                                                .bodyLarge
-                                                                ?.color,
+                                                        Theme.of(context)
+                                                            .textTheme
+                                                            .bodyLarge
+                                                            ?.color,
                                                       ),
                                                     ),
                                                     if (item
@@ -755,21 +758,21 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                         .isNotEmpty)
                                                       Padding(
                                                         padding:
-                                                            const EdgeInsets.only(
-                                                              top: 2,
-                                                            ),
+                                                        const EdgeInsets.only(
+                                                          top: 2,
+                                                        ),
                                                         child: Text(
                                                           "Modifiers: ${item.modifiers.join(", ")}",
                                                           style: TextStyle(
                                                             fontSize: 10,
                                                             fontWeight:
-                                                                FontWeight.w500,
+                                                            FontWeight.w500,
                                                             color:
-                                                                isDark
-                                                                    ? Colors
-                                                                        .lightBlueAccent
-                                                                    : Colors
-                                                                        .blueGrey,
+                                                            isDark
+                                                                ? Colors
+                                                                .lightBlueAccent
+                                                                : Colors
+                                                                .blueGrey,
                                                           ),
                                                         ),
                                                       ),
@@ -781,7 +784,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                 flex: 2,
                                                 child: Row(
                                                   mainAxisAlignment:
-                                                      MainAxisAlignment.center,
+                                                  MainAxisAlignment.center,
                                                   children: [
                                                     // ➖ Minus button
                                                     _qtyButton(
@@ -793,7 +796,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                         item.quantity--;
                                                         item.amount =
                                                             item.price *
-                                                            item.quantity;
+                                                                item.quantity;
                                                         setState(() {
                                                           _hasQuantityChanged =
                                                               _checkQuantityChanged();
@@ -812,13 +815,13 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                       "${item.quantity}",
                                                       style: TextStyle(
                                                         fontWeight:
-                                                            FontWeight.w600,
+                                                        FontWeight.w600,
                                                         fontSize: 12,
                                                         color:
-                                                            Theme.of(context)
-                                                                .textTheme
-                                                                .bodyLarge
-                                                                ?.color,
+                                                        Theme.of(context)
+                                                            .textTheme
+                                                            .bodyLarge
+                                                            ?.color,
                                                       ),
                                                     ),
 
@@ -855,19 +858,19 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                                 flex: 2,
                                                 child: Align(
                                                   alignment:
-                                                      Alignment.centerRight,
+                                                  Alignment.centerRight,
                                                   child: Text(
                                                     item.amount.toStringAsFixed(
                                                       2,
                                                     ),
                                                     style: TextStyle(
                                                       fontWeight:
-                                                          FontWeight.w600,
+                                                      FontWeight.w600,
                                                       color:
-                                                          Theme.of(context)
-                                                              .textTheme
-                                                              .bodyLarge
-                                                              ?.color,
+                                                      Theme.of(context)
+                                                          .textTheme
+                                                          .bodyLarge
+                                                          ?.color,
                                                     ),
                                                   ),
                                                 ),
@@ -898,11 +901,11 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
 
                         final subtotal = items.fold(
                           0.0,
-                          (sum, item) => sum + item.amount,
+                              (sum, item) => sum + item.amount,
                         );
                         final totalItems = items.fold(
                           0,
-                          (sum, item) => sum + item.quantity,
+                              (sum, item) => sum + item.quantity,
                         );
 
                         return Row(
@@ -913,9 +916,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color:
-                                    Theme.of(
-                                      context,
-                                    ).textTheme.bodyLarge?.color,
+                                Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color,
                               ),
                             ),
                             const Spacer(),
@@ -925,9 +928,9 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color:
-                                    Theme.of(
-                                      context,
-                                    ).textTheme.bodyLarge?.color,
+                                Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color,
                               ),
                             ),
                           ],
@@ -1031,18 +1034,18 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                               : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
-                                canSave
-                                    ? const Color(0xFFFF6B6B)
-                                    : Colors.grey.shade400,
+                            canSave
+                                ? const Color(0xFFFF6B6B)
+                                : Colors.grey.shade400,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(6),
                               side: BorderSide(
                                 color:
-                                    isDark
-                                        ? Theme.of(context).dividerColor
-                                        : Colors.transparent,
+                                isDark
+                                    ? Theme.of(context).dividerColor
+                                    : Colors.transparent,
                               ),
                             ),
                           ),

@@ -181,7 +181,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                   title: Text(item.product),
                   subtitle: Text(
                     'Qty ${item.origQty} → ${item.newQty}\n'
-                    'Reason: ${item.remarks}',
+                        'Reason: ${item.remarks}',
                   ),
                   trailing: Text(
                     '$_currency${item.itemTotal.toStringAsFixed(2)}',
@@ -224,7 +224,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       _selectedKotOriginalTotal = (_selectedKot?.lineItems ?? []).fold(
         0.0,
-        (sum, i) => sum + (i.totalWoTax ?? 0),
+            (sum, i) => sum + (i.totalWoTax ?? 0),
       );
 
       // LEFT PANEL (always original snapshot)
@@ -249,7 +249,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       //  RIGHT PANEL (restore edits OR create editable copy)
       _editedKotItems.putIfAbsent(
         kotId,
-        () =>
+            () =>
             _selectedKot!.lineItems!.map((item) {
               final qty = item.quantity ?? 1;
               final totalWoTax = item.totalWoTax ?? 0.0;
@@ -287,10 +287,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       // List of strings or objects
       return raw
           .map<String>((m) {
-            if (m is String) return m;
-            if (m is Map) return m['name']?.toString() ?? '';
-            return '';
-          })
+        if (m is String) return m;
+        if (m is Map) return m['name']?.toString() ?? '';
+        return '';
+      })
           .where((e) => e.isNotEmpty)
           .toList();
     }
@@ -302,10 +302,10 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         if (decoded is List) {
           return decoded
               .map<String>((m) {
-                if (m is String) return m;
-                if (m is Map) return m['name']?.toString() ?? '';
-                return '';
-              })
+            if (m is String) return m;
+            if (m is Map) return m['name']?.toString() ?? '';
+            return '';
+          })
               .where((e) => e.isNotEmpty)
               .toList();
         }
@@ -370,7 +370,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
       final order = await repo.fetchOrder(widget.orderId);
 
       order.kotOrders?.firstWhere(
-        (k) => k.kotOrderId == kotId,
+            (k) => k.kotOrderId == kotId,
         orElse: () => throw Exception("Selected KOT not found"),
       );
 
@@ -389,7 +389,22 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
       // 3️⃣ Build payload
       final List<Map<String, dynamic>> lineItemsPayload = [];
+      print("🔴 ===== KOT UPDATE ID DEBUG =====");
+      print("🔴 widget.orderId      = ${widget.orderId}");
+      print("🔴 kotId               = $kotId");
+      print("🔴 selectedKotId       = $_selectedKotId");
+      print("🔴 edited items count  = ${items.length}");
 
+      for (final item in items) {
+        print(
+          "🔴 ITEM => "
+              "product/itemId=${item.itemId}, "
+              "lineItemId=${item.lineItemId}, "
+              "quantity=${item.quantity}",
+        );
+      }
+
+      print("🔴 ===============================");
       for (final item in items) {
         final qty = item.quantity ?? 0;
 
@@ -554,7 +569,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     return Scaffold(
       // backgroundColor: const Color(0xFFF1F1F3),
       backgroundColor:
-          isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
+      isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
 
       appBar: TopBar(
         token: widget.token,
@@ -573,7 +588,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
           }
 
           final order = snapshot.data!.firstWhere(
-            (o) => o.orderId == widget.orderId,
+                (o) => o.orderId == widget.orderId,
           );
           if (!_netPayableInitialized) {
             _fixedTotalTax = order.totalTax?.toDouble() ?? 0.0; //  LOCK TAX
@@ -611,7 +626,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
 
               _editedKotItems.putIfAbsent(
                 kotId,
-                () =>
+                    () =>
                     _selectedKot!.lineItems!.map((item) {
                       final qty = item.quantity ?? 1;
                       final totalWoTax = item.totalWoTax ?? 0.0;
@@ -653,7 +668,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                           child: Container(
                             width: 110,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
+                              horizontal: 10,
                               vertical: 10,
                             ),
                             decoration: ShapeDecoration(
@@ -755,7 +770,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                                 return DropdownMenuItem<int>(
                                   value: kot.kotOrderId,
                                   child: Text(
-                                    "KOT ${kot.kotOrderId}",
+                                    "${kot.kotNumber}",
                                     style: theme.textTheme.bodyMedium
                                         ?.copyWith(color: Colors.white),
                                   ),
@@ -771,839 +786,839 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                       const SizedBox(width: 12),
                     ],
                   ),
-                // ============================
-                // BACK BUTTON - OUTSIDE CARD
-                // ============================
-          //       GestureDetector(
-          //       onTap: () {
-          // Navigator.pop(context, _kotUpdated);
-          // },
-          //   child: Container(
-          //     width: 110,
-          //     padding: const EdgeInsets.symmetric(
-          //       horizontal: 12,
-          //       vertical: 10,
-          //     ),
-          //     decoration: ShapeDecoration(
-          //       color: const Color(0xFF3B4259),
-          //       shape: RoundedRectangleBorder(
-          //         borderRadius: BorderRadius.circular(10),
-          //       ),
-          //       shadows: const [
-          //         BoxShadow(
-          //           color: Color(0x19000000),
-          //           blurRadius: 4,
-          //           offset: Offset(0, 1),
-          //         ),
-          //       ],
-          //     ),
-          //     child: Row(
-          //       mainAxisSize: MainAxisSize.min,
-          //       mainAxisAlignment: MainAxisAlignment.center,
-          //       children: const [
-          //         Icon(
-          //           Icons.arrow_back,
-          //           size: 20,
-          //           color: Colors.white,
-          //         ),
-          //         SizedBox(width: 8),
-          //         Text(
-          //           "Edit Order",
-          //           style: TextStyle(
-          //             color: Colors.white,
-          //             fontSize: 12,
-          //             fontWeight: FontWeight.w600,
-          //           ),
-          //         ),
-          //       ],
-          //     ),
-          //   ),
-          // ),
+                  // ============================
+                  // BACK BUTTON - OUTSIDE CARD
+                  // ============================
+                  //       GestureDetector(
+                  //       onTap: () {
+                  // Navigator.pop(context, _kotUpdated);
+                  // },
+                  //   child: Container(
+                  //     width: 110,
+                  //     padding: const EdgeInsets.symmetric(
+                  //       horizontal: 12,
+                  //       vertical: 10,
+                  //     ),
+                  //     decoration: ShapeDecoration(
+                  //       color: const Color(0xFF3B4259),
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(10),
+                  //       ),
+                  //       shadows: const [
+                  //         BoxShadow(
+                  //           color: Color(0x19000000),
+                  //           blurRadius: 4,
+                  //           offset: Offset(0, 1),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //     child: Row(
+                  //       mainAxisSize: MainAxisSize.min,
+                  //       mainAxisAlignment: MainAxisAlignment.center,
+                  //       children: const [
+                  //         Icon(
+                  //           Icons.arrow_back,
+                  //           size: 20,
+                  //           color: Colors.white,
+                  //         ),
+                  //         SizedBox(width: 8),
+                  //         Text(
+                  //           "Edit Order",
+                  //           style: TextStyle(
+                  //             color: Colors.white,
+                  //             fontSize: 12,
+                  //             fontWeight: FontWeight.w600,
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
 
-          const SizedBox(height: 10),
+                  const SizedBox(height: 10),
 
-          Expanded(
-          child: Container(
-          decoration: BoxDecoration(
-          color: isDark
-          ? const Color(0xFF202433)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-          BoxShadow(
-          color: isDark
-          ? Colors.black45
-              : Colors.black12,
-          blurRadius: 4,
-          offset: const Offset(0, 2),
-          ),
-          ],
-          ),
-          padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(width: 42),
-                      // Row(
-                      //   children: [
-                      //     const SizedBox(width: 10),
-                      //     SizedBox(
-                      //       width: 110, // button width
-                      //       child:GestureDetector(
-                      //         onTap: () {
-                      //           Navigator.pop(context, _kotUpdated);
-                      //         },
-                      //         child: Container(
-                      //           width: 110,
-                      //           padding: const EdgeInsets.symmetric(
-                      //             horizontal: 12,
-                      //             vertical: 10,
-                      //           ),
-                      //           decoration: ShapeDecoration(
-                      //             color: const Color(0xFF3B4259),
-                      //             shape: RoundedRectangleBorder(
-                      //               borderRadius: BorderRadius.circular(10),
-                      //             ),
-                      //             shadows: const [
-                      //               BoxShadow(
-                      //                 color: Color(0x19000000),
-                      //                 blurRadius: 4,
-                      //                 offset: Offset(0, 1),
-                      //               ),
-                      //             ],
-                      //           ),
-                      //           child: Row(
-                      //             mainAxisSize: MainAxisSize.min,
-                      //             mainAxisAlignment: MainAxisAlignment.center,
-                      //             children: const [
-                      //               Icon(
-                      //                 Icons.arrow_back,
-                      //                 size: 20,
-                      //                 color: Colors.white,
-                      //               ),
-                      //               SizedBox(width: 8),
-                      //               Text(
-                      //                 "Edit Order",
-                      //                 style: TextStyle(
-                      //                   color: Colors.white,
-                      //                   fontSize: 12,
-                      //                   fontWeight: FontWeight.w600,
-                      //                 ),
-                      //               ),
-                      //             ],
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     ),
-                      //
-                      //     const SizedBox(width: 16),
-                      //
-                      //     // 🧾 Order ID label
-                      //     Text(
-                      //       "Order ID :",
-                      //       style: theme.textTheme.bodyMedium?.copyWith(
-                      //         fontSize: 14,
-                      //         fontWeight: FontWeight.w600,
-                      //         color:
-                      //             isDark
-                      //                 ? Colors.white70
-                      //                 : const Color(0xFF7A7A7A),
-                      //       ),
-                      //     ),
-                      //
-                      //     const SizedBox(width: 6),
-                      //
-                      //     //  Order ID value
-                      //     Text(
-                      //       "${widget.orderId}",
-                      //       style: theme.textTheme.bodyLarge?.copyWith(
-                      //         fontSize: 16,
-                      //         fontWeight: FontWeight.bold,
-                      //         color:
-                      //             isDark
-                      //                 ? Colors.white
-                      //                 : const Color(0xFF4C5F7D),
-                      //       ),
-                      //     ),
-                      //     const Spacer(),
-                      //     if (kots.isNotEmpty)
-                      //       Container(
-                      //         height: 40,
-                      //         padding: const EdgeInsets.symmetric(
-                      //           horizontal: 16,
-                      //         ),
-                      //         decoration: BoxDecoration(
-                      //           color:
-                      //               isDark
-                      //                   ? const Color(0xFF2A2F3D)
-                      //                   : const Color(0xFF125BCE),
-                      //           borderRadius: BorderRadius.circular(8),
-                      //         ),
-                      //         child: DropdownButtonHideUnderline(
-                      //           child: DropdownButton<int>(
-                      //             value: _selectedKotId,
-                      //             icon: Icon(
-                      //               Icons.keyboard_arrow_down,
-                      //               color: Colors.white,
-                      //             ),
-                      //             dropdownColor:
-                      //                 isDark
-                      //                     ? const Color(0xFF2A2F3D)
-                      //                     : const Color(0xFF125BCE),
-                      //             style: theme.textTheme.bodyMedium?.copyWith(
-                      //               color: Colors.white,
-                      //             ),
-                      //             items:
-                      //                 kots.map((kot) {
-                      //                   return DropdownMenuItem<int>(
-                      //                     value: kot.kotOrderId,
-                      //                     child: Text(
-                      //                       "KOT ${kot.kotOrderId}",
-                      //                       style: theme.textTheme.bodyMedium
-                      //                           ?.copyWith(color: Colors.white),
-                      //                     ),
-                      //                   );
-                      //                 }).toList(),
-                      //             onChanged: (value) {
-                      //               if (value != null)
-                      //                 _onKotSelected(value, kots);
-                      //             },
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     const SizedBox(width: 12),
-                      //   ],
-                      // ),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF202433)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark
+                                ? Colors.black45
+                                : Colors.black12,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(width: 42),
+                          // Row(
+                          //   children: [
+                          //     const SizedBox(width: 10),
+                          //     SizedBox(
+                          //       width: 110, // button width
+                          //       child:GestureDetector(
+                          //         onTap: () {
+                          //           Navigator.pop(context, _kotUpdated);
+                          //         },
+                          //         child: Container(
+                          //           width: 110,
+                          //           padding: const EdgeInsets.symmetric(
+                          //             horizontal: 12,
+                          //             vertical: 10,
+                          //           ),
+                          //           decoration: ShapeDecoration(
+                          //             color: const Color(0xFF3B4259),
+                          //             shape: RoundedRectangleBorder(
+                          //               borderRadius: BorderRadius.circular(10),
+                          //             ),
+                          //             shadows: const [
+                          //               BoxShadow(
+                          //                 color: Color(0x19000000),
+                          //                 blurRadius: 4,
+                          //                 offset: Offset(0, 1),
+                          //               ),
+                          //             ],
+                          //           ),
+                          //           child: Row(
+                          //             mainAxisSize: MainAxisSize.min,
+                          //             mainAxisAlignment: MainAxisAlignment.center,
+                          //             children: const [
+                          //               Icon(
+                          //                 Icons.arrow_back,
+                          //                 size: 20,
+                          //                 color: Colors.white,
+                          //               ),
+                          //               SizedBox(width: 8),
+                          //               Text(
+                          //                 "Edit Order",
+                          //                 style: TextStyle(
+                          //                   color: Colors.white,
+                          //                   fontSize: 12,
+                          //                   fontWeight: FontWeight.w600,
+                          //                 ),
+                          //               ),
+                          //             ],
+                          //           ),
+                          //         ),
+                          //       ),
+                          //     ),
+                          //
+                          //     const SizedBox(width: 16),
+                          //
+                          //     // 🧾 Order ID label
+                          //     Text(
+                          //       "Order ID :",
+                          //       style: theme.textTheme.bodyMedium?.copyWith(
+                          //         fontSize: 14,
+                          //         fontWeight: FontWeight.w600,
+                          //         color:
+                          //             isDark
+                          //                 ? Colors.white70
+                          //                 : const Color(0xFF7A7A7A),
+                          //       ),
+                          //     ),
+                          //
+                          //     const SizedBox(width: 6),
+                          //
+                          //     //  Order ID value
+                          //     Text(
+                          //       "${widget.orderId}",
+                          //       style: theme.textTheme.bodyLarge?.copyWith(
+                          //         fontSize: 16,
+                          //         fontWeight: FontWeight.bold,
+                          //         color:
+                          //             isDark
+                          //                 ? Colors.white
+                          //                 : const Color(0xFF4C5F7D),
+                          //       ),
+                          //     ),
+                          //     const Spacer(),
+                          //     if (kots.isNotEmpty)
+                          //       Container(
+                          //         height: 40,
+                          //         padding: const EdgeInsets.symmetric(
+                          //           horizontal: 16,
+                          //         ),
+                          //         decoration: BoxDecoration(
+                          //           color:
+                          //               isDark
+                          //                   ? const Color(0xFF2A2F3D)
+                          //                   : const Color(0xFF125BCE),
+                          //           borderRadius: BorderRadius.circular(8),
+                          //         ),
+                          //         child: DropdownButtonHideUnderline(
+                          //           child: DropdownButton<int>(
+                          //             value: _selectedKotId,
+                          //             icon: Icon(
+                          //               Icons.keyboard_arrow_down,
+                          //               color: Colors.white,
+                          //             ),
+                          //             dropdownColor:
+                          //                 isDark
+                          //                     ? const Color(0xFF2A2F3D)
+                          //                     : const Color(0xFF125BCE),
+                          //             style: theme.textTheme.bodyMedium?.copyWith(
+                          //               color: Colors.white,
+                          //             ),
+                          //             items:
+                          //                 kots.map((kot) {
+                          //                   return DropdownMenuItem<int>(
+                          //                     value: kot.kotOrderId,
+                          //                     child: Text(
+                          //                       "KOT ${kot.kotOrderId}",
+                          //                       style: theme.textTheme.bodyMedium
+                          //                           ?.copyWith(color: Colors.white),
+                          //                     ),
+                          //                   );
+                          //                 }).toList(),
+                          //             onChanged: (value) {
+                          //               if (value != null)
+                          //                 _onKotSelected(value, kots);
+                          //             },
+                          //           ),
+                          //         ),
+                          //       ),
+                          //     const SizedBox(width: 12),
+                          //   ],
+                          // ),
 
-                      const SizedBox(height: 0),
+                          const SizedBox(height: 0),
 
-                      // Panels
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Flexible(
-                              flex: 1,
-                              child: Container(
-                                margin: const EdgeInsets.all(8),
-                                // decoration: BoxDecoration(
-                                //   color:
-                                //       isDark
-                                //           ? const Color(0xFF2A2F3D)
-                                //           : const Color(0xFFF6F6F6),
-                                //   borderRadius: BorderRadius.circular(12),
-                                // ),
-                                child: Stack(
-                                  children: [
-                                    // Left panel content
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom:
+                          // Panels
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  flex: 1,
+                                  child: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    // decoration: BoxDecoration(
+                                    //   color:
+                                    //       isDark
+                                    //           ? const Color(0xFF2A2F3D)
+                                    //           : const Color(0xFFF6F6F6),
+                                    //   borderRadius: BorderRadius.circular(12),
+                                    // ),
+                                    child: Stack(
+                                      children: [
+                                        // Left panel content
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            bottom:
                                             20, // leave space for overlay summary
-                                      ),
-                                      child:
+                                          ),
+                                          child:
                                           _selectedKot == null
                                               ? Center(
-                                                child: Text(
-                                                  "Select a KOT",
-                                                  style: theme
-                                                      .textTheme
-                                                      .bodyLarge
-                                                      ?.copyWith(
-                                                        color:
-                                                            isDark
-                                                                ? Colors.white70
-                                                                : Colors
-                                                                    .black87,
-                                                      ),
-                                                ),
-                                              )
+                                            child: Text(
+                                              "Select a KOT",
+                                              style: theme
+                                                  .textTheme
+                                                  .bodyLarge
+                                                  ?.copyWith(
+                                                color:
+                                                isDark
+                                                    ? Colors.white70
+                                                    : Colors
+                                                    .black87,
+                                              ),
+                                            ),
+                                          )
                                               : _buildLeftPanel(
-                                                order,
-                                                kots,
-                                              ), // your existing left panel content
-                                    ),
+                                            order,
+                                            kots,
+                                          ), // your existing left panel content
+                                        ),
 
-                                    // Overlay summary inside the container
-                                    if (_selectedKot != null)
-                                      Positioned(
-                                        left: 8,
-                                        right: 8,
-                                        bottom: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 0,
-                                            horizontal: 0,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.transparent,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                                        // Overlay summary inside the container
+                                        if (_selectedKot != null)
+                                          Positioned(
+                                            left: 8,
+                                            right: 8,
+                                            bottom: 0,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 0,
+                                                horizontal: 0,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.transparent,
+                                                borderRadius: BorderRadius.circular(
+                                                  12,
+                                                ),
+                                              ),
+                                              child: _summaryRow(
+                                                "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
+                                                "$_currency${(_selectedKot?.lineItems ?? []).fold<double>(0.0, (sum, item) => sum + (item.totalWoTax ?? 0)).toStringAsFixed(2)}",
+                                                bold: true,
+                                              ),
                                             ),
                                           ),
-                                          child: _summaryRow(
-                                            "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
-                                            "$_currency${(_selectedKot?.lineItems ?? []).fold<double>(0.0, (sum, item) => sum + (item.totalWoTax ?? 0)).toStringAsFixed(2)}",
-                                            bold: true,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
 
-                            const SizedBox(width: 6),
-                            Flexible(
-                              flex: 1,
-                              child: Container(
-                                margin: const EdgeInsets.all(8),
-                                // decoration: BoxDecoration(
-                                //   color:
-                                //       isDark
-                                //           ? const Color(0xFF2A2F3D)
-                                //           : const Color(0xFFF6F6F6),
-                                //   borderRadius: BorderRadius.circular(12),
-                                // ),
-                                child: Stack(
-                                  children: [
-                                    // KOT Card content
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 12,
-                                        left: 12,
-                                        right: 12,
-                                        bottom:
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  flex: 1,
+                                  child: Container(
+                                    margin: const EdgeInsets.all(8),
+                                    // decoration: BoxDecoration(
+                                    //   color:
+                                    //       isDark
+                                    //           ? const Color(0xFF2A2F3D)
+                                    //           : const Color(0xFFF6F6F6),
+                                    //   borderRadius: BorderRadius.circular(12),
+                                    // ),
+                                    child: Stack(
+                                      children: [
+                                        // KOT Card content
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 12,
+                                            left: 12,
+                                            right: 12,
+                                            bottom:
                                             30, // leave space for overlay summary inside the container
-                                      ),
-                                      child:
+                                          ),
+                                          child:
                                           _selectedKot == null
                                               ? const Center(
-                                                child: Text("Select a KOT"),
-                                              )
+                                            child: Text("Select a KOT"),
+                                          )
                                               : buildSelectedKotCard(
-                                                _selectedKot!,
-                                              ),
-                                    ),
-
-                                    // Overlay summary row inside the container
-                                    if (_selectedKot != null)
-                                      Positioned(
-                                        left: 8,
-                                        right: 8,
-                                        bottom: 0, // stays inside the container
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 0,
-                                            horizontal: 0,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.transparent,
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            // boxShadow: const [
-                                            //   BoxShadow(
-                                            //     color: Colors.black26,
-                                            //     blurRadius: 6,
-                                            //     offset: Offset(0, 2),
-                                            //   ),
-                                            // ],
-                                          ),
-                                          child: _summaryRow(
-                                            "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
-                                            "$_currency${(_editedKotItems[_selectedKotId] ?? []).fold<double>(0.0, (sum, i) => sum + (i.totalWoTax ?? 0)).toStringAsFixed(2)}",
-                                            bold: true,
+                                            _selectedKot!,
                                           ),
                                         ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
 
-                      // const SizedBox(height: 10),
-                      // _infoRow(
-                      //   "Net Payable",
-                      //   "₹${order.netPayable ?? 0}",
-                      //   bold: true,
-                      // ),
-                      // ============================================================
+                                        // Overlay summary row inside the container
+                                        if (_selectedKot != null)
+                                          Positioned(
+                                            left: 8,
+                                            right: 8,
+                                            bottom: 0, // stays inside the container
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                vertical: 0,
+                                                horizontal: 0,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.transparent,
+                                                borderRadius: BorderRadius.circular(
+                                                  12,
+                                                ),
+                                                // boxShadow: const [
+                                                //   BoxShadow(
+                                                //     color: Colors.black26,
+                                                //     blurRadius: 6,
+                                                //     offset: Offset(0, 2),
+                                                //   ),
+                                                // ],
+                                              ),
+                                              child: _summaryRow(
+                                                "KOT #${_selectedKot?.kotOrderId ?? '-'} - Amount",
+                                                "$_currency${(_editedKotItems[_selectedKotId] ?? []).fold<double>(0.0, (sum, i) => sum + (i.totalWoTax ?? 0)).toStringAsFixed(2)}",
+                                                bold: true,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // const SizedBox(height: 10),
+                          // _infoRow(
+                          //   "Net Payable",
+                          //   "₹${order.netPayable ?? 0}",
+                          //   bold: true,
+                          // ),
+                          // ============================================================
 // BOTTOM SUMMARY / ACTION BAR
 // ============================================================
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF1E3A5F)
-                              : const Color(0xFF1E3A5F),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: const Color(0xFFE2E8F0),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isSmall = constraints.maxWidth < 900;
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1E3A5F)
+                                  : const Color(0xFF1E3A5F),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isSmall = constraints.maxWidth < 900;
 
-                            // --------------------------------------------------------
-                            // SMALL SCREEN
-                            // --------------------------------------------------------
-                            if (isSmall) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  // Previous + Updated Total
-                                  Row(
+                                // --------------------------------------------------------
+                                // SMALL SCREEN
+                                // --------------------------------------------------------
+                                if (isSmall) {
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
-                                      Expanded(
-                                        child: _bottomAmountItem(
-                                          title: "PREVIOUS TOTAL",
-                                          amount:
-                                          "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
-                                          amountColor: Colors.white,
-                                        ),
+                                      // Previous + Updated Total
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _bottomAmountItem(
+                                              title: "PREVIOUS TOTAL",
+                                              amount:
+                                              "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
+                                              amountColor: Colors.white,
+                                            ),
+                                          ),
+
+                                          const Padding(
+                                            padding: EdgeInsets.symmetric(horizontal: 12),
+                                            child: Text(
+                                              "→",
+                                              style: TextStyle(
+                                                color: Color(0xFF7F8EA3),
+                                                fontSize: 28,
+                                              ),
+                                            ),
+                                          ),
+
+                                          Expanded(
+                                            child: _bottomAmountItem(
+                                              title: "UPDATED TOTAL",
+                                              amount:
+                                              "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
+                                              amountColor: const Color(0xFF86EFAC),
+                                            ),
+                                          ),
+                                        ],
                                       ),
 
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 12),
-                                        child: Text(
-                                          "→",
+                                      const SizedBox(height: 14),
+
+                                      // Reason
+                                      if (kot_remarks.isNotEmpty)
+                                        _reasonDropdown(),
+
+                                      if (kot_remarks.isNotEmpty)
+                                        const SizedBox(height: 14),
+
+                                      // Success message
+                                      if (_isUpdatingKot || _updateMessage != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 14),
+                                          child: _updateStatus(),
+                                        ),
+
+                                      // Buttons
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: _resetButton(),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: _updateButton(),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  );
+                                }
+
+                                // --------------------------------------------------------
+                                // LARGE SCREEN
+                                // --------------------------------------------------------
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // =====================================================
+                                    // PREVIOUS TOTAL
+                                    // =====================================================
+                                    _bottomAmountItem(
+                                      title: "PREVIOUS TOTAL",
+                                      amount:
+                                      "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
+                                      amountColor: Colors.white,
+                                    ),
+
+                                    const SizedBox(width: 25),
+
+                                    // =====================================================
+                                    // ARROW
+                                    // =====================================================
+                                    const Text(
+                                      "→",
+                                      style: TextStyle(
+                                        color: Color(0xFF7F8EA3),
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 45),
+
+                                    // =====================================================
+                                    // UPDATED TOTAL
+                                    // =====================================================
+                                    _bottomAmountItem(
+                                      title: "UPDATED TOTAL",
+                                      amount:
+                                      "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
+                                      amountColor: const Color(0xFF86EFAC),
+                                    ),
+
+                                    const SizedBox(width: 15),
+
+                                    // =====================================================
+                                    // CHANGE COUNT
+                                    // =====================================================
+                                    Container(
+                                      height: 40,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF2D4E75),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        "1 change",
+                                        style: const TextStyle(
+                                          color: Color(0xFF94A3B8),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 10),
+
+                                    // =====================================================
+                                    // REASON
+                                    // =====================================================
+                                    if (kot_remarks.isNotEmpty)
+                                      Expanded(
+                                        child: _reasonDropdown(),
+                                      ),
+
+                                    const SizedBox(width: 20),
+
+                                    // =====================================================
+                                    // SUCCESS / UPDATING MESSAGE
+                                    // =====================================================
+                                    if (_isUpdatingKot || _updateMessage != null)
+                                      Flexible(
+                                        child: _updateStatus(),
+                                      ),
+
+                                    const SizedBox(width: 60),
+
+                                    // =====================================================
+                                    // RESET
+                                    // =====================================================
+                                    SizedBox(
+                                      height: 40,
+                                      child: OutlinedButton(
+                                        onPressed: _isUpdatingKot
+                                            ? null
+                                            : () {
+                                          setState(() {
+                                            selectedReason = null;
+                                          });
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: const Color(0xFFCBD5E1),
+                                          side: const BorderSide(
+                                            color: Color(0xFF8BA3C4),
+                                            width: 1.6,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          "Reset",
                                           style: TextStyle(
-                                            color: Color(0xFF7F8EA3),
-                                            fontSize: 28,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
-
-                                      Expanded(
-                                        child: _bottomAmountItem(
-                                          title: "UPDATED TOTAL",
-                                          amount:
-                                          "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
-                                          amountColor: const Color(0xFF86EFAC),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-
-                                  const SizedBox(height: 14),
-
-                                  // Reason
-                                  if (kot_remarks.isNotEmpty)
-                                    _reasonDropdown(),
-
-                                  if (kot_remarks.isNotEmpty)
-                                    const SizedBox(height: 14),
-
-                                  // Success message
-                                  if (_isUpdatingKot || _updateMessage != null)
-                                    Padding(
-                                      padding: const EdgeInsets.only(bottom: 14),
-                                      child: _updateStatus(),
                                     ),
 
-                                  // Buttons
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _resetButton(),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: _updateButton(),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            }
+                                    const SizedBox(width: 10),
 
-                            // --------------------------------------------------------
-                            // LARGE SCREEN
-                            // --------------------------------------------------------
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                // =====================================================
-                                // PREVIOUS TOTAL
-                                // =====================================================
-                                _bottomAmountItem(
-                                  title: "PREVIOUS TOTAL",
-                                  amount:
-                                  "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
-                                  amountColor: Colors.white,
-                                ),
-
-                                const SizedBox(width: 25),
-
-                                // =====================================================
-                                // ARROW
-                                // =====================================================
-                                const Text(
-                                  "→",
-                                  style: TextStyle(
-                                    color: Color(0xFF7F8EA3),
-                                    fontSize: 30,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-
-                                const SizedBox(width: 45),
-
-                                // =====================================================
-                                // UPDATED TOTAL
-                                // =====================================================
-                                _bottomAmountItem(
-                                  title: "UPDATED TOTAL",
-                                  amount:
-                                  "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
-                                  amountColor: const Color(0xFF86EFAC),
-                                ),
-
-                                const SizedBox(width: 15),
-
-                                // =====================================================
-                                // CHANGE COUNT
-                                // =====================================================
-                                Container(
-                                  height: 40,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF2D4E75),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    "1 change",
-                                    style: const TextStyle(
-                                      color: Color(0xFF94A3B8),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(width: 10),
-
-                                // =====================================================
-                                // REASON
-                                // =====================================================
-                                if (kot_remarks.isNotEmpty)
-                                  Expanded(
-                                    child: _reasonDropdown(),
-                                  ),
-
-                                const SizedBox(width: 20),
-
-                                // =====================================================
-                                // SUCCESS / UPDATING MESSAGE
-                                // =====================================================
-                                if (_isUpdatingKot || _updateMessage != null)
-                                  Flexible(
-                                    child: _updateStatus(),
-                                  ),
-
-                                const SizedBox(width: 60),
-
-                                // =====================================================
-                                // RESET
-                                // =====================================================
-                                SizedBox(
-                                  height: 40,
-                                  child: OutlinedButton(
-                                    onPressed: _isUpdatingKot
-                                        ? null
-                                        : () {
-                                      setState(() {
-                                        selectedReason = null;
-                                      });
-                                    },
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFFCBD5E1),
-                                      side: const BorderSide(
-                                        color: Color(0xFF8BA3C4),
-                                        width: 1.6,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      "Reset",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(width: 10),
-
-                                // =====================================================
-                                // UPDATE KOT
-                                // =====================================================
-                                _updateButton(),
-                              ],
-                            );
-                          },
-                        ),
+                                    // =====================================================
+                                    // UPDATE KOT
+                                    // =====================================================
+                                    _updateButton(),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                          //
+                          // Row(
+                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          //   children: [
+                          //     const SizedBox(width: 15),
+                          //
+                          //     Expanded(
+                          //       child: _infoRow(
+                          //         "Order Net Payable",
+                          //         "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
+                          //         bold: true,
+                          //         labelFontWeight: FontWeight.w600,
+                          //         valueFontWeight: FontWeight.w600,
+                          //       ),
+                          //     ),
+                          //     const SizedBox(width: 34),
+                          //
+                          //     Expanded(
+                          //       child: _infoRow(
+                          //         "Order Updated Net Payable",
+                          //         "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
+                          //         bold: true,
+                          //         labelFontWeight: FontWeight.w700,
+                          //         valueFontWeight: FontWeight.w700,
+                          //       ),
+                          //     ),
+                          //   ],
+                          // ),
+                          //
+                          // Row(
+                          //   crossAxisAlignment: CrossAxisAlignment.center,
+                          //   children: [
+                          //     //  Enter Reason
+                          //     if (kot_remarks.isNotEmpty) ...[
+                          //       const SizedBox(width: 10),
+                          //       Container(
+                          //         padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
+                          //         decoration: BoxDecoration(
+                          //           color:
+                          //               isDark
+                          //                   ? const Color(0xFF2A2F3D)
+                          //                   : const Color(0xFFE5EFFF),
+                          //           borderRadius: BorderRadius.circular(8),
+                          //           border: Border.all(
+                          //             color:
+                          //                 isDark
+                          //                     ? theme.dividerColor
+                          //                     : const Color(0xFFE5EFFF),
+                          //           ),
+                          //         ),
+                          //         child: Row(
+                          //           children: [
+                          //             Text(
+                          //               "Enter Reason:",
+                          //               style: theme.textTheme.bodyLarge?.copyWith(
+                          //                 fontSize: 16,
+                          //                 fontWeight: FontWeight.w600,
+                          //                 color:
+                          //                     isDark
+                          //                         ? Colors.white
+                          //                         : const Color(0xFF393A3B),
+                          //               ),
+                          //             ),
+                          //             const SizedBox(width: 20),
+                          //
+                          //             SizedBox(
+                          //               width: 430,
+                          //               height: 30,
+                          //               child: Container(
+                          //                 padding: const EdgeInsets.symmetric(
+                          //                   horizontal: 12,
+                          //                 ),
+                          //                 decoration: BoxDecoration(
+                          //                   color: theme.cardColor,
+                          //                   borderRadius: BorderRadius.circular(6),
+                          //                   border: Border.all(
+                          //                     color: theme.dividerColor,
+                          //                   ),
+                          //                 ),
+                          //                 child: DropdownButtonHideUnderline(
+                          //                   child: DropdownButton<String>(
+                          //                     value: selectedReason,
+                          //                     isExpanded: true,
+                          //                     dropdownColor: theme.cardColor,
+                          //                     icon: Icon(
+                          //                       Icons.keyboard_arrow_down,
+                          //                       color: theme.iconTheme.color,
+                          //                     ),
+                          //                     hint: Text(
+                          //                       "Select Reason",
+                          //                       style: theme.textTheme.bodySmall
+                          //                           ?.copyWith(
+                          //                             fontSize: 12,
+                          //                             color:
+                          //                                 isDark
+                          //                                     ? Colors.white54
+                          //                                     : const Color(
+                          //                                       0xFF9E9E9E,
+                          //                                     ),
+                          //                           ),
+                          //                     ),
+                          //                     style: theme.textTheme.bodySmall
+                          //                         ?.copyWith(
+                          //                           fontSize: 12,
+                          //                           color:
+                          //                               isDark
+                          //                                   ? Colors.white
+                          //                                   : const Color(
+                          //                                     0xFF212121,
+                          //                                   ),
+                          //                         ),
+                          //                     items:
+                          //                         kot_remarks.map((reason) {
+                          //                           return DropdownMenuItem<String>(
+                          //                             value: reason,
+                          //                             child: Text(
+                          //                               reason,
+                          //                               style: theme
+                          //                                   .textTheme
+                          //                                   .bodySmall
+                          //                                   ?.copyWith(
+                          //                                     fontSize: 12,
+                          //                                     color:
+                          //                                         isDark
+                          //                                             ? Colors.white
+                          //                                             : const Color(
+                          //                                               0xFF212121,
+                          //                                             ),
+                          //                                   ),
+                          //                             ),
+                          //                           );
+                          //                         }).toList(),
+                          //                     onChanged: (value) {
+                          //                       setState(() {
+                          //                         selectedReason = value;
+                          //                       });
+                          //                     },
+                          //                   ),
+                          //                 ),
+                          //               ),
+                          //             ),
+                          //           ],
+                          //         ),
+                          //       ),
+                          //     ],
+                          //
+                          //     //  Spacer only if no success message
+                          //     if (_updateMessage == null) const Spacer(),
+                          //
+                          //     // Success message (Flexible)
+                          //     if (_isUpdatingKot || _updateMessage != null) ...[
+                          //       const SizedBox(width: 12),
+                          //
+                          //       Flexible(
+                          //         child: Row(
+                          //           children: [
+                          //             if (_isUpdatingKot)
+                          //               const SizedBox(
+                          //                 width: 18,
+                          //                 height: 18,
+                          //                 child: CircularProgressIndicator(
+                          //                   strokeWidth: 2,
+                          //                 ),
+                          //               )
+                          //             else
+                          //               Image.asset(
+                          //                 "assets/success_tick.png",
+                          //                 width: 20,
+                          //                 height: 20,
+                          //               ),
+                          //
+                          //             const SizedBox(width: 6),
+                          //
+                          //             Flexible(
+                          //               child: Text(
+                          //                 _isUpdatingKot
+                          //                     ? "Updating KOT, please wait..."
+                          //                     : _updateMessage!,
+                          //                 style: Theme.of(
+                          //                   context,
+                          //                 ).textTheme.bodyMedium?.copyWith(
+                          //                   color:
+                          //                       _isUpdatingKot
+                          //                           ? Colors.orange
+                          //                           : Colors.green,
+                          //                   fontWeight: FontWeight.w600,
+                          //                 ),
+                          //                 overflow: TextOverflow.ellipsis,
+                          //               ),
+                          //             ),
+                          //           ],
+                          //         ),
+                          //       ),
+                          //
+                          //       const SizedBox(width: 12),
+                          //     ],
+                          //
+                          //     //  Update KOT button
+                          //     ElevatedButton(
+                          //       onPressed: _isUpdatingKot ? null : _updateKot,
+                          //       style: ElevatedButton.styleFrom(
+                          //         backgroundColor: const Color(0xFF4C5F7D),
+                          //         padding: const EdgeInsets.symmetric(
+                          //           horizontal: 26,
+                          //           vertical: 18,
+                          //         ),
+                          //         shape: RoundedRectangleBorder(
+                          //           borderRadius: BorderRadius.circular(8),
+                          //         ),
+                          //       ),
+                          //       child:
+                          //           _isUpdatingKot
+                          //               ? const SizedBox(
+                          //                 width: 18,
+                          //                 height: 18,
+                          //                 child: CircularProgressIndicator(
+                          //                   strokeWidth: 2,
+                          //                   color: Colors.white,
+                          //                 ),
+                          //               )
+                          //               : const Text(
+                          //                 "Update KOT",
+                          //                 style: TextStyle(
+                          //                   fontSize: 14, //  SAME font size
+                          //                   fontWeight: FontWeight.w600,
+                          //                   color: Colors.white,
+                          //                 ),
+                          //               ),
+                          //     ),
+                          //
+                          //     const SizedBox(width: 10),
+                          //   ],
+                          // ),
+                        ],
                       ),
-                      //
-                      // Row(
-                      //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      //   children: [
-                      //     const SizedBox(width: 15),
-                      //
-                      //     Expanded(
-                      //       child: _infoRow(
-                      //         "Order Net Payable",
-                      //         "$_currency${(order.orderPrevTotal ?? 0).toStringAsFixed(2)}",
-                      //         bold: true,
-                      //         labelFontWeight: FontWeight.w600,
-                      //         valueFontWeight: FontWeight.w600,
-                      //       ),
-                      //     ),
-                      //     const SizedBox(width: 34),
-                      //
-                      //     Expanded(
-                      //       child: _infoRow(
-                      //         "Order Updated Net Payable",
-                      //         "$_currency${_dynamicNetPayable.toStringAsFixed(2)}",
-                      //         bold: true,
-                      //         labelFontWeight: FontWeight.w700,
-                      //         valueFontWeight: FontWeight.w700,
-                      //       ),
-                      //     ),
-                      //   ],
-                      // ),
-                      //
-                      // Row(
-                      //   crossAxisAlignment: CrossAxisAlignment.center,
-                      //   children: [
-                      //     //  Enter Reason
-                      //     if (kot_remarks.isNotEmpty) ...[
-                      //       const SizedBox(width: 10),
-                      //       Container(
-                      //         padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
-                      //         decoration: BoxDecoration(
-                      //           color:
-                      //               isDark
-                      //                   ? const Color(0xFF2A2F3D)
-                      //                   : const Color(0xFFE5EFFF),
-                      //           borderRadius: BorderRadius.circular(8),
-                      //           border: Border.all(
-                      //             color:
-                      //                 isDark
-                      //                     ? theme.dividerColor
-                      //                     : const Color(0xFFE5EFFF),
-                      //           ),
-                      //         ),
-                      //         child: Row(
-                      //           children: [
-                      //             Text(
-                      //               "Enter Reason:",
-                      //               style: theme.textTheme.bodyLarge?.copyWith(
-                      //                 fontSize: 16,
-                      //                 fontWeight: FontWeight.w600,
-                      //                 color:
-                      //                     isDark
-                      //                         ? Colors.white
-                      //                         : const Color(0xFF393A3B),
-                      //               ),
-                      //             ),
-                      //             const SizedBox(width: 20),
-                      //
-                      //             SizedBox(
-                      //               width: 430,
-                      //               height: 30,
-                      //               child: Container(
-                      //                 padding: const EdgeInsets.symmetric(
-                      //                   horizontal: 12,
-                      //                 ),
-                      //                 decoration: BoxDecoration(
-                      //                   color: theme.cardColor,
-                      //                   borderRadius: BorderRadius.circular(6),
-                      //                   border: Border.all(
-                      //                     color: theme.dividerColor,
-                      //                   ),
-                      //                 ),
-                      //                 child: DropdownButtonHideUnderline(
-                      //                   child: DropdownButton<String>(
-                      //                     value: selectedReason,
-                      //                     isExpanded: true,
-                      //                     dropdownColor: theme.cardColor,
-                      //                     icon: Icon(
-                      //                       Icons.keyboard_arrow_down,
-                      //                       color: theme.iconTheme.color,
-                      //                     ),
-                      //                     hint: Text(
-                      //                       "Select Reason",
-                      //                       style: theme.textTheme.bodySmall
-                      //                           ?.copyWith(
-                      //                             fontSize: 12,
-                      //                             color:
-                      //                                 isDark
-                      //                                     ? Colors.white54
-                      //                                     : const Color(
-                      //                                       0xFF9E9E9E,
-                      //                                     ),
-                      //                           ),
-                      //                     ),
-                      //                     style: theme.textTheme.bodySmall
-                      //                         ?.copyWith(
-                      //                           fontSize: 12,
-                      //                           color:
-                      //                               isDark
-                      //                                   ? Colors.white
-                      //                                   : const Color(
-                      //                                     0xFF212121,
-                      //                                   ),
-                      //                         ),
-                      //                     items:
-                      //                         kot_remarks.map((reason) {
-                      //                           return DropdownMenuItem<String>(
-                      //                             value: reason,
-                      //                             child: Text(
-                      //                               reason,
-                      //                               style: theme
-                      //                                   .textTheme
-                      //                                   .bodySmall
-                      //                                   ?.copyWith(
-                      //                                     fontSize: 12,
-                      //                                     color:
-                      //                                         isDark
-                      //                                             ? Colors.white
-                      //                                             : const Color(
-                      //                                               0xFF212121,
-                      //                                             ),
-                      //                                   ),
-                      //                             ),
-                      //                           );
-                      //                         }).toList(),
-                      //                     onChanged: (value) {
-                      //                       setState(() {
-                      //                         selectedReason = value;
-                      //                       });
-                      //                     },
-                      //                   ),
-                      //                 ),
-                      //               ),
-                      //             ),
-                      //           ],
-                      //         ),
-                      //       ),
-                      //     ],
-                      //
-                      //     //  Spacer only if no success message
-                      //     if (_updateMessage == null) const Spacer(),
-                      //
-                      //     // Success message (Flexible)
-                      //     if (_isUpdatingKot || _updateMessage != null) ...[
-                      //       const SizedBox(width: 12),
-                      //
-                      //       Flexible(
-                      //         child: Row(
-                      //           children: [
-                      //             if (_isUpdatingKot)
-                      //               const SizedBox(
-                      //                 width: 18,
-                      //                 height: 18,
-                      //                 child: CircularProgressIndicator(
-                      //                   strokeWidth: 2,
-                      //                 ),
-                      //               )
-                      //             else
-                      //               Image.asset(
-                      //                 "assets/success_tick.png",
-                      //                 width: 20,
-                      //                 height: 20,
-                      //               ),
-                      //
-                      //             const SizedBox(width: 6),
-                      //
-                      //             Flexible(
-                      //               child: Text(
-                      //                 _isUpdatingKot
-                      //                     ? "Updating KOT, please wait..."
-                      //                     : _updateMessage!,
-                      //                 style: Theme.of(
-                      //                   context,
-                      //                 ).textTheme.bodyMedium?.copyWith(
-                      //                   color:
-                      //                       _isUpdatingKot
-                      //                           ? Colors.orange
-                      //                           : Colors.green,
-                      //                   fontWeight: FontWeight.w600,
-                      //                 ),
-                      //                 overflow: TextOverflow.ellipsis,
-                      //               ),
-                      //             ),
-                      //           ],
-                      //         ),
-                      //       ),
-                      //
-                      //       const SizedBox(width: 12),
-                      //     ],
-                      //
-                      //     //  Update KOT button
-                      //     ElevatedButton(
-                      //       onPressed: _isUpdatingKot ? null : _updateKot,
-                      //       style: ElevatedButton.styleFrom(
-                      //         backgroundColor: const Color(0xFF4C5F7D),
-                      //         padding: const EdgeInsets.symmetric(
-                      //           horizontal: 26,
-                      //           vertical: 18,
-                      //         ),
-                      //         shape: RoundedRectangleBorder(
-                      //           borderRadius: BorderRadius.circular(8),
-                      //         ),
-                      //       ),
-                      //       child:
-                      //           _isUpdatingKot
-                      //               ? const SizedBox(
-                      //                 width: 18,
-                      //                 height: 18,
-                      //                 child: CircularProgressIndicator(
-                      //                   strokeWidth: 2,
-                      //                   color: Colors.white,
-                      //                 ),
-                      //               )
-                      //               : const Text(
-                      //                 "Update KOT",
-                      //                 style: TextStyle(
-                      //                   fontSize: 14, //  SAME font size
-                      //                   fontWeight: FontWeight.w600,
-                      //                   color: Colors.white,
-                      //                 ),
-                      //               ),
-                      //     ),
-                      //
-                      //     const SizedBox(width: 10),
-                      //   ],
-                      // ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ]),
+                ]),
           );
         },
       ),
@@ -2193,14 +2208,14 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   }
 
   Widget _infoRow(
-    String label,
-    String value, {
-    bool bold = false,
-    Color? labelColor,
-    Color? valueColor,
-    FontWeight labelFontWeight = FontWeight.normal,
-    FontWeight valueFontWeight = FontWeight.normal,
-  }) {
+      String label,
+      String value, {
+        bool bold = false,
+        Color? labelColor,
+        Color? valueColor,
+        FontWeight labelFontWeight = FontWeight.normal,
+        FontWeight valueFontWeight = FontWeight.normal,
+      }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
