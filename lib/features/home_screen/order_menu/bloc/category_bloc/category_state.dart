@@ -69,3 +69,5 @@ class CategoryError extends CategoryState {
   @override
   List<Object?> get props => [message];
 }
+
+

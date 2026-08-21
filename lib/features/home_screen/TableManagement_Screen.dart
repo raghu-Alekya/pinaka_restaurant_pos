@@ -12,6 +12,7 @@ import 'All_tables_list/All_tables_list_bloc/all_tables_list_bloc.dart';
 import 'All_tables_list/All_tables_list_bloc/all_tables_list_event.dart';
 import 'All_tables_list/All_tables_list_bloc/all_tables_list_state.dart';
 import 'All_tables_list/all_tables_list_widget.dart';
+import 'MenuManagementScreen.dart';
 import 'Zones/Zones_bloc/zone_event.dart';
 import 'Zones/Zones_bloc/zone_state.dart';
 import 'Zones/Zones_bloc/zones_bloc.dart';
@@ -53,6 +54,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
   String _selectedStatusFilter = 'All';
 
   final GlobalKey _filterIconKey = GlobalKey();
+  bool _hasLoadedOnce = false;
 
   @override
   void initState() {
@@ -60,21 +62,15 @@ class _TableManagementScreenState extends State<TableManagementScreen>
     _loadStoreDetails();
     _loadCaptainDetails();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final zoneBloc = context.read<ZoneBloc>();
-      if (zoneBloc.state is ZoneInitial) {
-        zoneBloc.add(FetchZones());
-      }
-      final tablesBloc = context.read<AllTablesBloc>();
-      if (tablesBloc.state is AllTablesInitial) {
-        tablesBloc.add(FetchAllTables());
-      }
+      // Always fetch data on screen load (captain login)
+      context.read<ZoneBloc>().add(FetchZones());
+      context.read<AllTablesBloc>().add(FetchAllTables());
+      context.read<CategoryBloc>().add(LoadCategories());
     });
   }
 
-  // ─── Load store details from SharedPreferences ───
   Future<void> _loadStoreDetails() async {
     try {
-      // 1. Try to get merchant data from storage
       final merchantStorage = context.read<MerchantLocalStorage>();
       final merchantData = await merchantStorage.getMerchantData();
 
@@ -276,16 +272,70 @@ class _TableManagementScreenState extends State<TableManagementScreen>
   }
 
 
+
+  //
+  // Future<void> _onSyncPressed() async {
+  //   if (_isSyncing) return;
+  //   setState(() {
+  //     _isSyncing = true;
+  //     _selectedStatusFilter = 'All';   // ← add this
+  //     _selectedZoneId = null;
+  //   });
+  //
+  //   if (_tablesScrollController.hasClients) {
+  //     _tablesScrollController.jumpTo(0);
+  //   }
+  //
+  //   // Refresh zones, tables AND categories
+  //   context.read<ZoneBloc>().add(FetchZones());
+  //   context.read<AllTablesBloc>().add(FetchAllTables());
+  //   context.read<CategoryBloc>().add(LoadCategories());
+  //
+  //   await Future.delayed(const Duration(milliseconds: 600));
+  //   if (mounted) setState(() => _isSyncing = false);
+  // }
+  //
+  // Future<void> _onSyncDataFromDrawer() async {
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (_) => const _SyncingOverlay(),
+  //   );
+  //
+  //   setState(() {
+  //     _selectedStatusFilter = 'All';   // ← add this
+  //     _selectedZoneId = null;
+  //   });
+  //
+  //   if (_tablesScrollController.hasClients) {
+  //     _tablesScrollController.jumpTo(0);
+  //   }
+  //
+  //   context.read<ZoneBloc>().add(FetchZones());
+  //   context.read<AllTablesBloc>().add(FetchAllTables());
+  //   context.read<CategoryBloc>().add(LoadCategories());
+  //
+  //   await Future.delayed(const Duration(milliseconds: 900));
+  //
+  //   if (mounted) Navigator.of(context, rootNavigator: true).pop();
+  // }
+
   Future<void> _onSyncPressed() async {
     if (_isSyncing) return;
-    setState(() => _isSyncing = true);
 
-    _selectedZoneId = null;
+    setState(() {
+      _isSyncing = true;
+      _selectedStatusFilter = 'All';
+      _selectedZoneId = null;          // force ZoneTabs to auto-select first zone
+    });
+
+    // Prevent visibility listener from re-selecting the old zone
+    _suppressVisibilityBriefly();
+
     if (_tablesScrollController.hasClients) {
       _tablesScrollController.jumpTo(0);
     }
 
-    // Refresh zones, tables AND categories
     context.read<ZoneBloc>().add(FetchZones());
     context.read<AllTablesBloc>().add(FetchAllTables());
     context.read<CategoryBloc>().add(LoadCategories());
@@ -293,7 +343,6 @@ class _TableManagementScreenState extends State<TableManagementScreen>
     await Future.delayed(const Duration(milliseconds: 600));
     if (mounted) setState(() => _isSyncing = false);
   }
-
   Future<void> _onSyncDataFromDrawer() async {
     showDialog(
       context: context,
@@ -301,7 +350,13 @@ class _TableManagementScreenState extends State<TableManagementScreen>
       builder: (_) => const _SyncingOverlay(),
     );
 
-    _selectedZoneId = null;
+    setState(() {
+      _selectedStatusFilter = 'All';
+      _selectedZoneId = null;          // force ZoneTabs to auto-select first zone
+    });
+
+    _suppressVisibilityBriefly();
+
     if (_tablesScrollController.hasClients) {
       _tablesScrollController.jumpTo(0);
     }
@@ -454,7 +509,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
         onSyncData: _onSyncDataFromDrawer,
       ),
       appBar: AppBar(
-        toolbarHeight: 38,
+        // toolbarHeight: 38,
         elevation: 0.5,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -466,7 +521,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
             minWidth: 32,
             minHeight: 32,
           ),
-          icon: const Icon(Icons.menu, size: 18),
+          icon: const Icon(Icons.menu, size: 20),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
 
@@ -506,21 +561,103 @@ class _TableManagementScreenState extends State<TableManagementScreen>
           const SizedBox(width: 4),
         ],
       ),
+      // body: BlocBuilder<ZoneBloc, ZoneState>(
+      //   builder: (context, zoneState) {
+      //     return BlocBuilder<AllTablesBloc, AllTablesState>(
+      //       builder: (context, tableState) {
+      //         final zonesReady = zoneState is ZoneLoaded || zoneState is ZoneError;
+      //         final tablesReady =
+      //             tableState is AllTablesLoaded || tableState is AllTablesError;
+      //         final isFirstLoad = !zonesReady || !tablesReady;
+      //
+      //         if (isFirstLoad) {
+      //           return const Center(
+      //             child: CupertinoActivityIndicator(radius: 16),
+      //           );
+      //         }
+      //
+      //         return Column(
+      //           children: [
+      //             Container(
+      //               color: Colors.white,
+      //               padding: EdgeInsets.symmetric(
+      //                 horizontal: size.width * 0.03,
+      //                 vertical: size.height * 0.012,
+      //               ),
+      //               child: Row(
+      //                 children: [
+      //                   Expanded(
+      //                     child: ZoneTabs(
+      //                       selectedZoneId: _selectedZoneId,
+      //                       onZoneSelected: _onZoneTabSelected,
+      //                     ),
+      //                   ),
+      //                   IconButton(
+      //                     tooltip: 'Sync',
+      //                     icon: _isSyncing
+      //                         ? const SizedBox(
+      //                       width: 18,
+      //                       height: 18,
+      //                       child: CircularProgressIndicator(strokeWidth: 2),
+      //                     )
+      //                         : const Icon(Icons.sync, color: Colors.black54),
+      //                     onPressed: _onSyncPressed,
+      //                   ),
+      //                 ],
+      //               ),
+      //             ),
+      //
+      //             Expanded(
+      //               child: Stack(
+      //                 children: [
+      //                   Positioned.fill(
+      //                     child: AllTablesListWidget(
+      //                       scrollController: _tablesScrollController,
+      //                       sectionKeyBuilder: _sectionKeyFor,
+      //                       onZoneVisible: _onZoneVisibleFromScroll,
+      //                       statusFilter: _selectedStatusFilter, // 👈 new parameter
+      //
+      //                     ),
+      //                   ),
+      //                   Positioned(
+      //                     left: 0,
+      //                     right: 0,
+      //                     bottom: 15,
+      //                     child: const _StatusLegendBar(),
+      //                   ),
+      //                 ],
+      //               ),
+      //             ),
+      //           ],
+      //         );
+      //       },
+      //     );
+      //   },
+      // ),
       body: BlocBuilder<ZoneBloc, ZoneState>(
         builder: (context, zoneState) {
           return BlocBuilder<AllTablesBloc, AllTablesState>(
             builder: (context, tableState) {
-              final zonesReady = zoneState is ZoneLoaded || zoneState is ZoneError;
+              final zonesReady =
+                  zoneState is ZoneLoaded || zoneState is ZoneError;
               final tablesReady =
                   tableState is AllTablesLoaded || tableState is AllTablesError;
-              final isFirstLoad = !zonesReady || !tablesReady;
 
-              if (isFirstLoad) {
+              // Mark that we have successfully shown data at least once
+              if (zonesReady && tablesReady && !_hasLoadedOnce) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() => _hasLoadedOnce = true);
+                });
+              }
+
+              // Only show full-screen spinner on the very first load
+              if (!_hasLoadedOnce && (!zonesReady || !tablesReady)) {
                 return const Center(
                   child: CupertinoActivityIndicator(radius: 16),
                 );
               }
 
+              // From here on → always keep the UI (refresh happens in background)
               return Column(
                 children: [
                   Container(
@@ -532,26 +669,56 @@ class _TableManagementScreenState extends State<TableManagementScreen>
                     child: Row(
                       children: [
                         Expanded(
-                          child: ZoneTabs(
-                            selectedZoneId: _selectedZoneId,
-                            onZoneSelected: _onZoneTabSelected,
+                          child: SizedBox(
+                            height: 44,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(
+                                  color: Colors.grey.shade300,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: ZoneTabs(
+                                  selectedZoneId: _selectedZoneId,
+                                  onZoneSelected: _onZoneTabSelected,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        IconButton(
-                          tooltip: 'Sync',
-                          icon: _isSyncing
-                              ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                              : const Icon(Icons.sync, color: Colors.black54),
-                          onPressed: _onSyncPressed,
+
+                        const SizedBox(width: 8),
+                        // Sync button with white background
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: IconButton(
+                            tooltip: 'Sync',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                            icon: _isSyncing
+                                ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                                : const Icon(Icons.sync, color: Colors.black54),
+                            onPressed: _onSyncPressed,
+                          ),
                         ),
                       ],
                     ),
                   ),
-
                   Expanded(
                     child: Stack(
                       children: [
@@ -560,8 +727,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
                             scrollController: _tablesScrollController,
                             sectionKeyBuilder: _sectionKeyFor,
                             onZoneVisible: _onZoneVisibleFromScroll,
-                            statusFilter: _selectedStatusFilter, // 👈 new parameter
-
+                            statusFilter: _selectedStatusFilter,
                           ),
                         ),
                         Positioned(
@@ -588,6 +754,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
+        backgroundColor: Colors.white, // ← added
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -941,7 +1108,8 @@ class _AppDrawer extends StatelessWidget {
                 icon: Icons.receipt_outlined,
                 label: 'Update Menu',
                 onTap: () {
-                  Navigator.of(context).pop();
+                  Navigator.push(context, MaterialPageRoute(builder: (_)=> MenuManagementScreen(restaurantId: 1,)));
+
                 },
               ),
               _DrawerItem(

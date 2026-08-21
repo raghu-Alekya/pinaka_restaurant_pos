@@ -589,8 +589,7 @@ class _VariantIndicatorIcon extends StatelessWidget {
   }
 }
 
-/// 👈 NEW: stacked "Out of Stock" + greyed price block, matching the
-/// reference screenshot (red bold "Out of stock" above a muted price).
+
 class _OutOfStockBlock extends StatelessWidget {
   final String currencySymbol;
   final String? price;

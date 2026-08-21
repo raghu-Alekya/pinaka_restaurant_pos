@@ -47,9 +47,10 @@ class MiniSubcategoryRemoteDataSourceImpl implements MiniSubcategoryRemoteDataSo
           ),
         );
       }
-    } catch (e) {
-      print('ERROR: $e');
-      rethrow;
+    }catch (e) {
+      final friendlyMessage = ApiExceptionHandler.parseException(e);
+      print('ERROR: $e -> friendly: $friendlyMessage');
+      throw friendlyMessage;
     }
   }
 }

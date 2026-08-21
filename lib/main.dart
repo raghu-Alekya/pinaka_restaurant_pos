@@ -1,7 +1,11 @@
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:restaurant_captain_app/utils/cart_provider.dart';
+// import 'package:restaurant_captain_app/utils/notification_service.dart';
 import 'features/ captain_pin_login/captain_login_bloc/captain_login_bloc.dart';
 import 'features/ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
 import 'features/ captain_pin_login/captain_login_data_layer/captain_local_storage_impl.dart';
@@ -36,11 +40,6 @@ import 'features/home_screen/All_tables_list/All_tables_list_domain/all_tables_l
 import 'features/home_screen/All_tables_list/All_tables_list_domain/all_tables_list_usecase.dart';
 import 'features/home_screen/All_tables_list/All_tables_list_domain/get_order_by_table_usecase.dart';
 import 'features/home_screen/All_tables_list/All_tables_list_domain/order_by_table_entity.dart';
-import 'features/home_screen/Zones/Zones_bloc/zones_bloc.dart';
-import 'features/home_screen/Zones/zones_data_layer/zone_remote_data_source.dart';
-import 'features/home_screen/Zones/zones_data_layer/zone_repository_impl.dart';
-import 'features/home_screen/Zones/zones_domain/zone_repository.dart';
-import 'features/home_screen/Zones/zones_domain/zone_usecase.dart';
 import 'features/home_screen/Zones/Zones_bloc/zones_bloc.dart';
 import 'features/home_screen/Zones/zones_data_layer/zone_remote_data_source.dart';
 import 'features/home_screen/Zones/zones_data_layer/zone_repository_impl.dart';
@@ -85,9 +84,22 @@ import 'features/variations/variations_domain/fetch_variations_usecase.dart';
 import 'features/variations/variations_domain/variation_repository.dart';
 
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // await Firebase.initializeApp(
+  //   options: DefaultFirebaseOptions.currentPlatform,
+  // );
+
+  // FirebaseMessaging.onBackgroundMessage(
+  //   firebaseMessagingBackgroundHandler,
+  // );
+  //
+  // await FirebaseNotificationService.instance.initialize();
+
   runApp(const MyApp());
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -466,7 +478,7 @@ class _AuthCheckState extends State<AuthCheck> {
     // Show a loading spinner while checking
     return const Scaffold(
       body: Center(
-        child: CircularProgressIndicator(),
+        child: CupertinoActivityIndicator(radius: 14),
       ),
     );
   }

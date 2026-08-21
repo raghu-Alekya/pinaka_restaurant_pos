@@ -450,6 +450,7 @@
 // }
 
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -645,7 +646,9 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
+          icon: const Icon(Icons.arrow_back_ios,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -668,7 +671,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
         },
         builder: (context, state) {
           if (state is BillSummaryLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CupertinoActivityIndicator(radius: 14));
           } else if (state is BillSummaryLoaded) {
             return _buildContent(state.data);
           } else if (state is BillGenerating) {
@@ -677,7 +680,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                 _buildContent(null),
                 Container(
                   color: Colors.black.withOpacity(0.3),
-                  child: const Center(child: CircularProgressIndicator()),
+                  child: const Center(child: CupertinoActivityIndicator(radius: 14)),
                 ),
               ],
             );
@@ -878,10 +881,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                   ? const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
+                child: CupertinoActivityIndicator(radius: 14)
               )
                   : const Text(
                 'Generate Bill',

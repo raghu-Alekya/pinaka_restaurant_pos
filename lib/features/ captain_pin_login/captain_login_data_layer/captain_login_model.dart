@@ -60,6 +60,7 @@ class CaptainDataModel {
   final String? restaurantName;
   final String? avatar;
   final CaptainPermissionsModel? permissions;
+  final List<String>? printSettings; // 👈 new
 
   CaptainDataModel({
     this.token,
@@ -75,6 +76,7 @@ class CaptainDataModel {
     this.restaurantName,
     this.avatar,
     this.permissions,
+    this.printSettings,
   });
 
   factory CaptainDataModel.fromJson(Map<String, dynamic> json) {
@@ -94,6 +96,9 @@ class CaptainDataModel {
       permissions: json['permissions'] != null
           ? CaptainPermissionsModel.fromJson(json['permissions'])
           : null,
+      printSettings: json['print_settings'] is List
+          ? List<String>.from(json['print_settings'])
+          : null,
     );
   }
 
@@ -111,6 +116,7 @@ class CaptainDataModel {
     'restaurant_name': restaurantName,
     'avatar': avatar,
     'permissions': permissions?.toJson(),
+    if (printSettings != null) 'print_settings': printSettings,
   };
 
   CaptainData toEntity() => CaptainData(
@@ -127,6 +133,7 @@ class CaptainDataModel {
     restaurantName: restaurantName,
     avatar: avatar,
     permissions: permissions?.toEntity(),
+    printSettings: printSettings,
   );
 }
 

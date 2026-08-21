@@ -27,6 +27,7 @@ class CaptainLocalStorageImpl implements CaptainLocalStorage {
         'restaurantId': entity.data!.restaurantId,
         'restaurantName': entity.data!.restaurantName,
         'avatar': entity.data!.avatar,
+        'printSettings': entity.data!.printSettings,
         'permissions': entity.data!.permissions != null ? {
           'canAccessDashboard': entity.data!.permissions!.canAccessDashboard,
           'canViewMenu': entity.data!.permissions!.canViewMenu,
@@ -86,6 +87,9 @@ class CaptainLocalStorageImpl implements CaptainLocalStorage {
           restaurantId: map['data']['restaurantId'],
           restaurantName: map['data']['restaurantName'],
           avatar: map['data']['avatar'],
+          printSettings: map['data']['printSettings'] is List
+              ? List<String>.from(map['data']['printSettings'])
+              : null,
           permissions: map['data']['permissions'] != null ? CaptainPermissions(
             canAccessDashboard: map['data']['permissions']['canAccessDashboard'],
             canViewMenu: map['data']['permissions']['canViewMenu'],
@@ -138,5 +142,6 @@ class CaptainLocalStorageImpl implements CaptainLocalStorage {
     final data = await getCaptainData();
     return data?.data?.currencySymbol;
   }
+
 
 }

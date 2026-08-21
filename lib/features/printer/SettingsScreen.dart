@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -474,7 +475,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     );
                   }
-                  return const CircularProgressIndicator();
+                  return const CupertinoActivityIndicator(radius: 14);
                 },
               ),
               const SizedBox(height: 20),

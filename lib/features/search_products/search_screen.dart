@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:restaurant_captain_app/constants/color_constants.dart';
@@ -63,25 +64,25 @@ class _SearchScreenState extends State<SearchScreen> {
         children: [
           // ── Search input row ──
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
             child: Container(
-              height: 48,
+              height: 40,
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(color: Colors.grey.shade300, width: 1.2),
-                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: TextField(
                 controller: _controller,
                 focusNode: _focusNode,
-                style: const TextStyle(fontSize: 16, color: Colors.black87),
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
                 decoration: InputDecoration(
-                  hintText: 'Search for Category/item',
-                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
-                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade600, size: 22),
+                  hintText: 'Search...',
+                  hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                  prefixIcon: Icon(Icons.search, color: Colors.grey.shade600, size: 20),
                   suffixIcon: _controller.text.isNotEmpty
                       ? IconButton(
-                    icon: Icon(Icons.close, size: 20, color: Colors.grey.shade600),
+                    icon: Icon(Icons.close, size: 18, color: Colors.grey.shade600),
                     onPressed: () {
                       _controller.clear();
                       context.read<SearchBloc>().add(ClearSearch());
@@ -90,7 +91,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   )
                       : null,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
                 onChanged: (value) {
                   setState(() {});
@@ -99,7 +100,6 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           ),
-
           // ── Results ──
           Expanded(
             child: BlocConsumer<SearchBloc, SearchState>(
@@ -116,7 +116,7 @@ class _SearchScreenState extends State<SearchScreen> {
               },
               builder: (context, state) {
                 if (state is SearchLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: CupertinoActivityIndicator(radius: 14));
                 } else if (state is SearchLoaded) {
                   if (state.results.isEmpty) {
                     return const _SearchEmptyState(message: 'No results found');

@@ -28,6 +28,7 @@ class CaptainData {
   final String? restaurantName;
   final String? avatar;
   final CaptainPermissions? permissions;
+  final List<String>? printSettings; // 👈 new
 
   CaptainData({
     this.token,
@@ -43,6 +44,7 @@ class CaptainData {
     this.restaurantName,
     this.avatar,
     this.permissions,
+    this.printSettings,
   });
 }
 

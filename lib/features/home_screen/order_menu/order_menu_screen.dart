@@ -3292,7 +3292,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        toolbarHeight: 32,
+        // toolbarHeight: 32,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0.5,
@@ -3306,7 +3306,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
           ),
           icon: const Icon(
             Icons.arrow_back_ios,
-            size: 14,
+            size: 20,
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -3314,7 +3314,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
         title: const Text(
           'Create Order',
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 18,
             color: Colors.black87,
             fontWeight: FontWeight.w600,
           ),
@@ -3389,12 +3389,21 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         onAdd: _showAddOnsSheet,
                         onRemove: _removeFromCart,
                         onVariantTap: _showVariantAndAddOnSheet,
+                        // onVisibleSubcategoryChanged: (subId) {
+                        //   if (_selectedSubcategoryId != subId) {
+                        //     setState(() => _selectedSubcategoryId = subId);
+                        //   }
+                        // },
                         onVisibleSubcategoryChanged: (subId) {
+                          // Only auto-update from scroll when no subcategory is selected.
+                          // When user has selected a subcategory, keep that list locked.
+                          if (_selectedSubcategoryId != null) return;
+
                           if (_selectedSubcategoryId != subId) {
                             setState(() => _selectedSubcategoryId = subId);
                           }
                         },
-                        currencySymbol: symbol, // 👈 use symbol from notifier
+                        currencySymbol: symbol,
                       );
                     },
                   );
@@ -3527,9 +3536,63 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     );
   }
 
+  // Widget _buildSearchBar() {
+  //   final size = MediaQuery.of(context).size;
+  //
+  //   return GestureDetector(
+  //     onTap: () {
+  //       Navigator.push(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (_) => SearchScreen(
+  //             onAddToCart: _showAddOnsSheet,
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //     child: Container(
+  //       color: Colors.white,
+  //       padding: EdgeInsets.fromLTRB(
+  //         size.width * 0.034,   // left
+  //         size.height * 0.001,  // top
+  //         size.width * 0.034,   // right
+  //         size.height * 0.008,  // bottom
+  //       ),
+  //       child: Container(
+  //         width: double.infinity,
+  //         height: size.height * 0.045,
+  //         decoration: BoxDecoration(
+  //           color: const Color(0xFFF5F5F5),
+  //           borderRadius: BorderRadius.circular(12),
+  //           border: Border.all(
+  //             color: Colors.grey.shade300,
+  //             width: 1,
+  //           ),
+  //         ),
+  //         child: Row(
+  //           children: [
+  //             SizedBox(width: size.width * 0.035),
+  //             Icon(
+  //               Icons.search,
+  //               color: const Color(0xFF9E9E9E),
+  //               size: size.width * 0.055,
+  //             ),
+  //             SizedBox(width: size.width * 0.025),
+  //             Text(
+  //               'Search...',
+  //               style: TextStyle(
+  //                 color: const Color(0xFF9E9E9E),
+  //                 fontSize: size.width * 0.038,
+  //                 fontWeight: FontWeight.w400,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
   Widget _buildSearchBar() {
-    final size = MediaQuery.of(context).size;
-
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -3543,37 +3606,32 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       },
       child: Container(
         color: Colors.white,
-        padding: EdgeInsets.fromLTRB(
-          size.width * 0.034,   // left
-          size.height * 0.001,  // top
-          size.width * 0.034,   // right
-          size.height * 0.008,  // bottom
-        ),
+        padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
         child: Container(
           width: double.infinity,
-          height: size.height * 0.045,
+          height: 40,
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: Colors.grey.shade300,
               width: 1,
             ),
           ),
-          child: Row(
+          child: const Row(
             children: [
-              SizedBox(width: size.width * 0.035),
+              SizedBox(width: 12),
               Icon(
                 Icons.search,
-                color: const Color(0xFF9E9E9E),
-                size: size.width * 0.055,
+                color: Color(0xFF9E9E9E),
+                size: 20,
               ),
-              SizedBox(width: size.width * 0.025),
+              SizedBox(width: 8),
               Text(
                 'Search...',
                 style: TextStyle(
-                  color: const Color(0xFF9E9E9E),
-                  fontSize: size.width * 0.038,
+                  color: Color(0xFF9E9E9E),
+                  fontSize: 14,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -3583,7 +3641,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       ),
     );
   }
-
   Widget _buildCategoriesLabelRow() {
     return Container(
       color: Colors.white,
@@ -3654,7 +3711,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       ) {
     return Container(
       color: const Color(0xFFF5F5F5),
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -4002,6 +4059,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
+        backgroundColor: Colors.white, // ← added
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -4112,7 +4170,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       ),
     );
   }
-
 }
 
 class _VariantStepper extends StatelessWidget {

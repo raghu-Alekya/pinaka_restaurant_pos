@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../constants/color_constants.dart';
@@ -105,7 +106,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
             if (state is SearchLoading)
               const Padding(
                 padding: EdgeInsets.all(16.0),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child:CupertinoActivityIndicator(radius: 14)),
               ),
             if (state is SearchLoaded)
               Container(

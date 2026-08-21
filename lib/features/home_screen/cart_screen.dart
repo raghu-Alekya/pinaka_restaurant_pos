@@ -839,6 +839,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
@@ -846,6 +847,7 @@ import 'package:restaurant_captain_app/constants/color_constants.dart';
 
 import '../ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
 import '../ merchant_login/merchant_login_data_layer/merchant_local_storage.dart';
+import '../../utils/api_exception_handler.dart';
 import '../addons/addons_domin/addon_entity.dart';
 import '../addons/addons_domin/fetch_addons_usecase.dart';
 import '../bill_summary/bill_summary_screen.dart';
@@ -911,6 +913,46 @@ class _CartScreenState extends State<CartScreen> {
   final ValueNotifier<String> _currencySymbolNotifier = ValueNotifier<String>('\$');
   bool _isEditSheetOpen = false;
 
+  int _lastRepeatedKotIndex = -1;
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   cartItems = List.from(widget.cartItems);
+  //   _loadCurrencySymbol();
+  //
+  //   final kotsBloc = context.read<KotsListBloc>();
+  //
+  //   if (kotsBloc.state is KotsListLoaded && (kotsBloc.state as KotsListLoaded).kots.isNotEmpty) {
+  //     _hasAnyKots = true;
+  //     if (cartItems.isEmpty) {
+  //       _showAllKots = true;
+  //       _initialAutoExpandDone = true;
+  //     }
+  //   }
+  //
+  //   _kotsSubscription = kotsBloc.stream.listen((state) {
+  //     if (state is KotsListLoaded && mounted) {
+  //       setState(() {
+  //         _hasAnyKots = state.kots.isNotEmpty;
+  //         if (_hasAnyKots && cartItems.isEmpty && !_initialAutoExpandDone) {
+  //           _showAllKots = true;
+  //           _initialAutoExpandDone = true;
+  //         }
+  //       });
+  //     }
+  //   });
+  //
+  //   WidgetsBinding.instance.addPostFrameCallback((_) {
+  //     kotsBloc.add(
+  //       FetchKotsList(
+  //         parentOrderId: widget.orderId,
+  //         restaurantId: widget.restaurantId,
+  //         zoneId: widget.zoneId,
+  //       ),
+  //     );
+  //   });
+  // }
   @override
   void initState() {
     super.initState();
@@ -939,15 +981,22 @@ class _CartScreenState extends State<CartScreen> {
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      kotsBloc.add(
-        FetchKotsList(
-          parentOrderId: widget.orderId,
-          restaurantId: widget.restaurantId,
-          zoneId: widget.zoneId,
-        ),
-      );
-    });
+    //  NEW: only fetch if the bloc isn't already loaded. OrderMenuScreen
+    // (previous screen, same KotsListBloc instance) already fetched the
+    // KOTs for this order — re-fetching here on every navigation to Cart
+    // was forcing a fresh network round-trip and a brief loading state,
+    // which is what made the KOT list feel delayed when opening Cart.
+    if (kotsBloc.state is! KotsListLoaded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        kotsBloc.add(
+          FetchKotsList(
+            parentOrderId: widget.orderId,
+            restaurantId: widget.restaurantId,
+            zoneId: widget.zoneId,
+          ),
+        );
+      });
+    }
   }
 
   Future<void> _loadCurrencySymbol() async {
@@ -958,6 +1007,12 @@ class _CartScreenState extends State<CartScreen> {
         print('🪙 Cart currency symbol: $symbol');
       }
     } catch (_) {}
+  }
+
+  int _currentKotCount() {
+    final state = context.read<KotsListBloc>().state;
+    if (state is KotsListLoaded) return state.kots.length;
+    return 0;
   }
 
   @override
@@ -1239,7 +1294,7 @@ class _CartScreenState extends State<CartScreen> {
       );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('KOT print failed (${response.statusCode}): ${response.body}');
+        throw Exception(ApiExceptionHandler.parseError(response));
       }
 
       // ─── Parse response for real KOT data ──────────────────────────────
@@ -1249,7 +1304,6 @@ class _CartScreenState extends State<CartScreen> {
       final double kotTotal = (responseData['kot_total'] as num?)?.toDouble() ?? totalPrice;
       final List<dynamic> itemsJson = responseData['items'] ?? [];
 
-      // Build line items from the API response
       final List<LineItem> kotLineItems = itemsJson.map((item) {
         return LineItem(
           id: item['id'] ?? 0,
@@ -1264,10 +1318,9 @@ class _CartScreenState extends State<CartScreen> {
         );
       }).toList();
 
-      // Get zone name if available (fallback to empty string)
       final String zoneName = responseData['zone_name'] ?? '';
 
-      // ─── Notify KDS via MQTT with real data ──────────────────────────
+      // ─── Notify KDS via MQTT ──────────────────────────────────────────
       try {
         final kotOrder = KotOrder(
           id: kotId,
@@ -1290,11 +1343,10 @@ class _CartScreenState extends State<CartScreen> {
           tableId: widget.tableName,
         );
       } catch (mqttError) {
-        // Non-blocking – printing already succeeded
         print('MQTT notify failed (non-blocking): $mqttError');
       }
 
-      // ─── Print KOT (unchanged) ──────────────────────────────────────────
+      // ─── Print KOT ──────────────────────────────────────────────────────
       final printItems = cartItems.map((item) {
         final addOnNames = item.addOns.map((a) => a['name'].toString()).toList();
         return {
@@ -1329,20 +1381,20 @@ class _CartScreenState extends State<CartScreen> {
         ),
       );
 
-      // ─── Refresh tables & zones instantly ──────────────────────────
       context.read<AllTablesBloc>().add(FetchAllTables());
       context.read<ZoneBloc>().add(FetchZones());
 
-      // ─── Return to the existing TableManagementScreen ───────────────
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to print KOT: $e'), backgroundColor: Colors.red),
+      // ✅ User‑friendly error message
+      ApiExceptionHandler.showErrorSnackBar(
+        context,
+        e,
+        defaultMessage: 'Failed to print KOT. Please try again.',
       );
-      // Still navigate back on error
       Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _isPrintingKot = false);
@@ -1458,8 +1510,143 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  // Future<void> _repeatKot() async {
+  //   if (_isRepeatingKot || !_hasAnyKots) return;
+  //   setState(() => _isRepeatingKot = true);
+  //
+  //   try {
+  //     final merchantStorage = context.read<MerchantLocalStorage>();
+  //     final captainStorage = context.read<CaptainLocalStorage>();
+  //
+  //     final baseUrl = await merchantStorage.getStoreBaseUrl();
+  //     if (baseUrl == null || baseUrl.isEmpty) {
+  //       throw Exception('Store base URL not found.');
+  //     }
+  //
+  //     final captainData = await captainStorage.getCaptainData();
+  //     final token = captainData?.data?.token;
+  //     if (token == null || token.isEmpty) {
+  //       throw Exception('Captain token not found.');
+  //     }
+  //
+  //     final url = '$baseUrl/wp-json/pinaka-restaurant-pos/v1/orders/repeat-kot-order';
+  //
+  //     final requestBody = {
+  //       'order_id': widget.orderId,
+  //       'restaurant_id': widget.restaurantId,
+  //       'zone_id': widget.zoneId,
+  //     };
+  //
+  //     final response = await http.post(
+  //       Uri.parse(url),
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': 'Bearer $token',
+  //       },
+  //       body: jsonEncode(requestBody),
+  //     );
+  //
+  //     if (response.statusCode < 200 || response.statusCode >= 300) {
+  //       throw Exception(ApiExceptionHandler.parseError(response));
+  //     }
+  //
+  //     // ─── Parse response and add items to cart ──────────────────────────
+  //     final responseData = jsonDecode(response.body);
+  //     final List<dynamic> lineItems = responseData['line_items'] ?? [];
+  //
+  //     final List<CartItem> newItems = [];
+  //     for (final itemJson in lineItems) {
+  //       final productId = itemJson['product_id'] ?? 0;
+  //       final productName = itemJson['product_name'] ?? 'Unknown Product';
+  //       final String priceStr = itemJson['product_price']?.toString() ?? '0';
+  //       final int quantity = itemJson['quantity'] ?? 1;
+  //
+  //       if (productId > 0) {
+  //         final product = ProductEntity(
+  //           id: productId,
+  //           name: productName,
+  //           price: priceStr,
+  //           inStock: true,
+  //           isVariant: 'No',
+  //         );
+  //         newItems.add(CartItem(product: product, quantity: quantity));
+  //       }
+  //     }
+  //
+  //     if (newItems.isNotEmpty) {
+  //       widget.onAddItems(newItems);
+  //       setState(() {
+  //         for (final newItem in newItems) {
+  //           final existingIndex = cartItems.indexWhere(
+  //                 (item) => item.product.id == newItem.product.id,
+  //           );
+  //           if (existingIndex != -1) {
+  //             cartItems[existingIndex].quantity += newItem.quantity;
+  //           } else {
+  //             cartItems.add(newItem);
+  //           }
+  //         }
+  //         _showAllKots = false;
+  //       });
+  //     }
+  //
+  //     context.read<KotsListBloc>().add(
+  //       FetchKotsList(
+  //         parentOrderId: widget.orderId,
+  //         restaurantId: widget.restaurantId,
+  //         zoneId: widget.zoneId,
+  //       ),
+  //     );
+  //
+  //     context.read<AllTablesBloc>().add(FetchAllTables());
+  //     context.read<ZoneBloc>().add(FetchZones());
+  //
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(
+  //           content: Text('KOT repeated successfully. Items added to cart.'),
+  //           backgroundColor: Colors.green,
+  //         ),
+  //       );
+  //     }
+  //   } catch (e, stackTrace) {
+  //     debugPrint('════════════ REPEAT KOT ERROR ═════════════');
+  //     debugPrint('Error: $e');
+  //     debugPrint('StackTrace: $stackTrace');
+  //     debugPrint('════════════════════════════════════════════');
+  //
+  //     if (!mounted) return;
+  //
+  //     // User‑friendly error message
+  //     ApiExceptionHandler.showErrorSnackBar(
+  //       context,
+  //       e,
+  //       defaultMessage: 'Failed to repeat KOT. Please try again.',
+  //     );
+  //   } finally {
+  //     if (mounted) {
+  //       setState(() => _isRepeatingKot = false);
+  //     }
+  //   }
+  // }
+
   Future<void> _repeatKot() async {
     if (_isRepeatingKot || !_hasAnyKots) return;
+
+    // ✅ Block repeat if it was already used for this same KOT set
+    final currentKotCount = _currentKotCount();
+    if (_lastRepeatedKotIndex == currentKotCount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Repeat order can be applied only once for this KOT'),
+          backgroundColor: Colors.orange,
+          duration: Duration(milliseconds: 200),
+        ),
+      );
+      return;
+    }
+
+
     setState(() => _isRepeatingKot = true);
 
     try {
@@ -1495,16 +1682,13 @@ class _CartScreenState extends State<CartScreen> {
       );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(
-          'Repeat KOT failed (${response.statusCode}): ${response.body}',
-        );
+        throw Exception(ApiExceptionHandler.parseError(response));
       }
 
-      // ─── Parse response and add items to cart via callback ──────────
+      // ─── Parse response and add items to cart ──────────────────────────
       final responseData = jsonDecode(response.body);
       final List<dynamic> lineItems = responseData['line_items'] ?? [];
 
-      // Build CartItem list from the response
       final List<CartItem> newItems = [];
       for (final itemJson in lineItems) {
         final productId = itemJson['product_id'] ?? 0;
@@ -1525,11 +1709,8 @@ class _CartScreenState extends State<CartScreen> {
       }
 
       if (newItems.isNotEmpty) {
-        // Add items to the parent cart via callback
         widget.onAddItems(newItems);
-        // Update local cartItems list so the UI reflects changes
         setState(() {
-          // Merge new items with existing ones
           for (final newItem in newItems) {
             final existingIndex = cartItems.indexWhere(
                   (item) => item.product.id == newItem.product.id,
@@ -1540,12 +1721,16 @@ class _CartScreenState extends State<CartScreen> {
               cartItems.add(newItem);
             }
           }
-          // 👇 Collapse KOT list so items are visible
           _showAllKots = false;
         });
       }
 
-      // ─── Refresh KOT list and tables ────────────────────────────────────
+      // ✅ Lock repeat for this KOT set regardless of whether new items were
+      // returned — the repeat action was successfully used for this KOT.
+      setState(() {
+        _lastRepeatedKotIndex = currentKotCount;
+      });
+
       context.read<KotsListBloc>().add(
         FetchKotsList(
           parentOrderId: widget.orderId,
@@ -1557,14 +1742,14 @@ class _CartScreenState extends State<CartScreen> {
       context.read<AllTablesBloc>().add(FetchAllTables());
       context.read<ZoneBloc>().add(FetchZones());
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('KOT repeated successfully. Items added to cart.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      // if (mounted) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(
+      //       content: Text('KOT repeated successfully. Items added to cart.'),
+      //       backgroundColor: Colors.green,
+      //     ),
+      //   );
+      // }
     } catch (e, stackTrace) {
       debugPrint('════════════ REPEAT KOT ERROR ═════════════');
       debugPrint('Error: $e');
@@ -1573,11 +1758,11 @@ class _CartScreenState extends State<CartScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to repeat KOT: $e'),
-          backgroundColor: Colors.red,
-        ),
+      // User‑friendly error message
+      ApiExceptionHandler.showErrorSnackBar(
+        context,
+        e,
+        defaultMessage: 'Failed to repeat KOT. Please try again.',
       );
     } finally {
       if (mounted) {
@@ -1607,19 +1792,19 @@ class _CartScreenState extends State<CartScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        toolbarHeight: 28,
+        // toolbarHeight: 28,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 16),
+          icon: const Icon(Icons.arrow_back_ios, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Cart',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Colors.black,
           ),
@@ -1663,13 +1848,24 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  // FIX: explicit width + mainAxisSize so this section can never collapse
+  // down to a sliver line — was showing as a thin orange strip with no
+  // visible "KOT's List" text or "View all KOT's" label.
   Widget _buildKotListSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
-          "KOT's List",
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        const SizedBox(
+          width: double.infinity,
+          child: Text(
+            "KOT's List",
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: Colors.black87,
+            ),
+          ),
         ),
         const SizedBox(height: 8),
         _viewAllKotsButton(),
@@ -1763,11 +1959,14 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  // orange button can never shrink to a thin line — the label and chevron
+  // now always render at full size like the target design.
   Widget _viewAllKotsButton() {
     return GestureDetector(
       onTap: () => setState(() => _showAllKots = !_showAllKots),
       child: Container(
         width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 44),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: ColorConstants.primaryColor,
@@ -1775,10 +1974,13 @@ class _CartScreenState extends State<CartScreen> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
               "View all KOT's",
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             AnimatedRotation(
               turns: _showAllKots ? 0.5 : 0,
@@ -1969,7 +2171,18 @@ class _CartScreenState extends State<CartScreen> {
                     );
                   },
                   onDismissed: (_) {
-                    _decrement(item);
+                    // Swipe-to-delete must always remove the whole line from cartItems,
+                    // otherwise Dismissible thinks it's gone from the tree while the
+                    // item (with quantity > 1) is still in the list, causing:
+                    // "A dismissed Dismissible widget is still part of the tree."
+                    final removedQty = item.quantity;
+                    setState(() {
+                      cartItems.remove(item);
+                    });
+                    // Tell parent to fully decrement this item out of its cart state too.
+                    for (int i = 0; i < removedQty; i++) {
+                      widget.onDecrement(item);
+                    }
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('${item.product.name} removed'),
@@ -2125,7 +2338,7 @@ class _CartScreenState extends State<CartScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: _isRepeatingKot
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: ColorConstants.primaryColor))
+                  ? const SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(radius: 14))
                   : const Text('Repeat KOT', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ),
@@ -2142,7 +2355,7 @@ class _CartScreenState extends State<CartScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: _isPrintingKot
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(radius: 14))
                   : const Text('KOT Print', style: TextStyle(fontWeight: FontWeight.w600)),
             ),
           ),

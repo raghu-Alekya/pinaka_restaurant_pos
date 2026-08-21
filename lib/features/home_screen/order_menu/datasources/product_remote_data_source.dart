@@ -49,8 +49,9 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         );
       }
     } catch (e) {
-      print('ERROR: $e');
-      rethrow;
+      final friendlyMessage = ApiExceptionHandler.parseException(e);
+      print('ERROR: $e -> friendly: $friendlyMessage');
+      throw friendlyMessage;
     }
   }
 }

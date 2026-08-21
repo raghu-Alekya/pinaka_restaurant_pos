@@ -200,31 +200,6 @@ class _PrinterSetupState extends State<PrinterSetup> {
       await Future.delayed(const Duration(seconds: 5));
       await subscription.cancel();
 
-      // if (_networkDevices.isEmpty) {
-      //   final commonPrinters = [
-      //     '192.168.1.100',
-      //     '192.168.1.101',
-      //     '192.168.0.100',
-      //     '192.168.0.101',
-      //     '10.0.0.100',
-      //     '10.0.0.101',
-      //   ];
-      //
-      //   for (final ip in commonPrinters) {
-      //     setState(() {
-      //       _networkDevices.add(
-      //         BluetoothPrinter(
-      //           deviceName: 'Printer at $ip',
-      //           address: ip,
-      //           vendorId: null,
-      //           productId: null,
-      //           isBle: false,
-      //           typePrinter: PrinterType.network,
-      //         ),
-      //       );
-      //     });
-      //   }
-      // }
     } catch (e) {
       if (kDebugMode) {
         print("Network scan error: $e");
@@ -333,7 +308,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
 
   // ==================== UNIFIED CONNECT / SELECT (new, wraps old logic) ====================
 
+// ==================== UNIFIED CONNECT / SELECT (fixed) ====================
+
   bool _isPrinterSelected(BluetoothPrinter device) {
+    // Unified check – everything now lives in _selectedPrinters
     if (device.typePrinter == PrinterType.usb) {
       return _selectedPrinters.any(
             (p) =>
@@ -342,11 +320,9 @@ class _PrinterSetupState extends State<PrinterSetup> {
             p.productId == device.productId &&
             p.typePrinter == PrinterType.usb,
       );
-    } else if (device.typePrinter == PrinterType.network) {
-      return _selectedPrinters.any((p) => p.address == device.address);
-    } else {
-      return selectedPrinter?.address == device.address && _isConnected;
     }
+    // Network + Bluetooth both keyed by address
+    return _selectedPrinters.any((p) => p.address == device.address);
   }
 
   Future<void> _handleConnectPrinter(BluetoothPrinter device) async {
@@ -356,9 +332,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
     }
 
     if (device.typePrinter == PrinterType.usb) {
-      setState(() {
-        _selectedPrinters.add(device);
-      });
+      setState(() => _selectedPrinters.add(device));
       try {
         final printerDb = PrinterDBHelper();
         await printerDb.addPrinterToDB(device);
@@ -371,31 +345,29 @@ class _PrinterSetupState extends State<PrinterSetup> {
         print('Error persisting USB printer selection: $e');
       }
     } else if (device.typePrinter == PrinterType.network) {
-      setState(() {
-        _selectedPrinters.add(device);
-      });
+      setState(() => _selectedPrinters.add(device));
+
       final exists = _networkPrinters.any((p) => p.ipAddress == device.address);
       if (!exists) {
         setState(() {
           _networkPrinters.add(
             NetworkPrinterConfig(
               ipAddress: device.address ?? '',
-              port: (device.port == null || device.port!.isEmpty) ? '9100' : device.port!,
-              name: device.deviceName ?? _getPrinterName(_networkPrinters.length, ''),
+              port: (device.port == null || device.port!.isEmpty)
+                  ? '9100'
+                  : device.port!,
+              name: device.deviceName ??
+                  _getPrinterName(_networkPrinters.length, ''),
             ),
           );
         });
         _saveNetworkPrinters();
       }
     } else {
-      // bluetooth
+      // ─── Bluetooth ───────────────────────────────────────────────
       try {
         await _printerSettings.selectDevice(device);
-        if (mounted) {
-          setState(() {
-            selectedPrinter = device;
-          });
-        }
+
         final connected = await _printerSettings.connectDevice();
         if (!connected && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -409,11 +381,16 @@ class _PrinterSetupState extends State<PrinterSetup> {
           );
           return;
         }
-        if (mounted) {
-          setState(() {
-            _isConnected = connected;
-          });
-        }
+
+        // ★★★ KEY FIX – put it into the list that the print path uses ★★★
+        setState(() {
+          selectedPrinter = device;
+          _isConnected = true;
+          if (!_selectedPrinters.any((p) => p.address == device.address)) {
+            _selectedPrinters.add(device);
+          }
+        });
+
         try {
           final printerDb = PrinterDBHelper();
           final existing = await printerDb.getPrinterFromDB();
@@ -465,14 +442,19 @@ class _PrinterSetupState extends State<PrinterSetup> {
         _selectedPrinters.removeWhere((p) => p.address == device.address);
       });
     } else {
+      // Bluetooth
       printerManager.disconnect(type: PrinterType.bluetooth);
       if (mounted) {
         setState(() {
           _isConnected = false;
+          selectedPrinter = null;
+          _selectedPrinters.removeWhere((p) => p.address == device.address);
         });
       }
     }
   }
+
+
 
   // ==================== PRINTING (unchanged logic) ====================
 
@@ -555,7 +537,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator()),
+      builder: (context) => const Center(child: CupertinoActivityIndicator(radius: 14)),
     );
 
     try {
