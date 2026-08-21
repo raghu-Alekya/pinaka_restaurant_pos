@@ -10,13 +10,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_exception.dart';
 
 class SubCategoryRepository {
+  static final Map<String, List<SubCategory>> _memoryCache = {};
 
   SubCategoryRepository();
+
+  /// Clear in-memory subcategory cache if explicitly needed
+  static void clearMemoryCache() {
+    _memoryCache.clear();
+  }
 
   Future<List<SubCategory>> fetchSubCategories({
     required String categoryId,
     required String token,
   }) async {
+    // ⚡ Serve from in-memory cache instantly (0 ms)
+    if (_memoryCache.containsKey(categoryId)) {
+      print('⚡ SubCategories loaded from in-memory cache for category $categoryId');
+      return _memoryCache[categoryId]!;
+    }
+
     final prefs = await SharedPreferences.getInstance();
 
     final cacheKey = 'subcategory_$categoryId';
@@ -28,17 +40,23 @@ class SubCategoryRepository {
       try {
         final List<dynamic> data = jsonDecode(cachedData);
 
-        return data
+        final subCategories = data
             .map((json) => SubCategory.fromJson(json))
             .toList();
+
+        _memoryCache[categoryId] = subCategories;
+        return subCategories;
       } catch (_) {}
     }
 
     // 2. No cache -> API
-    return await _fetchFromApi(
+    final subCategories = await _fetchFromApi(
       categoryId: categoryId,
       token: token,
     );
+
+    _memoryCache[categoryId] = subCategories;
+    return subCategories;
   }
 
   Future<List<SubCategory>> refreshSubCategories({

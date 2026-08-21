@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/sidebar/category_model_.dart';
 import '../../repositories/category_repository.dart';
+import '../../repositories/subcategory_repository.dart';
+import '../../repositories/product_repository.dart';
 import '../Bloc Event/category_event.dart';
 import '../Bloc State/category_states.dart';
 
@@ -25,6 +27,18 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
         categories: categories,
         selectedCategory: categories.isNotEmpty ? categories[0] : null,
       ));
+
+      // 🚀 Background pre-fetch: quietly load all subcategories and products in parallel
+      for (final cat in categories) {
+        SubCategoryRepository().fetchSubCategories(
+          token: event.token,
+          categoryId: cat.id,
+        ).then((subCategories) {
+          for (final subCat in subCategories) {
+            ProductRepository().fetchProductsBySubCategory(subCat.id).catchError((_) {});
+          }
+        }).catchError((_) {});
+      }
     } catch (e, stackTrace) {
       final message = e.toString().replaceFirst("Exception: ", "");
 

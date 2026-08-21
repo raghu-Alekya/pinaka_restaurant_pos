@@ -9,8 +9,15 @@ import '../services/api_exception.dart';
 
 
 class ProductRepository {
+  static final Map<int, List<Product>> _memoryCache = {};
 
   ProductRepository();
+
+  /// Clear in-memory product cache if explicitly needed
+  static void clearMemoryCache() {
+    _memoryCache.clear();
+  }
+
   /// 🔐 Load token safely (APK + Run mode)
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -22,6 +29,12 @@ class ProductRepository {
   Future<List<Product>> fetchProductsBySubCategory(
       int subCategoryId) async {
     try {
+      // ⚡ Serve from in-memory cache instantly (0 ms)
+      if (_memoryCache.containsKey(subCategoryId)) {
+        print('⚡ Products loaded from in-memory cache for subCategory $subCategoryId');
+        return _memoryCache[subCategoryId]!;
+      }
+
       final prefs = await SharedPreferences.getInstance();
 
       final cacheKey = 'products_subcategory_$subCategoryId';
@@ -30,11 +43,11 @@ class ProductRepository {
       final cachedData = prefs.getString(cacheKey);
 
       if (cachedData != null) {
-        print('📦 Products loaded from cache');
+        print('📦 Products loaded from disk cache');
 
         final List<dynamic> data = jsonDecode(cachedData);
 
-        return data.map((json) {
+        final products = data.map((json) {
           final modifiers =
               (json['modifiers'] as List<dynamic>?)
                   ?.map((e) => e.toString())
@@ -51,6 +64,9 @@ class ProductRepository {
             hasOptions: hasOptions,
           );
         }).toList();
+
+        _memoryCache[subCategoryId] = products;
+        return products;
       }
 
       print('🌐 Products loaded from API');
@@ -85,7 +101,7 @@ class ProductRepository {
           jsonEncode(data),
         );
 
-        return data.map((json) {
+        final products = data.map((json) {
           final modifiers =
               (json['modifiers'] as List<dynamic>?)
                   ?.map((e) => e.toString())
@@ -102,6 +118,9 @@ class ProductRepository {
             hasOptions: hasOptions,
           );
         }).toList();
+
+        _memoryCache[subCategoryId] = products;
+        return products;
       }
 
       throw Exception(

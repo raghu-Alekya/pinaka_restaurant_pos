@@ -357,6 +357,7 @@ class Printer {
           const SnackBar(
             content: Text("No printer selected"),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 1),
           ),
         );
         return;

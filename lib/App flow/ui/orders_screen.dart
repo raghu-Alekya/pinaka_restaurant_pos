@@ -557,6 +557,7 @@ class _OrderPanelState extends State<OrderPanel> {
                 "No printer selected. Please set up a printer in settings.",
               ),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 1),
             ),
           );
         }
@@ -2984,8 +2985,29 @@ class _OrderPanelState extends State<OrderPanel> {
                                       );
 
                                       // ==========================================================
-                                      // KDS MQTT KOT
+                                      // CAPTURE CONTEXT & STATE BEFORE CLEARING CART
                                       // ==========================================================
+
+                                      final String tableName =
+                                          widget.isTakeAway
+                                              ? ''
+                                              : orderBloc.state.tableName;
+                                      final String restaurantId =
+                                          orderBloc.state.restaurantId.toString();
+                                      final int zoneId =
+                                          orderBloc.state.zoneId;
+                                      final String zoneName =
+                                          orderBloc.state.zoneName;
+                                      final List<Map<String, dynamic>> itemsToPrint =
+                                          state.orderItems.map((e) {
+                                        return {
+                                          "name": e.name,
+                                          "qty": e.quantity,
+                                          "modifiers": e.modifiers.toList(),
+                                          "addons": e.addOns,
+                                          "note": e.note,
+                                        };
+                                      }).toList();
 
                                       final mqttKot = kot.copyWith(
                                         status: kot.status.toLowerCase() == 'created'
@@ -2993,120 +3015,8 @@ class _OrderPanelState extends State<OrderPanel> {
                                             : kot.status,
                                       );
 
-                                      debugPrint(
-                                        '========== MQTT KOT ==========',
-                                      );
-
-                                      debugPrint(
-                                        'Restaurant ID: '
-                                            '${orderBloc.state.restaurantId}',
-                                      );
-
-                                      debugPrint(
-                                        'Parent Order ID: ${state.orderId}',
-                                      );
-
-                                      debugPrint(
-                                        'Zone ID: ${orderBloc.state.zoneId}',
-                                      );
-
-                                      debugPrint(
-                                        'Zone Name: ${orderBloc.state.zoneName}',
-                                      );
-
-                                      debugPrint(
-                                        'Order Type: '
-                                            '${widget.isTakeAway ? "takeaway" : "dine_in"}',
-                                      );
-
-                                      debugPrint(
-                                        'KOT Number: ${mqttKot.kotNumber}',
-                                      );
-
-                                      debugPrint(
-                                        'KOT Status: ${mqttKot.status}',
-                                      );
-
-                                      debugPrint(
-                                        'KOT JSON: ${mqttKot.toJson()}',
-                                      );
-
                                       // ==========================================================
-                                      // PRINT KOT
-                                      // ==========================================================
-
-                                      await printKot(
-                                        kotNo: kot.kotNumber ?? '',
-                                        orderId: kot.parentOrderId.toString(),
-                                        tableName: widget.isTakeAway
-                                            ? ''
-                                            : orderBloc.state.tableName,
-                                        captainName: captainName,
-                                        items: state.orderItems.map(
-                                              (e) {
-                                            return {
-                                              "name": e.name,
-                                              "qty": e.quantity,
-                                              "modifiers": e.modifiers.toList(),
-                                              "addons": e.addOns,
-                                              "note": e.note,
-                                            };
-                                          },
-                                        ).toList(),
-                                        kot: kot,
-                                      );
-
-                                      // ==========================================================
-                                      // SEND KOT TO KDS THROUGH MQTT
-                                      // ==========================================================
-
-                                      try {
-                                        debugPrint(
-                                            '========== SENDING KOT TO KDS =========='
-                                        );
-
-                                        await KdsMqttPublisher.notifyKotCreated(
-                                          restaurantId:
-                                          orderBloc.state.restaurantId.toString(),
-
-                                          parentOrderId:
-                                          state.orderId,
-
-                                          zoneId:
-                                          orderBloc.state.zoneId,
-
-                                          zoneName:
-                                          orderBloc.state.zoneName,
-
-                                          orderType:
-                                          widget.isTakeAway
-                                              ? 'takeaway'
-                                              : 'dine_in',
-
-                                          kot:
-                                          mqttKot,
-
-                                          tableName:
-                                          widget.isTakeAway
-                                              ? ''
-                                              : orderBloc.state.tableName,
-                                        );
-
-                                        debugPrint(
-                                            '========== KOT SENT TO KDS =========='
-                                        );
-                                      } catch (e, stack) {
-                                        debugPrint(
-                                          '❌ Failed to send KOT to KDS: $e',
-                                        );
-
-                                        debugPrint(
-                                          'Stack: $stack',
-                                        );
-                                      }
-
-                                      // ==========================================================
-                                      // POS LOCAL KOT STATUS
+                                      // POS LOCAL KOT STATUS & CLEAR ORDER IMMEDIATELY
                                       // ==========================================================
 
                                       final updatedKot = kot.copyWith(
@@ -3125,51 +3035,98 @@ class _OrderPanelState extends State<OrderPanel> {
                                       );
 
                                       // ==========================================================
-                                      // SUCCESS MESSAGE
+                                      // SUCCESS MESSAGE (SHOW IMMEDIATELY)
                                       // ==========================================================
 
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: SizedBox(
-                                            width: 400,
-                                            child: Row(
-                                              mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                              children: [
-                                                const Icon(
-                                                  Icons.check_circle,
-                                                  color: Colors.white,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'KOT Created: ${kot.kotNumber}',
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: SizedBox(
+                                              width: 400,
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.check_circle,
                                                     color: Colors.white,
+                                                    size: 20,
                                                   ),
-                                                ),
-                                              ],
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'KOT Created: ${kot.kotNumber}',
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w500,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
+                                            duration: const Duration(seconds: 1),
+                                            behavior: SnackBarBehavior.floating,
+                                            margin: EdgeInsets.only(
+                                              left: 400,
+                                              right: 400,
+                                              bottom:
+                                              MediaQuery.of(context).size.height *
+                                                  0.90,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                              BorderRadius.circular(12),
+                                            ),
+                                            backgroundColor: Colors.green,
+                                            elevation: 6,
                                           ),
-                                          duration: const Duration(seconds: 1),
-                                          behavior: SnackBarBehavior.floating,
-                                          margin: EdgeInsets.only(
-                                            left: 400,
-                                            right: 400,
-                                            bottom:
-                                            MediaQuery.of(context).size.height *
-                                                0.90,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                            BorderRadius.circular(12),
-                                          ),
-                                          backgroundColor: Colors.green,
-                                          elevation: 6,
-                                        ),
-                                      );
+                                        );
+                                      }
+
+                                      // ==========================================================
+                                      // PRINT KOT & SEND TO KDS ASYNCHRONOUSLY
+                                      // ==========================================================
+
+                                      () async {
+                                        await printKot(
+                                          kotNo: kot.kotNumber ?? '',
+                                          orderId: kot.parentOrderId.toString(),
+                                          tableName: tableName,
+                                          captainName: captainName,
+                                          items: itemsToPrint,
+                                          kot: kot,
+                                        );
+
+                                        try {
+                                          debugPrint(
+                                              '========== SENDING KOT TO KDS =========='
+                                          );
+
+                                          await KdsMqttPublisher.notifyKotCreated(
+                                            restaurantId: restaurantId,
+                                            parentOrderId: state.orderId,
+                                            zoneId: zoneId,
+                                            zoneName: zoneName,
+                                            orderType: widget.isTakeAway
+                                                ? 'takeaway'
+                                                : 'dine_in',
+                                            kot: mqttKot,
+                                            tableName: tableName,
+                                          );
+
+                                          debugPrint(
+                                              '========== KOT SENT TO KDS =========='
+                                          );
+                                        } catch (e, stack) {
+                                          debugPrint(
+                                            '❌ Failed to send KOT to KDS: $e',
+                                          );
+
+                                          debugPrint(
+                                            'Stack: $stack',
+                                          );
+                                        }
+                                      }();
                                     }
                                   } catch (e) {
                                     if (Navigator.of(

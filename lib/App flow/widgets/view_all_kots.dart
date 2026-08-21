@@ -463,6 +463,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                 "No printer selected. Please set up a printer in settings.",
               ),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 1),
             ),
           );
         }

@@ -343,7 +343,7 @@ class _PrintReciptState extends State<PrintRecipt> {
                 "No printer selected. Please set up a printer in settings.",
               ),
               backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
+              duration: Duration(seconds: 1),
             ),
           );
         }

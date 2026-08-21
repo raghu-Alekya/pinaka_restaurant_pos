@@ -498,7 +498,7 @@ class _TopBarState extends State<TopBar> {
                 "No printer selected. Please set up a printer in settings.",
               ),
               backgroundColor: Colors.red,
-              duration: Duration(seconds: 2),
+              duration: Duration(seconds: 1),
             ),
           );
         }

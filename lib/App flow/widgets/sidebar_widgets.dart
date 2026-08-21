@@ -81,11 +81,6 @@ class _SideBarWidgetsState extends State<SideBarWidgets> {
           final categoryBloc = context.read<CategoryBloc>();
           categoryBloc.add(SelectCategory(category.id));
 
-          // Reset dependent blocs
-          context.read<SubCategoryBloc>().add(ResetSubCategory());
-          context.read<MiniSubCategoryBloc>().add(ResetMiniSubCategory());
-          context.read<ProductBloc>().add(ClearProducts());
-
           setState(() => _selectedSubCategoryIndex = -1);
 
           // Load subcategories for this category
