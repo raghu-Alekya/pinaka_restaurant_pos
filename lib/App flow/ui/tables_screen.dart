@@ -1016,7 +1016,9 @@ class _TablesScreenState extends State<TablesScreen> {
           }
           return;
         }
-        if (statusLower == 'dine' || statusLower == 'dine in') {
+        if (statusLower == 'dine' ||
+            statusLower == 'dine in' ||
+            statusLower == 'occupied') {
           final orderRepository = OrderRepository(
             baseUrl: 'https://merchantrestaurant.alektasolutions.com',
           );
@@ -1268,7 +1270,8 @@ class _TablesScreenState extends State<TablesScreen> {
         }
         if (status == 'dine' ||
             status == 'dine in' ||
-            status == 'ready to pay') {
+            status == 'ready to pay' ||
+            status == 'occupied') {
           final orderRepository = OrderRepository(
             baseUrl: 'https://merchantrestaurant.alektasolutions.com',
           );
@@ -1435,7 +1438,8 @@ class _TablesScreenState extends State<TablesScreen> {
         }
         if (status == 'dine' ||
             status == 'dine in' ||
-            status == 'ready to pay') {
+            status == 'ready to pay' ||
+            status == 'occupied') {
           final orderRepository = OrderRepository(
             baseUrl: 'https://merchantrestaurant.alektasolutions.com',
           );
@@ -1842,7 +1846,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   (_currentZoneIndex + _visibleZoneCount > areaNames.length)
                       ? areaNames.length - _currentZoneIndex
                       : _visibleZoneCount,
-                  (index) {
+                      (index) {
                     final actualIndex = _currentZoneIndex + index;
                     if (actualIndex >= areaNames.length) {
                       return const SizedBox.shrink();
@@ -1908,8 +1912,8 @@ class _TablesScreenState extends State<TablesScreen> {
         decoration: BoxDecoration(
           color: disabled
               ? (Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade800
-                  : Colors.grey.shade200)
+              ? Colors.grey.shade800
+              : Colors.grey.shade200)
               : AppColors.card(context),
           shape: BoxShape.circle,
           border: Border.all(
@@ -1920,11 +1924,11 @@ class _TablesScreenState extends State<TablesScreen> {
           boxShadow: disabled
               ? []
               : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 4,
-                  )
-                ],
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 4,
+            )
+          ],
         ),
         child: Icon(
           icon,
@@ -2386,7 +2390,10 @@ class _TablesScreenState extends State<TablesScreen> {
                   bottom: 70,
                   child: Center(
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(20),
@@ -2394,7 +2401,7 @@ class _TablesScreenState extends State<TablesScreen> {
                           BoxShadow(
                             color: AppColors.shadow(context),
                             blurRadius: 4,
-                            offset: Offset(0, 2),
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -2419,6 +2426,13 @@ class _TablesScreenState extends State<TablesScreen> {
                             context,
                             Colors.grey,
                             "Reserve",
+                          ),
+                          const SizedBox(width: 20),
+
+                          TableHelpers.buildLegendDot(
+                            context,
+                            const Color(0xFFEACA00),
+                            "Occupied",
                           ),
                           const SizedBox(width: 20),
 

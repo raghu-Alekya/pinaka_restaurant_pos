@@ -13,7 +13,7 @@ import '../../utils/SessionManager.dart';
 import '../../printer/printer_service.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/print_receipt.dart';
 import 'package:pinaka_restaurant_pos/models/payment/payment_summary_model.dart'
-    as psm;
+as psm;
 import '../widgets/navigationhelper.dart';
 import '../widgets/pin_confirmation_popup.dart';
 import '../widgets/top_bar.dart';
@@ -22,7 +22,27 @@ import 'CheckinPopup.dart';
 import 'edit_order_screen.dart';
 // import 'edit_kots_screen.dart';
 // import 'edit_order_list.dart';
+// ============================================================
+// POS KOT COLORS
+// ============================================================
 
+const Color posPrimary = Color(0xFF1769D1);
+const Color posPrimaryDark = Color(0xFF1257B5);
+
+const Color posNavy = Color(0xFF354052);
+const Color posNavyDark = Color(0xFF2B3545);
+
+const Color posText = Color(0xFF202A3A);
+const Color posSecondaryText = Color(0xFF718096);
+
+const Color posBackground = Color(0xFFF5F7FA);
+const Color posRowWhite = Color(0xFFFFFFFF);
+const Color posRowAlternate = Color(0xFFF8FAFC);
+
+const Color posBorder = Color(0xFFE2E8F0);
+const Color posModifier = Color(0xFF3978D3);
+
+const Color posTotalBackground = Color(0xFFF1F5F9);
 class _OrdersCache {
   static List<OrderlistModel>? cachedOrders;
   static DateTime? cachedAt;
@@ -101,43 +121,43 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     );
 
     final items =
-        originalItems.map((item) {
-          final originalQty = item.originalQuantity ?? item.quantity ?? 0;
+    originalItems.map((item) {
+      final originalQty = item.originalQuantity ?? item.quantity ?? 0;
 
-          final price = item.itemPrice ?? 0;
+      final price = item.itemPrice ?? 0;
 
-          return LineItem(
-            lineItemId: item.lineItemId,
-            itemId: item.itemId,
-            name: item.name,
+      return LineItem(
+        lineItemId: item.lineItemId,
+        itemId: item.itemId,
+        name: item.name,
 
-            // IMPORTANT:
-            // Original quantity must be used here.
-            quantity: originalQty,
+        // IMPORTANT:
+        // Original quantity must be used here.
+        quantity: originalQty,
 
-            originalQuantity: originalQty,
+        originalQuantity: originalQty,
 
-            itemPrice: price,
+        itemPrice: price,
 
-            amount: price * originalQty,
+        amount: price * originalQty,
 
-            totalWoTax: price * originalQty,
+        totalWoTax: price * originalQty,
 
-            total: price * originalQty,
+        total: price * originalQty,
 
-            voidedQuantity: 0,
-            voidedAmount: 0,
+        voidedQuantity: 0,
+        voidedAmount: 0,
 
-            modifierAmount: item.modifierAmount,
-            modifiers: item.modifiers,
-            tax: item.tax,
-            kotRemarks: item.kotRemarks,
-          );
-        }).toList();
+        modifierAmount: item.modifierAmount,
+        modifiers: item.modifiers,
+        tax: item.tax,
+        kotRemarks: item.kotRemarks,
+      );
+    }).toList();
 
     final total = items.fold<num>(
       0,
-      (sum, item) => sum + (item.totalWoTax ?? 0),
+          (sum, item) => sum + (item.totalWoTax ?? 0),
     );
 
     return KotRevision(
@@ -205,10 +225,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
     for (final currentItem in revision.items) {
       debugPrint(
         "🔵 CURRENT: "
-        "itemId=${currentItem.itemId}, "
-        "lineItemId=${currentItem.lineItemId}, "
-        "name=${currentItem.name}, "
-        "qty=${currentItem.quantity}",
+            "itemId=${currentItem.itemId}, "
+            "lineItemId=${currentItem.lineItemId}, "
+            "name=${currentItem.name}, "
+            "qty=${currentItem.quantity}",
       );
 
       // Find matching previous item.
@@ -221,7 +241,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           if (match) {
             debugPrint(
               "✅ MATCH BY lineItemId: "
-              "${item.lineItemId}",
+                  "${item.lineItemId}",
             );
           }
 
@@ -235,7 +255,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
           if (match) {
             debugPrint(
               "✅ MATCH BY itemId: "
-              "${item.itemId}",
+                  "${item.itemId}",
             );
           }
 
@@ -255,7 +275,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
       debugPrint(
         "📦 ${currentItem.name}: "
-        "oldQty=$oldQty, newQty=$newQty",
+            "oldQty=$oldQty, newQty=$newQty",
       );
 
       if (newQty < oldQty) {
@@ -267,8 +287,8 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
         debugPrint(
           "🔴 REMOVED: "
-          "${removedQty} × ${currentItem.name} "
-          "= $removedAmount",
+              "${removedQty} × ${currentItem.name} "
+              "= $removedAmount",
         );
 
         result.add({
@@ -313,32 +333,32 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   }
 
   List<Map<String, dynamic>> _getRemovedItemsFromApiRevision(
-    KotRevision revision,
-    List<VoidedItem> apiItems,
-  ) {
+      KotRevision revision,
+      List<VoidedItem> apiItems,
+      ) {
     if (apiItems.isEmpty || revision.modifiedOn == null) return [];
 
     final revisionTime = revision.modifiedOn!.trim();
 
     return apiItems
         .where((item) {
-          final itemTime = item.voidedAt.toString();
-          return itemTime == revisionTime ||
-              itemTime.startsWith(revisionTime.split('.').first);
-        })
+      final itemTime = item.voidedAt.toString();
+      return itemTime == revisionTime ||
+          itemTime.startsWith(revisionTime.split('.').first);
+    })
         .where((item) => item.origQty > item.newQty)
         .map((item) {
-          final removedQty = item.origQty - item.newQty;
-          final unitPrice =
-              item.origQty > 0 ? item.itemTotal / item.origQty : 0.0;
+      final removedQty = item.origQty - item.newQty;
+      final unitPrice =
+      item.origQty > 0 ? item.itemTotal / item.origQty : 0.0;
 
-          return {
-            "name": item.product.isNotEmpty ? item.product : "-",
-            "removedQty": removedQty,
-            "amount":
-                item.itemTotal > 0 ? item.itemTotal : removedQty * unitPrice,
-          };
-        })
+      return {
+        "name": item.product.isNotEmpty ? item.product : "-",
+        "removedQty": removedQty,
+        "amount":
+        item.itemTotal > 0 ? item.itemTotal : removedQty * unitPrice,
+      };
+    })
         .toList();
   }
 
@@ -373,10 +393,10 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   }
 
   List<KotRevision> buildKotRevisions(
-    KotOrder kot, {
-    List<VoidedItem>? apiVoidedItems,
-    OrderlistModel? orderModel,
-  }) {
+      KotOrder kot, {
+        List<VoidedItem>? apiVoidedItems,
+        OrderlistModel? orderModel,
+      }) {
     debugPrint("========== BUILD KOT REVISIONS ==========");
     debugPrint("KOT ID: ${kot.kotOrderId}");
 
@@ -465,58 +485,58 @@ amount: ${item.amount}
     // ==========================================================
 
     final sortedKeys =
-        grouped.keys.toList()..sort((a, b) {
-          final dateA = DateTime.tryParse(a);
-          final dateB = DateTime.tryParse(b);
+    grouped.keys.toList()..sort((a, b) {
+      final dateA = DateTime.tryParse(a);
+      final dateB = DateTime.tryParse(b);
 
-          if (dateA == null && dateB == null) return 0;
-          if (dateA == null) return -1;
-          if (dateB == null) return 1;
+      if (dateA == null && dateB == null) return 0;
+      if (dateA == null) return -1;
+      if (dateB == null) return 1;
 
-          return dateA.compareTo(dateB);
-        });
+      return dateA.compareTo(dateB);
+    });
 
     // ==========================================================
     // START FROM ORIGINAL ITEMS
     // ==========================================================
 
     var currentItems =
-        originalItems
-            .map(
-              (item) => LineItem(
-                lineItemId: item.lineItemId,
-                itemId: item.itemId,
-                name: item.name,
+    originalItems
+        .map(
+          (item) => LineItem(
+        lineItemId: item.lineItemId,
+        itemId: item.itemId,
+        name: item.name,
 
-                // IMPORTANT:
-                // Use originalQuantity as the starting quantity.
-                quantity: item.originalQuantity ?? item.quantity ?? 0,
+        // IMPORTANT:
+        // Use originalQuantity as the starting quantity.
+        quantity: item.originalQuantity ?? item.quantity ?? 0,
 
-                originalQuantity: item.originalQuantity ?? item.quantity ?? 0,
+        originalQuantity: item.originalQuantity ?? item.quantity ?? 0,
 
-                voidedQuantity: item.voidedQuantity,
-                voidedAmount: item.voidedAmount,
-                itemPrice: item.itemPrice,
+        voidedQuantity: item.voidedQuantity,
+        voidedAmount: item.voidedAmount,
+        itemPrice: item.itemPrice,
 
-                amount:
-                    (item.itemPrice ?? 0) *
-                    (item.originalQuantity ?? item.quantity ?? 0),
+        amount:
+        (item.itemPrice ?? 0) *
+            (item.originalQuantity ?? item.quantity ?? 0),
 
-                totalWoTax:
-                    (item.itemPrice ?? 0) *
-                    (item.originalQuantity ?? item.quantity ?? 0),
+        totalWoTax:
+        (item.itemPrice ?? 0) *
+            (item.originalQuantity ?? item.quantity ?? 0),
 
-                total:
-                    (item.itemPrice ?? 0) *
-                    (item.originalQuantity ?? item.quantity ?? 0),
+        total:
+        (item.itemPrice ?? 0) *
+            (item.originalQuantity ?? item.quantity ?? 0),
 
-                modifierAmount: item.modifierAmount,
-                modifiers: item.modifiers,
-                tax: item.tax,
-                kotRemarks: item.kotRemarks,
-              ),
-            )
-            .toList();
+        modifierAmount: item.modifierAmount,
+        modifiers: item.modifiers,
+        tax: item.tax,
+        kotRemarks: item.kotRemarks,
+      ),
+    )
+        .toList();
     // ==========================================================
     // REVISION 1 = FIRST MODIFICATION
     // ==========================================================
@@ -528,27 +548,27 @@ amount: ${item.amount}
 
       // Clone previous revision
       final revisionItems =
-          currentItems
-              .map(
-                (item) => LineItem(
-                  lineItemId: item.lineItemId,
-                  itemId: item.itemId,
-                  name: item.name,
-                  quantity: item.quantity,
-                  originalQuantity: item.originalQuantity,
-                  voidedQuantity: item.voidedQuantity,
-                  voidedAmount: item.voidedAmount,
-                  itemPrice: item.itemPrice,
-                  amount: item.amount,
-                  totalWoTax: item.totalWoTax,
-                  total: item.total,
-                  modifierAmount: item.modifierAmount,
-                  modifiers: item.modifiers,
-                  tax: item.tax,
-                  kotRemarks: item.kotRemarks,
-                ),
-              )
-              .toList();
+      currentItems
+          .map(
+            (item) => LineItem(
+          lineItemId: item.lineItemId,
+          itemId: item.itemId,
+          name: item.name,
+          quantity: item.quantity,
+          originalQuantity: item.originalQuantity,
+          voidedQuantity: item.voidedQuantity,
+          voidedAmount: item.voidedAmount,
+          itemPrice: item.itemPrice,
+          amount: item.amount,
+          totalWoTax: item.totalWoTax,
+          total: item.total,
+          modifierAmount: item.modifierAmount,
+          modifiers: item.modifiers,
+          tax: item.tax,
+          kotRemarks: item.kotRemarks,
+        ),
+      )
+          .toList();
 
       // ========================================================
       // APPLY MODIFICATIONS
@@ -568,9 +588,9 @@ amount: ${item.amount}
 
           debugPrint(
             "   ${item.name}: "
-            "itemId=$itemId, "
-            "lineItemId=$lineItemId, "
-            "match=$match",
+                "itemId=$itemId, "
+                "lineItemId=$lineItemId, "
+                "match=$match",
           );
 
           return match;
@@ -581,7 +601,7 @@ amount: ${item.amount}
           if (origQty <= newQty) continue;
 
           final unitPrice =
-              origQty > 0 ? modification.itemTotal / origQty : 0.0;
+          origQty > 0 ? modification.itemTotal / origQty : 0.0;
 
           revisionItems.add(
             LineItem(
@@ -615,7 +635,7 @@ amount: ${item.amount}
           originalQuantity: oldItem.originalQuantity ?? oldItem.quantity,
 
           voidedQuantity:
-              (oldItem.originalQuantity ?? oldItem.quantity ?? 0) - newQty,
+          (oldItem.originalQuantity ?? oldItem.quantity ?? 0) - newQty,
 
           itemPrice: itemPrice,
 
@@ -645,9 +665,9 @@ amount: ${item.amount}
 
       final previousRevisionTotal = revisionNumber == 1
           ? currentItems.fold<num>(
-            0,
+        0,
             (sum, item) => sum + (item.totalWoTax ?? 0),
-          )
+      )
           : revisions.last.total;
 
       num displayPreviousTotal = previousRevisionTotal;
@@ -682,12 +702,12 @@ amount: ${item.amount}
               .join(', '),
 
           modifiedBy:
-              kot.placedByName?.trim().isNotEmpty == true
-                  ? kot.placedByName!.trim()
-                  : [kot.placedByFirstName, kot.placedByLastName]
-                      .whereType<String>()
-                      .where((e) => e.trim().isNotEmpty)
-                      .join(' '),
+          kot.placedByName?.trim().isNotEmpty == true
+              ? kot.placedByName!.trim()
+              : [kot.placedByFirstName, kot.placedByLastName]
+              .whereType<String>()
+              .where((e) => e.trim().isNotEmpty)
+              .join(' '),
 
           modifiedOn: modifications.first.voidedAt?.toString(),
         ),
@@ -789,6 +809,7 @@ amount: ${item.amount}
 
 
   void _showModificationHistory(OrderlistModel orderModel) async {
+    final screenWidth = MediaQuery.of(context).size.width;
     final kotId = selectedKotId ??
         (orderModel.kotOrders != null && orderModel.kotOrders!.isNotEmpty
             ? orderModel.kotOrders!.first.kotOrderId
@@ -832,9 +853,12 @@ amount: ${item.amount}
             alignment: Alignment.centerRight,
             child: Material(
               color: Colors.transparent,
+
+
               child: SizedBox(
-                // IMPORTANT
-                width: 420,
+                width: screenWidth < 500
+                    ? screenWidth * 0.85
+                    : 390,
                 height: MediaQuery.of(context).size.height,
                 child: _buildModificationHistoryPanel(orderModel),
               ),
@@ -845,84 +869,30 @@ amount: ${item.amount}
     );
   }
 
-  Widget _buildModificationHistoryPanel(OrderlistModel orderModel) {
+  Widget _buildModificationHistoryPanel(
+      OrderlistModel orderModel,
+      ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final selectedKot = _getSelectedKot(orderModel);
 
     if (selectedKot == null) {
       return Material(
-        color: isDark ? const Color(0xFF202433) : Colors.white,
-        child: const Center(child: Text("No KOT selected")),
-      );
-    }
-
-    final apiVoidedItems = _voidedItemsForKot(selectedKot.kotOrderId);
-    final revisions = buildKotRevisions(
-      selectedKot,
-      apiVoidedItems: apiVoidedItems,
-      orderModel: orderModel,
-    );
-    // Original KOT is the "previous revision" for Revision 1.
-    final originalRevision = _buildOriginalRevision(selectedKot);
-
-    if (revisions.isEmpty) {
-      return Material(
-        color: isDark ? const Color(0xFF202433) : Colors.white,
-        elevation: 12,
+        color: isDark
+            ? const Color(0xFF202433)
+            : Colors.white,
         child: SafeArea(
           child: Column(
             children: [
-              Container(
-                height: 70,
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color:
-                          isDark ? Colors.white12 : const Color(0xFFE5E7EB),
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF263653),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.arrow_back,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                            SizedBox(width: 5),
-                            Text(
-                              "Back",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              _buildHistoryHeader(
+                orderModel,
+                isDark,
               ),
               const Expanded(
                 child: Center(
-                  child: Text("No modification history found for this KOT"),
+                  child: Text(
+                    "No KOT selected",
+                  ),
                 ),
               ),
             ],
@@ -930,124 +900,206 @@ amount: ${item.amount}
         ),
       );
     }
+
+    final apiVoidedItems =
+    _voidedItemsForKot(
+      selectedKot.kotOrderId,
+    );
+
+    final revisions = buildKotRevisions(
+      selectedKot,
+      apiVoidedItems: apiVoidedItems,
+      orderModel: orderModel,
+    );
+
+    final originalRevision =
+    _buildOriginalRevision(selectedKot);
+
     return Material(
-      color: isDark ? const Color(0xFF202433) : Colors.white,
+      color: isDark
+          ? const Color(0xFF202433)
+          : Colors.white,
       elevation: 12,
       child: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+          CrossAxisAlignment.start,
           children: [
-            // ==========================================
+            // =====================================================
             // HEADER
-            // ==========================================
-            Container(
-              height: 70,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF202433) : Colors.white,
-                border: Border(
-                  bottom: BorderSide(
-                    color: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+            // =====================================================
+            _buildHistoryHeader(
+              orderModel,
+              isDark,
+            ),
+
+            // =====================================================
+            // CONTENT
+            // =====================================================
+            Expanded(
+              child: revisions.isEmpty
+                  ? const Center(
+                child: Text(
+                  "No modification history found",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
                   ),
                 ),
+              )
+                  : ListView.separated(
+                padding: const EdgeInsets.fromLTRB(
+                  10,
+                  10,
+                  10,
+                  14,
+                ),
+                itemCount: revisions.length,
+                separatorBuilder: (_, __) =>
+                const SizedBox(height: 10),
+                itemBuilder: (
+                    context,
+                    index,
+                    ) {
+                  final revision =
+                  revisions[index];
+
+                  return _buildKotRevisionCard(
+                    revision: revision,
+                    orderModel: orderModel,
+                    previousRevision:
+                    index == 0
+                        ? originalRevision
+                        : revisions[index - 1],
+                    current:
+                    index ==
+                        revisions.length - 1,
+                  );
+                },
               ),
-              child: Row(
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildHistoryHeader(
+      OrderlistModel orderModel,
+      bool isDark,
+      ) {
+    return Container(
+      height: 64,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF202433)
+            : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.white12
+                : const Color(0xFFE5E7EB),
+          ),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment:
+        CrossAxisAlignment.center,
+        children: [
+          // =====================================================
+          // BACK
+          // =====================================================
+          SizedBox(
+            height: 32,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                const Color(0xFF263653),
+                foregroundColor: Colors.white,
+                padding:
+                const EdgeInsets.symmetric(
+                  horizontal: 14,
+                ),
+                shape:
+                RoundedRectangleBorder(
+                  borderRadius:
+                  BorderRadius.circular(6),
+                ),
+                elevation: 0,
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Back button
-                  SizedBox(
-                    height: 40,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF263653),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.arrow_back, size: 16, color: Colors.white),
-                          SizedBox(width: 5),
-                          Text(
-                            "Back",
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
+                  Icon(
+                    Icons.arrow_back,
+                    size: 13,
                   ),
-
-                  const SizedBox(width: 10),
-
-                  // Title
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Modification History",
-                          style: TextStyle(
-                            color:
-                            isDark ? Colors.white : const Color(0xFF1E293B),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Order #${widget.orderId}",
-                          style: TextStyle(
-                            color:
-                            isDark
-                                ? Colors.white54
-                                : const Color(0xFF64748B),
-                            fontSize: 9,
-                          ),
-                        ),
-                      ],
+                  SizedBox(width: 4),
+                  Text(
+                    "Back",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight:
+                      FontWeight.w500,
                     ),
                   ),
                 ],
               ),
             ),
+          ),
 
-            // ==========================================
-            // HISTORY CONTENT
-            // ==========================================
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    for (int i = 0; i < revisions.length; i++) ...[
-                      _buildKotRevisionCard(
-                        revision: revisions[i],
-                        orderModel: orderModel,
-                        // IMPORTANT:
-                        // Revision 1 compares against ORIGINAL KOT.
-                        // Revision 2+ compares against previous modification.
-                        previousRevision:
-                        i == 0
-                            ? originalRevision
-                            : revisions[i - 1],
+          const SizedBox(width: 20),
 
-                        current: i == revisions.length - 1,
-                      ),
-
-                      if (i < revisions.length - 1)
-                        const SizedBox(height: 20),
-                    ],
-                  ],
+          // =====================================================
+          // TITLE
+          // =====================================================
+          Expanded(
+            child: Column(
+              mainAxisAlignment:
+              MainAxisAlignment.center,
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Modification History",
+                  maxLines: 1,
+                  overflow:
+                  TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                    FontWeight.w700,
+                    color: isDark
+                        ? Colors.white
+                        : const Color(
+                      0xFF1E293B,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 0),
+                Text(
+                  "Order #${orderModel.orderId ?? widget.orderId}",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight:
+                    FontWeight.w500,
+                    color: isDark
+                        ? Colors.white54
+                        : const Color(
+                      0xFF64748B,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1063,9 +1115,9 @@ amount: ${item.amount}
     // Use per-revision totals; fall back to order-level totals on latest revision.
     final previousTotal =
         revision.previousTotal ??
-        previousRevision?.total ??
-        orderModel.orderPrevTotal ??
-        0;
+            previousRevision?.total ??
+            orderModel.orderPrevTotal ??
+            0;
 
     final updatedTotal =
         revision.updatedTotal ?? revision.total;
@@ -1176,7 +1228,8 @@ amount: ${item.amount}
               Text(
                 date,
                 style: TextStyle(
-                  fontSize: 8,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
                   color:
                   isDark
                       ? Colors.white54
@@ -1216,7 +1269,7 @@ amount: ${item.amount}
           Text(
             "REMOVED / REDUCED ITEMS",
             style: TextStyle(
-              fontSize: 8,
+              fontSize: 10,
               fontWeight: FontWeight.w700,
               color: Colors.red.shade400,
             ),
@@ -1271,7 +1324,7 @@ amount: ${item.amount}
                         child: Text(
                           "$removedQty × $name",
                           style: const TextStyle(
-                            fontSize: 9,
+                            fontSize: 11,
                             color: Colors.red,
                             fontWeight: FontWeight.w500,
                           ),
@@ -1281,7 +1334,7 @@ amount: ${item.amount}
                       Text(
                         "-${_formatCurrency(amount)}",
                         style: const TextStyle(
-                          fontSize: 9,
+                          fontSize: 11,
                           color: Colors.red,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1337,7 +1390,8 @@ amount: ${item.amount}
         Text(
           title,
           style: TextStyle(
-            fontSize: 8,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
             color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
           ),
         ),
@@ -1347,7 +1401,7 @@ amount: ${item.amount}
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.white : const Color(0xFF1E293B),
           ),
@@ -1436,14 +1490,14 @@ amount: ${item.amount}
         Text(
           title,
           style: TextStyle(
-            fontSize: 8,
+            fontSize: 11,
             color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
           ),
         ),
         Text(
           amount,
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
             color:
             valueColor ?? (isDark ? Colors.white : const Color(0xFF1E293B)),
@@ -1539,11 +1593,11 @@ amount: ${item.amount}
               Theme.of(dialogContext).brightness == Brightness.dark; // ADDED
           return Dialog(
             backgroundColor:
-                isDark
-                    ? const Color(
-                      0xFF202433,
-                    ) // ADDED: dark dialog background, no more white flash
-                    : Colors.white,
+            isDark
+                ? const Color(
+              0xFF202433,
+            ) // ADDED: dark dialog background, no more white flash
+                : Colors.white,
             child: const Padding(
               padding: EdgeInsets.all(24),
               child: CircularProgressIndicator(),
@@ -1567,7 +1621,7 @@ amount: ${item.amount}
 
             await repo.cancelKot(
               parentOrderId:
-                  orderModel.orderId!, // endpoint now uses parent order
+              orderModel.orderId!, // endpoint now uses parent order
               kotOrderId: kot.kotOrderId!, // optional for backend reference
               restaurantId: orderModel.restaurantId!,
               zoneId: orderModel.zoneId!,
@@ -1638,11 +1692,11 @@ amount: ${item.amount}
 
     dynamic raw =
         item['modifiers'] ??
-        item['modifier'] ??
-        item['addons'] ??
-        item['item_modifiers'] ??
-        item['modifier_details'] ??
-        item['modifiers_json'];
+            item['modifier'] ??
+            item['addons'] ??
+            item['item_modifiers'] ??
+            item['modifier_details'] ??
+            item['modifiers_json'];
 
     debugPrint("🟠 RAW MODIFIER DATA → $raw");
 
@@ -1672,19 +1726,19 @@ amount: ${item.amount}
     debugPrint("🟢 PARSED MODIFIER LIST → $modifiersList");
 
     final names =
-        modifiersList
-            .map<String>((m) {
-              if (m is String) return m;
-              if (m is Map) {
-                return m['name']?.toString() ??
-                    m['modifier_name']?.toString() ??
-                    m['title']?.toString() ??
-                    '';
-              }
-              return '';
-            })
-            .where((e) => e.isNotEmpty)
-            .toList();
+    modifiersList
+        .map<String>((m) {
+      if (m is String) return m;
+      if (m is Map) {
+        return m['name']?.toString() ??
+            m['modifier_name']?.toString() ??
+            m['title']?.toString() ??
+            '';
+      }
+      return '';
+    })
+        .where((e) => e.isNotEmpty)
+        .toList();
 
     debugPrint("✅ FINAL MODIFIER NAMES → $names");
 
@@ -1753,9 +1807,9 @@ amount: ${item.amount}
     return Scaffold(
       // backgroundColor: const Color(0xFFE5EFFF),
       backgroundColor:
-          isDark
-              ? const Color(0xFF161A26)
-              : const Color(0xFFF6F6F6), //0xFFF6F6F6
+      isDark
+          ? const Color(0xFF161A26)
+          : const Color(0xFFF6F6F6), //0xFFF6F6F6
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -1784,7 +1838,7 @@ amount: ${item.amount}
 
           //  Pick the correct order by ID
           final orderModel = snapshot.data!.firstWhere(
-            (o) => o.orderId == widget.orderId,
+                (o) => o.orderId == widget.orderId,
             orElse: () => snapshot.data!.first,
           );
 
@@ -1805,14 +1859,14 @@ amount: ${item.amount}
               .cast<Map<String, dynamic>?>()
               .firstWhere(
                 (kot) => kot?["kotNo"] == selectedKotId,
-                orElse: () => null,
-              );
+            orElse: () => null,
+          );
 
           String kotReason = "-"; // default
           if (selectedKot != null && selectedKot["meta_data"] != null) {
             final metaData = (selectedKot["meta_data"] as List<dynamic>);
             final reasonMeta = metaData.firstWhere(
-              (m) => m["key"] == "kot_reason",
+                  (m) => m["key"] == "kot_reason",
               orElse: () => {"value": "-"},
             );
             kotReason = reasonMeta["value"] ?? "-";
@@ -1821,9 +1875,9 @@ amount: ${item.amount}
 
           final bool canEditOrder =
               (_userPermissions?.canEditOrder ?? false) &&
-              (role == 'administrator' ||
-                  role == 'manager' ||
-                  role == 'merchant');
+                  (role == 'administrator' ||
+                      role == 'manager' ||
+                      role == 'merchant');
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             child: Column(
@@ -1899,165 +1953,165 @@ amount: ${item.amount}
                               'completed')
                             ElevatedButton(
                               onPressed:
-                                  !canEditOrder
-                                      ? null
-                                      : () async {
-                                        // -----------------------------------------
-                                        // 1. MERCHANT DISCOUNT CHECK
-                                        // -----------------------------------------
-                                        if ((orderModel.merchantDiscount ?? 0) >
-                                            0) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Order with Merchant Discount is not editable',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                              duration: Duration(seconds: 1),
-                                              backgroundColor: Colors.redAccent,
-                                            ),
-                                          );
-                                          return;
-                                        }
+                              !canEditOrder
+                                  ? null
+                                  : () async {
+                                // -----------------------------------------
+                                // 1. MERCHANT DISCOUNT CHECK
+                                // -----------------------------------------
+                                if ((orderModel.merchantDiscount ?? 0) >
+                                    0) {
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Order with Merchant Discount is not editable',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      duration: Duration(seconds: 1),
+                                      backgroundColor: Colors.redAccent,
+                                    ),
+                                  );
+                                  return;
+                                }
 
-                                        // -----------------------------------------
-                                        // 2. ROLE + PERMISSION CHECK
-                                        // -----------------------------------------
-                                        final String role =
-                                            (_userPermissions?.role ?? '')
-                                                .toLowerCase();
+                                // -----------------------------------------
+                                // 2. ROLE + PERMISSION CHECK
+                                // -----------------------------------------
+                                final String role =
+                                (_userPermissions?.role ?? '')
+                                    .toLowerCase();
 
-                                        if (!((_userPermissions?.canEditOrder ??
-                                                false) &&
-                                            (role == 'administrator' ||
-                                                role == 'manager' ||
-                                                role == 'merchant'))) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Only administrators, managers, and merchants can edit orders',
-                                              ),
-                                              duration: Duration(seconds: 1),
-                                              backgroundColor: Colors.red,
-                                            ),
-                                          );
-                                          return;
-                                        }
+                                if (!((_userPermissions?.canEditOrder ??
+                                    false) &&
+                                    (role == 'administrator' ||
+                                        role == 'manager' ||
+                                        role == 'merchant'))) {
+                                  ScaffoldMessenger.of(
+                                    context,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Only administrators, managers, and merchants can edit orders',
+                                      ),
+                                      duration: Duration(seconds: 1),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
 
-                                        // -----------------------------------------
-                                        // 3. SHOW PIN CONFIRMATION POPUP
-                                        // -----------------------------------------
+                                // -----------------------------------------
+                                // 3. SHOW PIN CONFIRMATION POPUP
+                                // -----------------------------------------
 
-                                        // -----------------------------------------
-                                        // 3. VERIFY TOP-BAR LOGIN PIN
-                                        // -----------------------------------------
-                                        //
-                                        // widget.pin = PIN used for the current
-                                        // employee/top-bar login session.
-                                        //
-                                        final bool pinMatched =
-                                            await PinConfirmationPopup.show(
-                                              context: context,
-                                              expectedPin: widget.pin,
-                                            );
+                                // -----------------------------------------
+                                // 3. VERIFY TOP-BAR LOGIN PIN
+                                // -----------------------------------------
+                                //
+                                // widget.pin = PIN used for the current
+                                // employee/top-bar login session.
+                                //
+                                final bool pinMatched =
+                                await PinConfirmationPopup.show(
+                                  context: context,
+                                  expectedPin: widget.pin,
+                                );
 
-                                        if (!pinMatched) {
-                                          // User cancelled OR entered the wrong PIN.
-                                          return;
-                                        }
+                                if (!pinMatched) {
+                                  // User cancelled OR entered the wrong PIN.
+                                  return;
+                                }
 
-                                        // -----------------------------------------
-                                        // 4. PIN MATCHED → OPEN EDIT ORDER
-                                        // -----------------------------------------
-                                        final bool?
-                                        updated = await Navigator.push<bool>(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder:
-                                                (
-                                                  context,
-                                                ) => EditOrdersListScreen(
-                                                  token: widget.token,
+                                // -----------------------------------------
+                                // 4. PIN MATCHED → OPEN EDIT ORDER
+                                // -----------------------------------------
+                                final bool?
+                                updated = await Navigator.push<bool>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (
+                                        context,
+                                        ) => EditOrdersListScreen(
+                                      token: widget.token,
 
-                                                  // Use the verified/current login PIN.
-                                                  pin: widget.pin,
+                                      // Use the verified/current login PIN.
+                                      pin: widget.pin,
 
-                                                  restaurantId:
-                                                      widget.restaurantId,
+                                      restaurantId:
+                                      widget.restaurantId,
 
-                                                  restaurantName:
-                                                      widget.restaurantName,
+                                      restaurantName:
+                                      widget.restaurantName,
 
-                                                  userPermissions: _permissions,
+                                      userPermissions: _permissions,
 
-                                                  orderId: orderModel.orderId!,
-                                                ),
-                                          ),
-                                        );
+                                      orderId: orderModel.orderId!,
+                                    ),
+                                  ),
+                                );
 
-                                        // -----------------------------------------
-                                        // 5. RELOAD AFTER EDIT
-                                        // -----------------------------------------
-                                        if (updated == true && mounted) {
-                                          _reloadAfterEdit();
-                                        }
+                                // -----------------------------------------
+                                // 5. RELOAD AFTER EDIT
+                                // -----------------------------------------
+                                if (updated == true && mounted) {
+                                  _reloadAfterEdit();
+                                }
 
-                                        // await PinConfirmationPopup.show(
-                                        //   context: context,
-                                        //
-                                        //   onProceed: (
-                                        //     enteredPin,
-                                        //   ) async {
-                                        //     debugPrint(
-                                        //       'PIN entered in confirmation popup: $enteredPin',
-                                        //     );
-                                        //
-                                        //     // TODO:
-                                        //     // Verify enteredPin against your backend/API
-                                        //     // before allowing the edit.
-                                        //
-                                        //     final bool?
-                                        //     updated = await Navigator.push<
-                                        //       bool
-                                        //     >(
-                                        //       context,
-                                        //       MaterialPageRoute(
-                                        //         builder:
-                                        //             (
-                                        //               context,
-                                        //             ) => EditOrdersListScreen(
-                                        //               token:
-                                        //                   widget
-                                        //                       .token,
-                                        //               pin: enteredPin,
-                                        //               restaurantId:
-                                        //                   widget
-                                        //                       .restaurantId,
-                                        //               restaurantName:
-                                        //                   widget
-                                        //                       .restaurantName,
-                                        //               userPermissions:
-                                        //                   _permissions,
-                                        //               orderId:
-                                        //                   orderModel
-                                        //                       .orderId!,
-                                        //             ),
-                                        //       ),
-                                        //     );
-                                        //
-                                        //     if (updated == true &&
-                                        //         mounted) {
-                                        //       _reloadAfterEdit();
-                                        //     }
-                                        //   },
-                                        // );
-                                      },
+                                // await PinConfirmationPopup.show(
+                                //   context: context,
+                                //
+                                //   onProceed: (
+                                //     enteredPin,
+                                //   ) async {
+                                //     debugPrint(
+                                //       'PIN entered in confirmation popup: $enteredPin',
+                                //     );
+                                //
+                                //     // TODO:
+                                //     // Verify enteredPin against your backend/API
+                                //     // before allowing the edit.
+                                //
+                                //     final bool?
+                                //     updated = await Navigator.push<
+                                //       bool
+                                //     >(
+                                //       context,
+                                //       MaterialPageRoute(
+                                //         builder:
+                                //             (
+                                //               context,
+                                //             ) => EditOrdersListScreen(
+                                //               token:
+                                //                   widget
+                                //                       .token,
+                                //               pin: enteredPin,
+                                //               restaurantId:
+                                //                   widget
+                                //                       .restaurantId,
+                                //               restaurantName:
+                                //                   widget
+                                //                       .restaurantName,
+                                //               userPermissions:
+                                //                   _permissions,
+                                //               orderId:
+                                //                   orderModel
+                                //                       .orderId!,
+                                //             ),
+                                //       ),
+                                //     );
+                                //
+                                //     if (updated == true &&
+                                //         mounted) {
+                                //       _reloadAfterEdit();
+                                //     }
+                                //   },
+                                // );
+                              },
 
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF4C5F7D),
@@ -2103,152 +2157,152 @@ amount: ${item.amount}
                                   barrierDismissible: false,
                                   builder:
                                       (context) => Dialog(
-                                        backgroundColor: theme.cardColor,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            16,
-                                          ),
-                                        ),
-                                        child: SizedBox(
-                                          width: 400,
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(20),
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
+                                    backgroundColor: theme.cardColor,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        16,
+                                      ),
+                                    ),
+                                    child: SizedBox(
+                                      width: 400,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(20),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Image.asset(
+                                              'assets/cancelorder.png',
+                                              height: 90,
+                                            ),
+                                            const SizedBox(height: 16),
+
+                                            Text(
+                                              'Cancel Order?',
+                                              textAlign: TextAlign.center,
+                                              style: theme
+                                                  .textTheme
+                                                  .titleLarge
+                                                  ?.copyWith(
+                                                fontSize: 22,
+                                                fontWeight:
+                                                FontWeight.w600,
+                                              ),
+                                            ),
+
+                                            const SizedBox(height: 10),
+
+                                            Text(
+                                              'Are you sure you want to cancel the order?',
+                                              textAlign: TextAlign.center,
+                                              style: theme
+                                                  .textTheme
+                                                  .bodyMedium
+                                                  ?.copyWith(
+                                                fontSize: 16,
+                                                color:
+                                                isDark
+                                                    ? Colors.white70
+                                                    : Colors
+                                                    .black54,
+                                              ),
+                                            ),
+
+                                            const SizedBox(height: 24),
+
+                                            Row(
+                                              mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                               children: [
-                                                Image.asset(
-                                                  'assets/cancelorder.png',
-                                                  height: 90,
-                                                ),
-                                                const SizedBox(height: 16),
-
-                                                Text(
-                                                  'Cancel Order?',
-                                                  textAlign: TextAlign.center,
-                                                  style: theme
-                                                      .textTheme
-                                                      .titleLarge
-                                                      ?.copyWith(
-                                                        fontSize: 22,
-                                                        fontWeight:
-                                                            FontWeight.w600,
+                                                SizedBox(
+                                                  width: 110,
+                                                  child: OutlinedButton(
+                                                    onPressed:
+                                                        () => Navigator.pop(
+                                                      context,
+                                                    ),
+                                                    style: OutlinedButton.styleFrom(
+                                                      minimumSize:
+                                                      const Size(
+                                                        110,
+                                                        40,
                                                       ),
-                                                ),
-
-                                                const SizedBox(height: 10),
-
-                                                Text(
-                                                  'Are you sure you want to cancel the order?',
-                                                  textAlign: TextAlign.center,
-                                                  style: theme
-                                                      .textTheme
-                                                      .bodyMedium
-                                                      ?.copyWith(
-                                                        fontSize: 16,
+                                                      backgroundColor:
+                                                      isDark
+                                                          ? const Color(
+                                                        0xFF2A2F3D,
+                                                      )
+                                                          : Colors
+                                                          .white,
+                                                      side: BorderSide(
                                                         color:
-                                                            isDark
-                                                                ? Colors.white70
-                                                                : Colors
-                                                                    .black54,
+                                                        theme
+                                                            .dividerColor,
                                                       ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      'Back',
+                                                      style: TextStyle(
+                                                        color:
+                                                        theme
+                                                            .textTheme
+                                                            .bodyLarge
+                                                            ?.color,
+                                                      ),
+                                                    ),
+                                                  ),
                                                 ),
 
-                                                const SizedBox(height: 24),
+                                                const SizedBox(width: 14),
 
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    SizedBox(
-                                                      width: 110,
-                                                      child: OutlinedButton(
-                                                        onPressed:
-                                                            () => Navigator.pop(
-                                                              context,
-                                                            ),
-                                                        style: OutlinedButton.styleFrom(
-                                                          minimumSize:
-                                                              const Size(
-                                                                110,
-                                                                40,
-                                                              ),
-                                                          backgroundColor:
-                                                              isDark
-                                                                  ? const Color(
-                                                                    0xFF2A2F3D,
-                                                                  )
-                                                                  : Colors
-                                                                      .white,
-                                                          side: BorderSide(
-                                                            color:
-                                                                theme
-                                                                    .dividerColor,
-                                                          ),
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  8,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                        child: Text(
-                                                          'Back',
-                                                          style: TextStyle(
-                                                            color:
-                                                                theme
-                                                                    .textTheme
-                                                                    .bodyLarge
-                                                                    ?.color,
-                                                          ),
+                                                SizedBox(
+                                                  width: 130,
+                                                  child: ElevatedButton(
+                                                    onPressed: () {
+                                                      Navigator.pop(
+                                                        context,
+                                                      );
+                                                      _cancelCompletedOrder(
+                                                        orderModel,
+                                                      );
+                                                    },
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                      const Color(
+                                                        0xFFFE6464,
+                                                      ),
+                                                      minimumSize:
+                                                      const Size(
+                                                        130,
+                                                        40,
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
                                                         ),
                                                       ),
                                                     ),
-
-                                                    const SizedBox(width: 14),
-
-                                                    SizedBox(
-                                                      width: 130,
-                                                      child: ElevatedButton(
-                                                        onPressed: () {
-                                                          Navigator.pop(
-                                                            context,
-                                                          );
-                                                          _cancelCompletedOrder(
-                                                            orderModel,
-                                                          );
-                                                        },
-                                                        style: ElevatedButton.styleFrom(
-                                                          backgroundColor:
-                                                              const Color(
-                                                                0xFFFE6464,
-                                                              ),
-                                                          minimumSize:
-                                                              const Size(
-                                                                130,
-                                                                40,
-                                                              ),
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  8,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                        child: const Text(
-                                                          'Yes, Done',
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                          ),
-                                                        ),
+                                                    child: const Text(
+                                                      'Yes, Done',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
                                                       ),
                                                     ),
-                                                  ],
+                                                  ),
                                                 ),
                                               ],
                                             ),
-                                          ),
+                                          ],
                                         ),
                                       ),
+                                    ),
+                                  ),
                                 );
                               },
 
@@ -2296,7 +2350,7 @@ amount: ${item.amount}
                           // Modification History Button
                           SizedBox(
                             width: 150,
-                            height: 45,
+                            height: 40,
                             child: OutlinedButton(
                               onPressed: () {
                                 _showModificationHistory(orderModel);
@@ -2383,7 +2437,12 @@ amount: ${item.amount}
                               Flexible(
                                 flex: 1,
                                 child: Container(
-                                  margin: const EdgeInsets.all(4),
+                                  margin: const EdgeInsets.only(
+                                    left: 4,
+                                    right: 4,
+                                    top: 0,
+                                    bottom: 4,
+                                  ),
                                   child: Padding(
                                     padding: const EdgeInsets.all(10),
                                     child: Column(
@@ -2722,7 +2781,7 @@ amount: ${item.amount}
                                         // ================= ORDER INFORMATION =================
                                         Container(
                                           width: double.infinity,
-                                          padding: const EdgeInsets.all(14),
+                                          padding: const EdgeInsets.all(10),
                                           decoration: BoxDecoration(
                                             color: theme.cardColor,
                                             borderRadius: BorderRadius.circular(
@@ -2730,14 +2789,14 @@ amount: ${item.amount}
                                             ),
                                             border: Border.all(
                                               color:
-                                                  isDark
-                                                      ? Colors.white12
-                                                      : const Color(0xFFE1E4EA),
+                                              isDark
+                                                  ? Colors.white12
+                                                  : const Color(0xFFE1E4EA),
                                             ),
                                           ),
                                           child: Column(
                                             crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                            CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 "ORDER INFORMATION",
@@ -2745,16 +2804,16 @@ amount: ${item.amount}
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w700,
                                                   color:
-                                                      isDark
-                                                          ? Colors.white70
-                                                          : const Color(
-                                                            0xFF60708D,
-                                                          ),
+                                                  isDark
+                                                      ? Colors.white70
+                                                      : const Color(
+                                                    0xFF60708D,
+                                                  ),
                                                   letterSpacing: 0.3,
                                                 ),
                                               ),
 
-                                              const SizedBox(height: 14),
+                                              const SizedBox(height: 10),
 
                                               Row(
                                                 children: [
@@ -2767,81 +2826,97 @@ amount: ${item.amount}
                                                   ),
 
                                                   Expanded(
-                                                    child: _orderInfoRow(
-                                                      "Order Type",
-                                                      "${orderModel.orderType ?? '-'}"
-                                                          "${orderModel.tableName != null && orderModel.tableName!.trim().isNotEmpty ? ', ${orderModel.tableName}' : ''}",
-                                                      isDark,
+                                                    child: Align(
+                                                      alignment: Alignment.centerRight,
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Text(
+                                                            "Order Type",
+                                                            style: TextStyle(
+                                                              fontSize: 11,
+                                                              color: isDark
+                                                                  ? Colors.white54
+                                                                  : const Color(0xFF8490A5),
+                                                              fontWeight: FontWeight.w500,
+                                                            ),
+                                                          ),
+
+                                                          const SizedBox(width: 12),
+
+                                                          Text(
+                                                            "${orderModel.orderType ?? '-'}"
+                                                                "${orderModel.tableName != null &&
+                                                                orderModel.tableName!.trim().isNotEmpty
+                                                                ? ', ${orderModel.tableName}'
+                                                                : ''}",
+                                                            style: TextStyle(
+                                                              fontSize: 11,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: isDark
+                                                                  ? Colors.white
+                                                                  : const Color(0xFF303846),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
                                                   ),
+                                                  const SizedBox(width: 20),
                                                 ],
                                               ),
 
-                                              const SizedBox(height: 12),
+                                              const SizedBox(height: 10),
 
                                               Row(
                                                 children: [
                                                   Expanded(
                                                     child: _orderInfoRow(
                                                       "Payment Type",
-                                                      orderModel.paymentType ??
-                                                          "-",
+                                                      orderModel.paymentType ?? "-",
                                                       isDark,
                                                     ),
                                                   ),
 
                                                   Expanded(
-                                                    child: Row(
-                                                      children: [
-                                                        Text(
-                                                          "Order Status",
-                                                          style: TextStyle(
-                                                            fontSize: 11,
-                                                            color:
-                                                                isDark
-                                                                    ? Colors
-                                                                        .white54
-                                                                    : const Color(
-                                                                      0xFF8490A5,
-                                                                    ),
-                                                          ),
-                                                        ),
-
-                                                        const SizedBox(
-                                                          width: 12,
-                                                        ),
-
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 10,
-                                                                vertical: 4,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            color: const Color(
-                                                              0xFFDFF7E8,
+                                                    child: Align(
+                                                      alignment: Alignment.centerRight,
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Text(
+                                                            "Order Status",
+                                                            style: TextStyle(
+                                                              fontSize: 11,
+                                                              color: isDark
+                                                                  ? Colors.white54
+                                                                  : const Color(0xFF8490A5),
+                                                              fontWeight: FontWeight.w500,
                                                             ),
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  20,
-                                                                ),
                                                           ),
-                                                          child: Text(
-                                                            orderModel.status ??
-                                                                "-",
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontSize: 11,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  color: Color(
-                                                                    0xFF24A148,
-                                                                  ),
-                                                                ),
+
+                                                          const SizedBox(width: 12),
+
+                                                          Container(
+                                                            padding: const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 4,
+                                                            ),
+                                                            decoration: BoxDecoration(
+                                                              color: const Color(0xFFDFF7E8),
+                                                              borderRadius: BorderRadius.circular(20),
+                                                            ),
+                                                            child: Text(
+                                                              orderModel.status ?? "-",
+                                                              style: const TextStyle(
+                                                                fontSize: 11,
+                                                                fontWeight: FontWeight.w600,
+                                                                color: Color(0xFF24A148),
+                                                              ),
+                                                            ),
                                                           ),
-                                                        ),
-                                                      ],
+                                                        ],
+                                                      ),
                                                     ),
                                                   ),
                                                 ],
@@ -2857,72 +2932,73 @@ amount: ${item.amount}
                                           child: Container(
                                             width: double.infinity,
                                             margin: const EdgeInsets.symmetric(
-                                              horizontal: 4,
+                                              horizontal: 0,
                                             ),
                                             padding: const EdgeInsets.fromLTRB(
                                               12,
-                                              10,
+                                              12,
                                               12,
                                               12,
                                             ),
                                             decoration: BoxDecoration(
                                               color: theme.cardColor,
                                               borderRadius:
-                                                  BorderRadius.circular(8),
+                                              BorderRadius.circular(8),
                                               border: Border.all(
                                                 color:
-                                                    isDark
-                                                        ? Colors.white12
-                                                        : const Color(
-                                                          0xFFE1E4EA,
-                                                        ),
+                                                isDark
+                                                    ? Colors.white12
+                                                    : const Color(
+                                                  0xFFE1E4EA,
+                                                ),
                                               ),
                                             ),
+
                                             child: SingleChildScrollView(
                                               physics:
-                                                  const ClampingScrollPhysics(),
+                                              const ClampingScrollPhysics(),
                                               child: Column(
                                                 crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                                CrossAxisAlignment.start,
                                                 children: [
                                                   // =========================================================
                                                   // PAYMENT DETAILS HEADER
                                                   // =========================================================
                                                   Row(
                                                     mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
                                                     children: [
                                                       Text(
                                                         "PAYMENT DETAILS",
                                                         style: TextStyle(
-                                                          fontSize: 10,
+                                                          fontSize: 12,
                                                           fontWeight:
-                                                              FontWeight.w700,
+                                                          FontWeight.w700,
                                                           letterSpacing: 0.4,
                                                           color:
-                                                              isDark
-                                                                  ? Colors
-                                                                      .white70
-                                                                  : const Color(
-                                                                    0xFF60708D,
-                                                                  ),
+                                                          isDark
+                                                              ? Colors
+                                                              .white70
+                                                              : const Color(
+                                                            0xFF60708D,
+                                                          ),
                                                         ),
                                                       ),
 
                                                       if (orderModel.isUpdated
-                                                              ?.toLowerCase() ==
+                                                          ?.toLowerCase() ==
                                                           'yes')
                                                         Row(
                                                           mainAxisSize:
-                                                              MainAxisSize.min,
+                                                          MainAxisSize.min,
                                                           children: [
                                                             Image.asset(
                                                               'assets/refreshicon.png',
                                                               width: 11,
                                                               height: 11,
                                                               color:
-                                                                  Colors.orange,
+                                                              Colors.orange,
                                                             ),
                                                             const SizedBox(
                                                               width: 4,
@@ -2931,11 +3007,11 @@ amount: ${item.amount}
                                                               "Updated",
                                                               style: TextStyle(
                                                                 color:
-                                                                    Colors
-                                                                        .orange,
+                                                                Colors
+                                                                    .orange,
                                                                 fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
+                                                                FontWeight
+                                                                    .w600,
                                                                 fontSize: 10,
                                                               ),
                                                             ),
@@ -2953,7 +3029,7 @@ amount: ${item.amount}
                                                     "Gross Total",
                                                     "$_currency${(orderModel.grossTotal ?? 0).toDouble().toStringAsFixed(2)}",
                                                     fontWeight: FontWeight.w500,
-                                                    fontSize: 11,
+                                                    fontSize: 12,
                                                   ),
 
                                                   // =========================================================
@@ -2963,7 +3039,7 @@ amount: ${item.amount}
                                                     "Coupon / Discounts",
                                                     "-$_currency${orderModel.totalCouponDiscount.toDouble().toStringAsFixed(2)}",
                                                     color: Colors.green,
-                                                    fontSize: 11,
+                                                    fontSize: 12,
                                                   ),
 
                                                   const SizedBox(height: 4),
@@ -2973,20 +3049,20 @@ amount: ${item.amount}
                                                   // =========================================================
                                                   ShaderMask(
                                                     shaderCallback: (
-                                                      Rect bounds,
-                                                    ) {
+                                                        Rect bounds,
+                                                        ) {
                                                       final baseColor =
-                                                          isDark
-                                                              ? Colors.white
-                                                              : Colors.black;
+                                                      isDark
+                                                          ? Colors.white
+                                                          : Colors.black;
 
                                                       return LinearGradient(
                                                         begin:
-                                                            Alignment
-                                                                .centerLeft,
+                                                        Alignment
+                                                            .centerLeft,
                                                         end:
-                                                            Alignment
-                                                                .centerRight,
+                                                        Alignment
+                                                            .centerRight,
                                                         colors: [
                                                           baseColor.withOpacity(
                                                             0.1,
@@ -3011,11 +3087,11 @@ amount: ${item.amount}
                                                       dashGapLength: 4,
                                                       lineThickness: 1,
                                                       direction:
-                                                          Axis.horizontal,
+                                                      Axis.horizontal,
                                                       dashColor:
-                                                          isDark
-                                                              ? Colors.white
-                                                              : Colors.black,
+                                                      isDark
+                                                          ? Colors.white
+                                                          : Colors.black,
                                                     ),
                                                   ),
 
@@ -3027,7 +3103,7 @@ amount: ${item.amount}
                                                   paymentRow(
                                                     "Sub Total",
                                                     "$_currency${(orderModel.subTotal ?? 0).toDouble().toStringAsFixed(2)}",
-                                                    fontSize: 11,
+                                                    fontSize: 12,
                                                     fontWeight: FontWeight.w500,
                                                   ),
 
@@ -3037,57 +3113,58 @@ amount: ${item.amount}
                                                   // TAX FOOD
                                                   // =========================================================
                                                   paymentRow(
-                                                    "Tax @5% Food",
-                                                    "",
+                                                    "Tax @5% Food  - CGST 2.5%",
+                                                    "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
                                                     color:
-                                                        isDark
-                                                            ? Colors.white54
-                                                            : const Color(
-                                                              0xFF8190A8,
-                                                            ),
-                                                    fontSize: 10,
+                                                    isDark
+                                                        ? Colors.white54
+                                                        : const Color(
+                                                      0xFF8190A8,
+                                                    ),
+                                                    fontSize: 11,
                                                     fontWeight: FontWeight.w500,
                                                   ),
 
                                                   // =========================================================
                                                   // CGST
                                                   // =========================================================
-                                                  Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                          left: 18,
-                                                        ),
-                                                    child: paymentRow(
-                                                      "CGST 2.5%",
-                                                      "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
-                                                      fontSize: 9,
-                                                      color:
-                                                          isDark
-                                                              ? Colors.white54
-                                                              : const Color(
-                                                                0xFF8190A8,
-                                                              ),
-                                                    ),
-                                                  ),
+                                                  // Padding(
+                                                  //   padding:
+                                                  //       const EdgeInsets.only(
+                                                  //         left: 18,
+                                                  //       ),
+                                                  //   child: paymentRow(
+                                                  //     "CGST 2.5%",
+                                                  //     "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
+                                                  //     fontSize: 10,
+                                                  //     color:
+                                                  //         isDark
+                                                  //             ? Colors.white54
+                                                  //             : const Color(
+                                                  //               0xFF8190A8,
+                                                  //             ),
+                                                  //   ),
+                                                  // ),
 
                                                   // =========================================================
                                                   // SGST
                                                   // =========================================================
                                                   Padding(
                                                     padding:
-                                                        const EdgeInsets.only(
-                                                          left: 18,
-                                                        ),
+                                                    const EdgeInsets.only(
+                                                      left: 88,
+                                                    ),
                                                     child: paymentRow(
                                                       "SGST 2.5%",
                                                       "$_currency${((orderModel.totalTax ?? 0) / 2).toStringAsFixed(2)}",
-                                                      fontSize: 9,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w500,
                                                       color:
-                                                          isDark
-                                                              ? Colors.white54
-                                                              : const Color(
-                                                                0xFF8190A8,
-                                                              ),
+                                                      isDark
+                                                          ? Colors.white54
+                                                          : const Color(
+                                                        0xFF8190A8,
+                                                      ),
                                                     ),
                                                   ),
 
@@ -3097,13 +3174,13 @@ amount: ${item.amount}
                                                   paymentRow(
                                                     "Tax Alcohol @Nil",
                                                     "${_currency}0.00",
-                                                    fontSize: 10,
+                                                    fontSize: 11,
                                                     color:
-                                                        isDark
-                                                            ? Colors.white54
-                                                            : const Color(
-                                                              0xFF8190A8,
-                                                            ),
+                                                    isDark
+                                                        ? Colors.white54
+                                                        : const Color(
+                                                      0xFF8190A8,
+                                                    ),
                                                     fontWeight: FontWeight.w500,
                                                   ),
 
@@ -3112,54 +3189,54 @@ amount: ${item.amount}
                                                   // =========================================================
                                                   // DIVIDER
                                                   // =========================================================
-                                                  ShaderMask(
-                                                    shaderCallback: (
-                                                      Rect bounds,
-                                                    ) {
-                                                      final baseColor =
-                                                          isDark
-                                                              ? Colors.white
-                                                              : Colors.black;
-
-                                                      return LinearGradient(
-                                                        begin:
-                                                            Alignment
-                                                                .centerLeft,
-                                                        end:
-                                                            Alignment
-                                                                .centerRight,
-                                                        colors: [
-                                                          baseColor.withOpacity(
-                                                            0.1,
-                                                          ),
-                                                          baseColor.withOpacity(
-                                                            0.7,
-                                                          ),
-                                                          baseColor.withOpacity(
-                                                            0.1,
-                                                          ),
-                                                        ],
-                                                        stops: const [
-                                                          0.0,
-                                                          0.5,
-                                                          1.0,
-                                                        ],
-                                                      ).createShader(bounds);
-                                                    },
-                                                    blendMode: BlendMode.srcIn,
-                                                    child: DottedLine(
-                                                      dashLength: 6,
-                                                      dashGapLength: 4,
-                                                      lineThickness: 1,
-                                                      direction:
-                                                          Axis.horizontal,
-                                                      dashColor:
-                                                          isDark
-                                                              ? Colors.white
-                                                              : Colors.black,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
+                                                  // ShaderMask(
+                                                  //   shaderCallback: (
+                                                  //     Rect bounds,
+                                                  //   ) {
+                                                  //     final baseColor =
+                                                  //         isDark
+                                                  //             ? Colors.white
+                                                  //             : Colors.black;
+                                                  //
+                                                  //     return LinearGradient(
+                                                  //       begin:
+                                                  //           Alignment
+                                                  //               .centerLeft,
+                                                  //       end:
+                                                  //           Alignment
+                                                  //               .centerRight,
+                                                  //       colors: [
+                                                  //         baseColor.withOpacity(
+                                                  //           0.1,
+                                                  //         ),
+                                                  //         baseColor.withOpacity(
+                                                  //           0.7,
+                                                  //         ),
+                                                  //         baseColor.withOpacity(
+                                                  //           0.1,
+                                                  //         ),
+                                                  //       ],
+                                                  //       stops: const [
+                                                  //         0.0,
+                                                  //         0.5,
+                                                  //         1.0,
+                                                  //       ],
+                                                  //     ).createShader(bounds);
+                                                  //   },
+                                                  //   blendMode: BlendMode.srcIn,
+                                                  //   child: DottedLine(
+                                                  //     dashLength: 6,
+                                                  //     dashGapLength: 4,
+                                                  //     lineThickness: 1,
+                                                  //     direction:
+                                                  //         Axis.horizontal,
+                                                  //     dashColor:
+                                                  //         isDark
+                                                  //             ? Colors.white
+                                                  //             : Colors.black,
+                                                  //   ),
+                                                  // ),
+                                                  // const SizedBox(height: 4),
 
                                                   // =========================================================
                                                   // TOTAL TAX
@@ -3167,7 +3244,7 @@ amount: ${item.amount}
                                                   paymentRow(
                                                     "Total Tax",
                                                     "$_currency${(orderModel.totalTax ?? 0).toDouble().toStringAsFixed(2)}",
-                                                    fontSize: 11,
+                                                    fontSize: 12,
                                                     fontWeight: FontWeight.w500,
                                                   ),
 
@@ -3178,20 +3255,20 @@ amount: ${item.amount}
                                                   // =========================================================
                                                   ShaderMask(
                                                     shaderCallback: (
-                                                      Rect bounds,
-                                                    ) {
+                                                        Rect bounds,
+                                                        ) {
                                                       final baseColor =
-                                                          isDark
-                                                              ? Colors.white
-                                                              : Colors.black;
+                                                      isDark
+                                                          ? Colors.white
+                                                          : Colors.black;
 
                                                       return LinearGradient(
                                                         begin:
-                                                            Alignment
-                                                                .centerLeft,
+                                                        Alignment
+                                                            .centerLeft,
                                                         end:
-                                                            Alignment
-                                                                .centerRight,
+                                                        Alignment
+                                                            .centerRight,
                                                         colors: [
                                                           baseColor.withOpacity(
                                                             0.1,
@@ -3216,11 +3293,11 @@ amount: ${item.amount}
                                                       dashGapLength: 4,
                                                       lineThickness: 1,
                                                       direction:
-                                                          Axis.horizontal,
+                                                      Axis.horizontal,
                                                       dashColor:
-                                                          isDark
-                                                              ? Colors.white
-                                                              : Colors.black,
+                                                      isDark
+                                                          ? Colors.white
+                                                          : Colors.black,
                                                     ),
                                                   ),
 
@@ -3233,7 +3310,7 @@ amount: ${item.amount}
                                                     "Net Total",
                                                     "$_currency${(orderModel.netTotal ?? 0).toStringAsFixed(2)}",
                                                     fontWeight: FontWeight.w600,
-                                                    fontSize: 11,
+                                                    fontSize: 12,
                                                   ),
 
                                                   // =========================================================
@@ -3243,34 +3320,34 @@ amount: ${item.amount}
                                                     "Merchant Discount",
                                                     "-$_currency${(orderModel.merchantDiscount ?? 0).toDouble().toStringAsFixed(2)}",
                                                     color: Colors.blue,
-                                                    fontSize: 10,
+                                                    fontSize: 11,
                                                   ),
 
                                                   // =========================================================
                                                   // TIP
                                                   // =========================================================
                                                   if ((orderModel.tipAmount ??
-                                                          0) >
+                                                      0) >
                                                       0)
                                                     paymentRow(
                                                       "Tip Amount",
                                                       "$_currency${(orderModel.tipAmount ?? 0).toDouble().toStringAsFixed(2)}",
                                                       color: Colors.green,
-                                                      fontSize: 10,
+                                                      fontSize: 11,
                                                     ),
 
                                                   // =========================================================
                                                   // SERVICE CHARGE
                                                   // =========================================================
                                                   if ((orderModel
-                                                              .serviceChargeValue ??
-                                                          0) >
+                                                      .serviceChargeValue ??
+                                                      0) >
                                                       0)
                                                     paymentRow(
                                                       "Service Charges",
                                                       "$_currency${(orderModel.serviceChargeValue ?? 0).toDouble().toStringAsFixed(2)}",
                                                       color: Colors.blue,
-                                                      fontSize: 10,
+                                                      fontSize: 11,
                                                     ),
 
                                                   // =========================================================
@@ -3280,11 +3357,11 @@ amount: ${item.amount}
                                                     "Round Off",
                                                     "${(orderModel.roundOff ?? 0) >= 0 ? '+' : '-'}₹${(orderModel.roundOff ?? 0).abs().toStringAsFixed(2)}",
                                                     color:
-                                                        isDark
-                                                            ? Colors.white54
-                                                            : const Color(
-                                                              0xFF8190A8,
-                                                            ),
+                                                    isDark
+                                                        ? Colors.white54
+                                                        : const Color(
+                                                      0xFF8190A8,
+                                                    ),
                                                     fontSize: 10,
                                                   ),
 
@@ -3295,20 +3372,20 @@ amount: ${item.amount}
                                                   // =========================================================
                                                   ShaderMask(
                                                     shaderCallback: (
-                                                      Rect bounds,
-                                                    ) {
+                                                        Rect bounds,
+                                                        ) {
                                                       final baseColor =
-                                                          isDark
-                                                              ? Colors.white
-                                                              : Colors.black;
+                                                      isDark
+                                                          ? Colors.white
+                                                          : Colors.black;
 
                                                       return LinearGradient(
                                                         begin:
-                                                            Alignment
-                                                                .centerLeft,
+                                                        Alignment
+                                                            .centerLeft,
                                                         end:
-                                                            Alignment
-                                                                .centerRight,
+                                                        Alignment
+                                                            .centerRight,
                                                         colors: [
                                                           baseColor.withOpacity(
                                                             0.1,
@@ -3333,11 +3410,11 @@ amount: ${item.amount}
                                                       dashGapLength: 4,
                                                       lineThickness: 1,
                                                       direction:
-                                                          Axis.horizontal,
+                                                      Axis.horizontal,
                                                       dashColor:
-                                                          isDark
-                                                              ? Colors.white
-                                                              : Colors.black,
+                                                      isDark
+                                                          ? Colors.white
+                                                          : Colors.black,
                                                     ),
                                                   ),
 
@@ -3365,7 +3442,7 @@ amount: ${item.amount}
                                           ),
                                           child: Row(
                                             mainAxisAlignment:
-                                                MainAxisAlignment.end,
+                                            MainAxisAlignment.end,
                                             children: [
                                               SizedBox(
                                                 width: 155,
@@ -3376,16 +3453,16 @@ amount: ${item.amount}
                                                   },
                                                   style: OutlinedButton.styleFrom(
                                                     backgroundColor:
-                                                        Colors.white,
+                                                    Colors.white,
                                                     side: const BorderSide(
                                                       color: Color(0xFFD5DCE8),
                                                       width: 1,
                                                     ),
                                                     shape: RoundedRectangleBorder(
                                                       borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
+                                                      BorderRadius.circular(
+                                                        8,
+                                                      ),
                                                     ),
                                                     padding: EdgeInsets.zero,
                                                   ),
@@ -3408,76 +3485,76 @@ amount: ${item.amount}
                                                   onPressed: () async {
                                                     try {
                                                       Map<
-                                                        String,
-                                                        Map<String, dynamic>
+                                                          String,
+                                                          Map<String, dynamic>
                                                       >
                                                       consolidated = {};
                                                       if (orderModel
-                                                              .kotOrders !=
+                                                          .kotOrders !=
                                                           null) {
                                                         for (var kot
-                                                            in orderModel
-                                                                .kotOrders!) {
+                                                        in orderModel
+                                                            .kotOrders!) {
                                                           if (kot.lineItems !=
                                                               null) {
                                                             for (var lineItem
-                                                                in kot
-                                                                    .lineItems!) {
+                                                            in kot
+                                                                .lineItems!) {
                                                               final name =
                                                                   lineItem
                                                                       .name ??
-                                                                  '';
+                                                                      '';
                                                               final modifiers =
                                                                   lineItem
                                                                       .modifiers ??
-                                                                  [];
+                                                                      [];
                                                               final key =
                                                                   "$name-${modifiers.join(',')}";
                                                               if (consolidated
                                                                   .containsKey(
-                                                                    key,
-                                                                  )) {
+                                                                key,
+                                                              )) {
                                                                 final existing =
-                                                                    consolidated[key]!;
+                                                                consolidated[key]!;
                                                                 final currentQty =
                                                                     int.tryParse(
                                                                       existing['qty']
                                                                           .toString(),
                                                                     ) ??
-                                                                    0;
+                                                                        0;
                                                                 final addedQty =
                                                                     lineItem
                                                                         .quantity ??
-                                                                    0;
+                                                                        0;
                                                                 final newQty =
                                                                     currentQty +
-                                                                    addedQty;
+                                                                        addedQty;
                                                                 existing['qty'] =
                                                                     newQty;
                                                                 existing['amount'] =
                                                                     (double.tryParse(
-                                                                          existing['price']
-                                                                              .toString(),
-                                                                        ) ??
+                                                                      existing['price']
+                                                                          .toString(),
+                                                                    ) ??
                                                                         0.0) *
-                                                                    newQty;
+                                                                        newQty;
                                                               } else {
                                                                 consolidated[key] = {
                                                                   "name": name,
                                                                   "qty":
-                                                                      lineItem
-                                                                          .quantity ??
+                                                                  lineItem
+                                                                      .quantity ??
                                                                       0,
                                                                   "price":
-                                                                      lineItem
-                                                                          .itemPrice ??
+                                                                  lineItem
+                                                                      .itemPrice ??
                                                                       0.0,
                                                                   "amount":
-                                                                      lineItem
-                                                                          .amount ??
+                                                                  lineItem
+                                                                      .amount ??
                                                                       0.0,
                                                                   "modifiers":
-                                                                      modifiers,
+                                                                  modifiers,
                                                                 };
                                                               }
                                                             }
@@ -3487,189 +3564,189 @@ amount: ${item.amount}
 
                                                       final paymentSummaryObj = psm.PaymentSummary(
                                                         restaurantId:
-                                                            orderModel
-                                                                .restaurantId ??
+                                                        orderModel
+                                                            .restaurantId ??
                                                             0,
                                                         orderId:
-                                                            orderModel
-                                                                .orderId ??
+                                                        orderModel
+                                                            .orderId ??
                                                             0,
                                                         grossTotal:
-                                                            (orderModel.grossTotal ??
-                                                                    0)
-                                                                .toDouble(),
+                                                        (orderModel.grossTotal ??
+                                                            0)
+                                                            .toDouble(),
                                                         tax:
-                                                            (orderModel.totalTax ??
-                                                                    0)
-                                                                .toDouble(),
+                                                        (orderModel.totalTax ??
+                                                            0)
+                                                            .toDouble(),
                                                         fees: 0.0,
                                                         discount:
-                                                            (orderModel.merchantDiscount ??
-                                                                    0)
-                                                                .toDouble(),
+                                                        (orderModel.merchantDiscount ??
+                                                            0)
+                                                            .toDouble(),
                                                         coupons:
-                                                            orderModel
-                                                                .totalCouponDiscount
-                                                                .toDouble(),
+                                                        orderModel
+                                                            .totalCouponDiscount
+                                                            .toDouble(),
                                                         tipAmount:
-                                                            (orderModel.tipAmount ??
-                                                                    0)
-                                                                .toDouble(),
+                                                        (orderModel.tipAmount ??
+                                                            0)
+                                                            .toDouble(),
                                                         netTotal:
-                                                            (orderModel.netPayable ??
-                                                                    orderModel
-                                                                        .netTotal ??
-                                                                    0)
-                                                                .toDouble(),
-                                                        lineItems:
-                                                            consolidated.values.map((
-                                                              item,
-                                                            ) {
-                                                              return psm.LineItem(
-                                                                productId: 0,
-                                                                variationId: 0,
-                                                                name:
-                                                                    item['name']
-                                                                        .toString(),
-                                                                qty:
-                                                                    int.tryParse(
-                                                                      item['qty']
-                                                                          .toString(),
-                                                                    ) ??
-                                                                    0,
-                                                                price:
-                                                                    double.tryParse(
-                                                                      item['price']
-                                                                          .toString(),
-                                                                    ) ??
-                                                                    0.0,
-                                                                total:
-                                                                    double.tryParse(
-                                                                      item['amount']
-                                                                          .toString(),
-                                                                    ) ??
-                                                                    0.0,
-                                                                tax: 0.0,
-                                                                taxClass:
-                                                                    'food',
-                                                                modifiers: List<
-                                                                  String
-                                                                >.from(
-                                                                  item['modifiers'] ??
-                                                                      [],
-                                                                ),
-                                                                modifierAmount:
-                                                                    0.0,
-                                                              );
-                                                            }).toList(),
-                                                        tableId:
+                                                        (orderModel.netPayable ??
                                                             orderModel
-                                                                .tableId ??
+                                                                .netTotal ??
+                                                            0)
+                                                            .toDouble(),
+                                                        lineItems:
+                                                        consolidated.values.map((
+                                                            item,
+                                                            ) {
+                                                          return psm.LineItem(
+                                                            productId: 0,
+                                                            variationId: 0,
+                                                            name:
+                                                            item['name']
+                                                                .toString(),
+                                                            qty:
+                                                            int.tryParse(
+                                                              item['qty']
+                                                                  .toString(),
+                                                            ) ??
+                                                                0,
+                                                            price:
+                                                            double.tryParse(
+                                                              item['price']
+                                                                  .toString(),
+                                                            ) ??
+                                                                0.0,
+                                                            total:
+                                                            double.tryParse(
+                                                              item['amount']
+                                                                  .toString(),
+                                                            ) ??
+                                                                0.0,
+                                                            tax: 0.0,
+                                                            taxClass:
+                                                            'food',
+                                                            modifiers: List<
+                                                                String
+                                                            >.from(
+                                                              item['modifiers'] ??
+                                                                  [],
+                                                            ),
+                                                            modifierAmount:
+                                                            0.0,
+                                                          );
+                                                        }).toList(),
+                                                        tableId:
+                                                        orderModel
+                                                            .tableId ??
                                                             0,
                                                         tableName:
-                                                            orderModel
-                                                                .tableName ??
+                                                        orderModel
+                                                            .tableName ??
                                                             "",
                                                         zoneId:
-                                                            orderModel.zoneId ??
+                                                        orderModel.zoneId ??
                                                             0,
                                                         modifiersTaxable: false,
                                                         isNoCharge: false,
                                                         couponDetails:
-                                                            orderModel.couponDetails?.map((
-                                                              e,
+                                                        orderModel.couponDetails?.map((
+                                                            e,
                                                             ) {
-                                                              return psm.CouponDetail(
-                                                                code:
-                                                                    e.code ??
-                                                                    "",
-                                                                value:
-                                                                    (e.value ??
-                                                                            0)
-                                                                        .toDouble(),
-                                                              );
-                                                            }).toList() ??
+                                                          return psm.CouponDetail(
+                                                            code:
+                                                            e.code ??
+                                                                "",
+                                                            value:
+                                                            (e.value ??
+                                                                0)
+                                                                .toDouble(),
+                                                          );
+                                                        }).toList() ??
                                                             [],
                                                         serviceChargePercentage:
-                                                            (orderModel.serviceChargePercentage ??
-                                                                    0)
-                                                                .toDouble(),
+                                                        (orderModel.serviceChargePercentage ??
+                                                            0)
+                                                            .toDouble(),
                                                         serviceChargeValue:
-                                                            (orderModel.serviceChargeValue ??
-                                                                    0)
-                                                                .toDouble(),
+                                                        (orderModel.serviceChargeValue ??
+                                                            0)
+                                                            .toDouble(),
                                                         roundOff:
-                                                            (orderModel.roundOff ??
-                                                                    0)
-                                                                .toDouble(),
+                                                        (orderModel.roundOff ??
+                                                            0)
+                                                            .toDouble(),
                                                       );
 
                                                       showDialog(
                                                         context: context,
                                                         barrierDismissible:
-                                                            false,
+                                                        false,
                                                         builder:
                                                             (context) => Dialog(
-                                                              backgroundColor:
-                                                                  Colors
-                                                                      .transparent,
-                                                              insetPadding:
-                                                                  EdgeInsets
-                                                                      .zero,
-                                                              child: Align(
-                                                                alignment:
-                                                                    Alignment
-                                                                        .centerLeft,
-                                                                child: Padding(
-                                                                  padding:
-                                                                      const EdgeInsets.only(
-                                                                        left:
-                                                                            330,
-                                                                        top: 60,
-                                                                        bottom:
-                                                                            60,
-                                                                      ),
-                                                                  child: PrintRecipt(
-                                                                    loadedTables:
-                                                                        const [],
-                                                                    pin:
-                                                                        widget
-                                                                            .pin,
-                                                                    token:
-                                                                        widget
-                                                                            .token,
-                                                                    restaurantId:
-                                                                        widget
-                                                                            .restaurantId,
-                                                                    restaurantName:
-                                                                        widget
-                                                                            .restaurantName,
-                                                                    zoneId:
-                                                                        orderModel
-                                                                            .zoneId,
-                                                                    paymentSummary:
-                                                                        paymentSummaryObj,
-                                                                    cashierName:
-                                                                        widget
-                                                                            .userPermissions
-                                                                            ?.displayName ??
-                                                                        'Admin',
-                                                                    isTakeAway:
-                                                                        orderModel
-                                                                            .orderType
-                                                                            ?.toLowerCase()
-                                                                            .contains(
-                                                                              "take",
-                                                                            ) ??
-                                                                        false,
-                                                                    isFromOrderDetails:
-                                                                        true,
-                                                                    isCopy:
-                                                                        true,
-                                                                  ),
-                                                                ),
+                                                          backgroundColor:
+                                                          Colors
+                                                              .transparent,
+                                                          insetPadding:
+                                                          EdgeInsets
+                                                              .zero,
+                                                          child: Align(
+                                                            alignment:
+                                                            Alignment
+                                                                .centerLeft,
+                                                            child: Padding(
+                                                              padding:
+                                                              const EdgeInsets.only(
+                                                                left:
+                                                                330,
+                                                                top: 60,
+                                                                bottom:
+                                                                60,
+                                                              ),
+                                                              child: PrintRecipt(
+                                                                loadedTables:
+                                                                const [],
+                                                                pin:
+                                                                widget
+                                                                    .pin,
+                                                                token:
+                                                                widget
+                                                                    .token,
+                                                                restaurantId:
+                                                                widget
+                                                                    .restaurantId,
+                                                                restaurantName:
+                                                                widget
+                                                                    .restaurantName,
+                                                                zoneId:
+                                                                orderModel
+                                                                    .zoneId,
+                                                                paymentSummary:
+                                                                paymentSummaryObj,
+                                                                cashierName:
+                                                                widget
+                                                                    .userPermissions
+                                                                    ?.displayName ??
+                                                                    'Admin',
+                                                                isTakeAway:
+                                                                orderModel
+                                                                    .orderType
+                                                                    ?.toLowerCase()
+                                                                    .contains(
+                                                                  "take",
+                                                                ) ??
+                                                                    false,
+                                                                isFromOrderDetails:
+                                                                true,
+                                                                isCopy:
+                                                                true,
                                                               ),
                                                             ),
+                                                          ),
+                                                        ),
                                                       );
                                                     } catch (e) {
                                                       debugPrint(
@@ -3691,13 +3768,13 @@ amount: ${item.amount}
                                                   ),
                                                   style: ElevatedButton.styleFrom(
                                                     backgroundColor:
-                                                        const Color(0xFF173B6B),
+                                                    const Color(0xFF173B6B),
                                                     elevation: 0,
                                                     shape: RoundedRectangleBorder(
                                                       borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
+                                                      BorderRadius.circular(
+                                                        8,
+                                                      ),
                                                     ),
                                                     padding: EdgeInsets.zero,
                                                   ),
@@ -3716,11 +3793,16 @@ amount: ${item.amount}
                               Flexible(
                                 flex: 1,
                                 child: Container(
-                                  margin: const EdgeInsets.all(6),
+                                  margin: const EdgeInsets.only(
+                                    left: 4,
+                                    right: 4,
+                                    top: 0,
+                                    bottom: 4,
+                                  ),
                                   padding: const EdgeInsets.all(12),
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       // KOT TABLE
                                       Expanded(
@@ -3799,17 +3881,17 @@ amount: ${item.amount}
       return '-';
     }();
     final modifiedOn =
-        orderModel.date?.trim().isNotEmpty == true ? orderModel.date! : '-';
+    orderModel.date?.trim().isNotEmpty == true ? orderModel.date! : '-';
 
     final reason =
-        orderModel.updated_remarks?.trim().isNotEmpty == true
-            ? orderModel.updated_remarks!
-            : '-';
+    orderModel.updated_remarks?.trim().isNotEmpty == true
+        ? orderModel.updated_remarks!
+        : '-';
 
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 0),
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF332A17) : const Color(0xFFFFFBEB),
         border: Border.all(color: const Color(0xFFF59E0B), width: 2),
@@ -3900,7 +3982,7 @@ amount: ${item.amount}
           label,
           style: TextStyle(
             color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -3913,7 +3995,7 @@ amount: ${item.amount}
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: isDark ? Colors.white : const Color(0xFF1E293B),
-            fontSize: 16,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -3944,18 +4026,18 @@ amount: ${item.amount}
             textAlign: TextAlign.right,
             style: TextStyle(
               color:
-                  isRefund ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
-              fontSize: 17,
+              isRefund ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+              fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
           ),
 
-          const SizedBox(height: 5),
+          const SizedBox(height: 3),
 
           Text(
             '$_currency${previousTotal.toStringAsFixed(2)}'
-            ' → '
-            '$_currency${currentTotal.toStringAsFixed(2)}',
+                ' → '
+                '$_currency${currentTotal.toStringAsFixed(2)}',
             textAlign: TextAlign.right,
             style: const TextStyle(
               color: Color(0xFF94A3B8),
@@ -3993,7 +4075,7 @@ amount: ${item.amount}
             '✏️ Modified',
             style: TextStyle(
               color: Color(0xFFB45309),
-              fontSize: 12,
+              fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -4041,9 +4123,9 @@ amount: ${item.amount}
   }
 
   Widget buildSelectedKotCard(
-    Map<String, dynamic> order,
-    OrderlistModel orderModel,
-  ) {
+      Map<String, dynamic> order,
+      OrderlistModel orderModel,
+      ) {
     final kots = (order["kots"] as List<dynamic>?) ?? [];
 
     //  Auto select first KOT if not selected
@@ -4057,7 +4139,7 @@ amount: ${item.amount}
     }
 
     final selectedKot = kots.cast<Map<String, dynamic>?>().firstWhere(
-      (kot) => kot?["kotNo"] == selectedKotId,
+          (kot) => kot?["kotNo"] == selectedKotId,
       orElse: () => null,
     );
 
@@ -4071,41 +4153,74 @@ amount: ${item.amount}
   }
 
   Widget buildKOTCard(
-    Map<String, dynamic> selectedKot,
-    List<dynamic> kots,
-    OrderlistModel orderModel,
-  ) {
-    final items = (selectedKot["items"] as List<dynamic>?) ?? [];
+      Map<String, dynamic> selectedKot,
+      List<dynamic> kots,
+      OrderlistModel orderModel,
+      ) {
+    final items =
+        (selectedKot["items"] as List<dynamic>?) ?? [];
 
-    final bool showVoided = orderModel.isUpdated?.toLowerCase() == 'yes';
+    final bool showVoided =
+        orderModel.isUpdated?.toLowerCase() == 'yes';
 
     final List<Map<String, dynamic>> normalItems =
-        items.whereType<Map<String, dynamic>>().toList();
+    items.whereType<Map<String, dynamic>>().toList();
 
     final List<VoidedItem> voidedItems =
-        (showVoided && !isVoidedLoading && voidedItemsResponse != null)
-            ? voidedItemsResponse!.items
-            : [];
+    (showVoided &&
+        !isVoidedLoading &&
+        voidedItemsResponse != null)
+        ? voidedItemsResponse!.items
+        : [];
 
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final bool isDark =
+        theme.brightness == Brightness.dark;
 
     // ============================================================
-    // KOT TOTAL
+    // COLORS
+    // ============================================================
+
+    final Color cardColor =
+    isDark ? const Color(0xFF202633) : Colors.white;
+
+    final Color rowColor =
+    isDark ? const Color(0xFF202633) : Colors.white;
+
+    final Color alternateRowColor =
+    isDark ? const Color(0xFF252B38) : const Color(0xFFF8FAFC);
+
+    final Color borderColor =
+    isDark ? Colors.white12 : const Color(0xFFE2E8F0);
+
+    final Color primaryText =
+    isDark ? Colors.white : const Color(0xFF202A3A);
+
+    final Color secondaryText =
+    isDark ? Colors.white60 : const Color(0xFF718096);
+
+    // ============================================================
+    // TOTAL
     // ============================================================
 
     double kotTotal = 0.0;
 
-    // Prefer total coming from API if available
-    final dynamic apiKotTotal = selectedKot["total"];
+    final dynamic apiKotTotal =
+    selectedKot["total"];
 
     if (apiKotTotal != null) {
-      kotTotal = double.tryParse(apiKotTotal.toString()) ?? 0.0;
+      kotTotal =
+          double.tryParse(
+            apiKotTotal.toString(),
+          ) ??
+              0.0;
     } else {
-      // Otherwise calculate from items
       for (final item in normalItems) {
-        final amount =
-            double.tryParse(item["amount"]?.toString() ?? "0") ?? 0.0;
+        final double amount =
+            double.tryParse(
+              item["amount"]?.toString() ?? "0",
+            ) ??
+                0.0;
 
         kotTotal += amount;
       }
@@ -4115,353 +4230,616 @@ amount: ${item.amount}
     // KOT NUMBER
     // ============================================================
 
-    final kotNumber = selectedKot["kotNo"]?.toString() ?? "-";
+    final String kotNumber =
+        selectedKot["kotNumber"]?.toString() ??
+            selectedKot["kotNo"]?.toString() ??
+            "-";
+
+    // ============================================================
+    // ITEM COUNT
+    // ============================================================
+
+    final int itemCount =
+    normalItems.fold<int>(
+      0,
+          (sum, item) {
+        final int qty =
+            int.tryParse(
+              item["quantity"]?.toString() ?? "1",
+            ) ??
+                1;
+
+        return sum + qty;
+      },
+    );
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(10),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.white12 : const Color(0xFFE1E4EA),
+          color: borderColor,
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.12 : 0.04),
+            color: Colors.black.withOpacity(
+              isDark ? 0.15 : 0.04,
+            ),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment:
+          CrossAxisAlignment.start,
+          children: [
 
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ========================================================
-          // KOT HEADER
-          // ========================================================
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // KOT's
-              Text(
-                "KOT’s",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : const Color(0xFF252A3A),
-                ),
-              ),
+            // ======================================================
+            // TOP HEADER
+            // ======================================================
 
-              // ====================================================
-              // KOT DROPDOWN
-              // ====================================================
-              Container(
-                height: 36,
-                padding: const EdgeInsets.only(left: 12, right: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF125BCE),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: selectedKotId,
-
-                    hint: const Text(
-                      "Select KOT",
-                      style: TextStyle(color: Colors.white, fontSize: 13),
+            SizedBox(
+              height: 34,
+              child:        Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "KOTs",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  Container(
+                    height: 34,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF125BCE), // blue background
+                      borderRadius: BorderRadius.circular(8),
                     ),
-
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-
-                    dropdownColor: const Color(0xFF125BCE),
-
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-
-                    borderRadius: BorderRadius.circular(8),
-
-                    items:
-                        kots.map((kot) {
-                          return DropdownMenuItem<int>(
-                            value: kot["kotNo"],
-                            child: Text(
-                              "${kot["kotNumber"]}",
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                          value: selectedKotId,
+                          hint: const Text(
+                            "Select KOT",
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          icon: const Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                          ), // white icon
+                          dropdownColor: const Color(
+                            0xFF125BCE,
+                          ), // dropdown menu blue
+                          style: const TextStyle(
+                            color: Colors.white,
+                          ), // selected text white
+                          items:
+                          kots.map((kot) {
+                            return DropdownMenuItem<int>(
+                              value: kot["kotNo"],
+                              child: Text(
+                                "KOT ${kot["kotNo"]}",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                ), // dropdown items text
                               ),
-                            ),
-                          );
-                        }).toList(),
-
-                    onChanged: (value) {
-                      if (value == null) return;
-
-                      setState(() {
-                        selectedKotId = value;
-                      });
-
-                      loadVoidedItems(value);
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // ========================================================
-          // TABLE HEADER
-          // ========================================================
-          Container(
-            height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF34384F) : const Color(0xFF999393),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(7),
-                topRight: Radius.circular(7),
-              ),
-            ),
-
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: const [
-                // #
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    "#",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-
-                // ITEM NAME
-                Expanded(
-                  flex: 4,
-                  child: Text(
-                    "Item Name",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-
-                // QUANTITY
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    "Quantity",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-
-                // AMOUNT
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    "Amount",
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ========================================================
-          // ITEMS
-          // ========================================================
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: isDark ? Colors.white12 : const Color(0xFFE1E4EA),
-                  ),
-                  right: BorderSide(
-                    color: isDark ? Colors.white12 : const Color(0xFFE1E4EA),
-                  ),
-                ),
-              ),
-
-              child:
-                  isVoidedLoading && showVoided
-                      ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                      : ListView.builder(
-                        padding: EdgeInsets.zero,
-
-                        itemCount: normalItems.length + voidedItems.length,
-
-                        itemBuilder: (context, index) {
-                          // ==========================================
-                          // NORMAL ITEM
-                          // ==========================================
-
-                          if (index < normalItems.length) {
-                            final item = normalItems[index];
-
-                            return Container(
-                              height: 44,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ),
-
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? const Color(0xFF202433)
-                                        : Colors.white,
-
-                                border: Border(
-                                  bottom: BorderSide(
-                                    color:
-                                        isDark
-                                            ? Colors.white12
-                                            : const Color(0xFFE1E4EA),
-                                  ),
-                                ),
-                              ),
-
-                              child: _buildNormalRow(item, index),
                             );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedKotId = value;
+                            });
+                            loadVoidedItems(value!);
                           }
 
-                          // ==========================================
-                          // VOIDED ITEM
-                          // ==========================================
-
-                          final voidedIndex = index - normalItems.length;
-
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-
-                            decoration: BoxDecoration(
-                              color:
-                                  isDark
-                                      ? const Color(0xFF2A2F3D)
-                                      : Colors.grey.shade200,
-
-                              border: Border(
-                                bottom: BorderSide(
-                                  color:
-                                      isDark
-                                          ? Colors.white12
-                                          : const Color(0xFFE1E4EA),
-                                ),
-                              ),
-                            ),
-
-                            child: _buildVoidedRow(
-                              voidedItems[voidedIndex],
-                              index,
-                            ),
-                          );
-                        },
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ======================================================
+            // INNER KOT CONTAINER
+            // ======================================================
+
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius:
+                BorderRadius.circular(10),
+                border: Border.all(
+                  color: borderColor,
+                ),
+              ),
+              child: Column(
+                children: [
+
+                  // ==================================================
+                  // KOT SUMMARY
+                  // ==================================================
+
+                  Container(
+                    height: 40,
+                    padding:
+                    const EdgeInsets.symmetric(
+                      horizontal: 20,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF252C39)
+                          : const Color(0xFFF7F9FC),
+                      borderRadius:
+                      const BorderRadius.only(
+                        topLeft:
+                        Radius.circular(9),
+                        topRight:
+                        Radius.circular(9),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+
+                        Text(
+                          "$kotNumber",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight:
+                            FontWeight.w700,
+                            color: primaryText,
+                          ),
+                        ),
+
+                        // const SizedBox(width: 20),
+
+                        // Container(
+                        //   width: 1,
+                        //   height: 22,
+                        //   color: borderColor,
+                        // ),
+
+                        const SizedBox(width: 20),
+
+                        Text(
+                          "$itemCount Items",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                            FontWeight.w500,
+                            color: secondaryText,
+                          ),
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        Text(
+                          "•",
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: secondaryText,
+                          ),
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        Text(
+                          "$_currency${kotTotal.toStringAsFixed(2)}",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight:
+                            FontWeight.w600,
+                            color: secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ==================================================
+                  // TABLE HEADER
+                  // ==================================================
+
+                  Container(
+                    height: 35,
+                    padding:
+                    const EdgeInsets.symmetric(
+                      horizontal: 20,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: posNavy,
+                    ),
+                    child: Row(
+                      children: const [
+
+                        SizedBox(
+                          width: 40,
+                          child: Text(
+                            "#",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight:
+                              FontWeight.w600,
+                            ),
+                          ),
+                        ),
+
+                        Expanded(
+                          child: Text(
+                            "Item Name",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight:
+                              FontWeight.w600,
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(
+                          width: 90,
+                          child: Text(
+                            "Qty",
+                            textAlign:
+                            TextAlign.left,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight:
+                              FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 30,
+                        ),
+                        SizedBox(
+                          width: 90,
+                          child: Text(
+                            "Amount",
+                            textAlign:
+                            TextAlign.left,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight:
+                              FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ==================================================
+                  // ITEMS
+                  // ==================================================
+
+                  isVoidedLoading && showVoided
+                      ? const Padding(
+                    padding:
+                    EdgeInsets.symmetric(
+                      vertical: 28,
+                    ),
+                    child: Center(
+                      child:
+                      CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  )
+                      : ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+
+                    itemCount:
+                    normalItems.length +
+                        voidedItems.length,
+
+                    itemBuilder:
+                        (context, index) {
+
+                      // ========================================
+                      // NORMAL ITEM
+                      // ========================================
+
+                      if (index <
+                          normalItems.length) {
+                        final item =
+                        normalItems[index];
+
+                        return _buildPosNormalRow(
+                          item: item,
+                          index: index,
+                          isDark: isDark,
+                          backgroundColor:
+                          index.isEven
+                              ? rowColor
+                              : alternateRowColor,
+                          borderColor:
+                          borderColor,
+                          primaryText:
+                          primaryText,
+                          secondaryText:
+                          secondaryText,
+                        );
+                      }
+
+                      // ========================================
+                      // VOIDED ITEM
+                      // ========================================
+
+                      final int voidedIndex =
+                          index -
+                              normalItems.length;
+
+                      return _buildVoidedRow(
+                        voidedItems[
+                        voidedIndex],
+                        index,
+                      );
+                    },
+                  ),
+
+                  // ==================================================
+                  // TOTAL FOOTER
+                  // ==================================================
+
+                  Container(
+                    height: 35,
+                    padding:
+                    const EdgeInsets.symmetric(
+                      horizontal: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF252C39)
+                          : posTotalBackground,
+                      border: Border(
+                        top: BorderSide(
+                          color: borderColor,
+                        ),
+                      ),
+                      borderRadius:
+                      const BorderRadius.only(
+                        bottomLeft:
+                        Radius.circular(9),
+                        bottomRight:
+                        Radius.circular(9),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+
+                        Expanded(
+                          child: Text(
+                            "$kotNumber — Total",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight:
+                              FontWeight.w700,
+                              color: primaryText,
+                            ),
+                          ),
+                        ),
+
+                        Text(
+                          "$_currency${kotTotal.toStringAsFixed(2)}",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight:
+                            FontWeight.w700,
+                            color: isDark
+                                ? Colors.white
+                                : posPrimaryDark,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildPosNormalRow({
+    required Map<String, dynamic> item,
+    required int index,
+    required bool isDark,
+    required Color backgroundColor,
+    required Color borderColor,
+    required Color primaryText,
+    required Color secondaryText,
+  }) {
+    final String itemName =
+        item["itemName"]?.toString() ??
+            item["name"]?.toString() ??
+            "-";
+
+    final int quantity =
+        int.tryParse(
+          item["quantity"]?.toString() ?? "1",
+        ) ??
+            1;
+
+    final double amount =
+        double.tryParse(
+          item["amount"]?.toString() ?? "0",
+        ) ??
+            0.0;
+
+    // ------------------------------------------------------------
+    // MODIFIERS / NOTES
+    // ------------------------------------------------------------
+
+    String modifierText = "";
+
+    if (item["note"] != null &&
+        item["note"].toString().trim().isNotEmpty) {
+      modifierText =
+          item["note"].toString().trim();
+    } else if (item["notes"] != null &&
+        item["notes"].toString().trim().isNotEmpty) {
+      modifierText =
+          item["notes"].toString().trim();
+    }
+
+    final bool hasModifier =
+        modifierText.isNotEmpty;
+
+    return Container(
+      constraints: BoxConstraints(
+        minHeight: hasModifier ? 64 : 40,
+      ),
+      padding:
+      const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: borderColor,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment:
+        CrossAxisAlignment.center,
+        children: [
+
+          // ========================================================
+          // NUMBER
+          // ========================================================
+
+          SizedBox(
+            width: 40,
+            child: Text(
+              "${index + 1}",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: isDark
+                    ? Colors.white54
+                    : const Color(0xFF8A9AB5),
+              ),
             ),
           ),
 
           // ========================================================
-          // KOT TOTAL FOOTER
+          // ITEM NAME + MODIFIER
           // ========================================================
-          Container(
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
 
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF202433) : const Color(0xFFF8FAFC),
-
-              border: Border(
-                left: BorderSide(
-                  color: isDark ? Colors.white12 : const Color(0xFFE1E4EA),
-                ),
-                right: BorderSide(
-                  color: isDark ? Colors.white12 : const Color(0xFFE1E4EA),
-                ),
-                bottom: BorderSide(
-                  color: isDark ? Colors.white12 : const Color(0xFFE1E4EA),
-                ),
+          Expanded(
+            child: Padding(
+              padding:
+              const EdgeInsets.only(
+                right: 16,
               ),
+              child: Column(
+                mainAxisAlignment:
+                MainAxisAlignment.center,
+                crossAxisAlignment:
+                CrossAxisAlignment.start,
+                children: [
 
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(7),
-                bottomRight: Radius.circular(7),
+                  Text(
+                    itemName,
+                    maxLines: 1,
+                    overflow:
+                    TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight:
+                      FontWeight.w500,
+                      color: primaryText,
+                    ),
+                  ),
+
+                  if (hasModifier) ...[
+                    const SizedBox(height: 3),
+
+                    Text(
+                      modifierText,
+                      maxLines: 2,
+                      overflow:
+                      TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight:
+                        FontWeight.w400,
+                        color: isDark
+                            ? const Color(
+                          0xFF72A7F0,
+                        )
+                            : posModifier,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
+          ),
 
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // LEFT
-                Text(
-                  "KOT #$kotNumber — Total",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : const Color(0xFF252A3A),
-                  ),
-                ),
+          // ========================================================
+          // QUANTITY
+          // ========================================================
 
-                // RIGHT
-                Text(
-                  "$_currency${kotTotal.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF125BCE),
-                  ),
-                ),
-              ],
+          SizedBox(
+            width: 90,
+            child: Text(
+              "${item['qty']} x $_currency${(item['item_price'] ?? 0).toStringAsFixed(2)}",
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF475569),
+              ),
+            ),
+          ),
+          const SizedBox(
+            width: 30,
+          ),
+          // ========================================================
+          // AMOUNT
+          // ========================================================
+
+          SizedBox(
+            width: 90,
+            child: Text(
+              item['total_wo_tax'] != null
+                  ? "$_currency${item['total_wo_tax'].toStringAsFixed(2)}"
+                  : "-",
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: primaryText,
+              ),
             ),
           ),
         ],
       ),
     );
   }
-
   // payment summary
   Widget paymentRow(
-    String title,
-    String amount, {
-    Color? color,
-    double fontSize = 14,
-    FontWeight fontWeight = FontWeight.normal,
-  }) {
+      String title,
+      String amount, {
+        Color? color,
+        double fontSize = 14,
+        FontWeight fontWeight = FontWeight.normal,
+      }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -4557,59 +4935,136 @@ amount: ${item.amount}
     );
   }
 
-  Widget _buildVoidedRow(VoidedItem item, int index) {
+  Widget _buildVoidedRow(
+      VoidedItem item,
+      int index,
+      ) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final bool isDark =
+        theme.brightness == Brightness.dark;
 
-    final voidColor = isDark ? Colors.white54 : const Color(0xFFB9B9B9);
+    // ============================================================
+    // VOIDED COLORS
+    // ============================================================
 
-    return Row(
-      children: [
-        Expanded(
-          flex: 1,
-          child: Text(
-            "${index + 1}",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: voidColor,
-              // decoration: TextDecoration.lineThrough,
-            ),
+    final Color voidText =
+    isDark
+        ? Colors.white38
+        : const Color(0xFF9AA3AF);
+
+    final Color voidBackground =
+    isDark
+        ? const Color(0xFF252A34)
+        : const Color(0xFFF3F4F6);
+
+    final Color voidBorder =
+    isDark
+        ? Colors.white10
+        : const Color(0xFFE5E7EB);
+
+    return Container(
+      constraints: const BoxConstraints(
+        minHeight: 32,
+      ),
+
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 8,
+      ),
+
+      decoration: BoxDecoration(
+        color: voidBackground,
+
+        border: Border(
+          bottom: BorderSide(
+            color: voidBorder,
+            width: 1,
           ),
         ),
-        Expanded(
-          flex: 3,
-          child: Text(
-            item.product,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: voidColor,
-              // decoration: TextDecoration.lineThrough,
+      ),
+
+      child: Row(
+        crossAxisAlignment:
+        CrossAxisAlignment.center,
+        children: [
+
+          // ========================================================
+          // #
+          // ========================================================
+
+          SizedBox(
+            width: 40,
+            child: Text(
+              "${index + 1}",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: voidText,
+              ),
             ),
           ),
-        ),
-        Expanded(
-          flex: 2,
-          child: Text(
-            "${item.origQty}",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: voidColor,
-              // decoration: TextDecoration.lineThrough,
+
+          // ========================================================
+          // ITEM NAME
+          // ========================================================
+
+          Expanded(
+            child: Padding(
+              padding:
+              const EdgeInsets.only(
+                right: 16,
+              ),
+              child: Text(
+                item.product,
+                maxLines: 1,
+                overflow:
+                TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: voidText,
+                ),
+              ),
             ),
           ),
-        ),
-        Expanded(
-          flex: 1,
-          child: Text(
-            item.itemTotal.toStringAsFixed(2),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: voidColor,
-              // decoration: TextDecoration.lineThrough,
+
+          // ========================================================
+          // QTY
+          // ========================================================
+
+          SizedBox(
+            width: 90,
+            child: Text(
+              "${item.origQty}",
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: voidText,
+              ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(
+            width: 30,
+          ),
+          // ========================================================
+          // AMOUNT
+          // ========================================================
+
+          SizedBox(
+            width: 90,
+            child: Text(
+              '$_currency${item.itemTotal.toStringAsFixed(2)}',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: voidText,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
-
   Widget _orderInfoRow(String label, String value, bool isDark) {
     return Row(
       children: [
@@ -4618,6 +5073,7 @@ amount: ${item.amount}
           style: TextStyle(
             fontSize: 11,
             color: isDark ? Colors.white54 : const Color(0xFF8490A5),
+            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(width: 12),

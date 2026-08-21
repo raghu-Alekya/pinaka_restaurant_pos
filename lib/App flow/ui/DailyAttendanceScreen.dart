@@ -48,6 +48,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
   String currentTime = '';
   String currentDate = '';
   bool _isSaving = false;
+  bool _hasChanges = false;
 
   @override
   void initState() {
@@ -78,6 +79,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
   void _updateStatus(Employee emp, String status) {
     setState(() {
       emp.status = emp.status == status ? '' : status;
+      _hasChanges = true;
     });
   }
 
@@ -111,10 +113,10 @@ class _AttendancePopupState extends State<AttendancePopup> {
   @override
   Widget build(BuildContext context) {
     final filteredEmployees =
-        widget.employees.where((e) {
-          return e.id.contains(searchQuery) ||
-              e.name.toLowerCase().contains(searchQuery.toLowerCase());
-        }).toList();
+    widget.employees.where((e) {
+      return e.id.contains(searchQuery) ||
+          e.name.toLowerCase().contains(searchQuery.toLowerCase());
+    }).toList();
 
     final viewInsets = MediaQuery.of(context).viewInsets;
     final theme = Theme.of(context);
@@ -150,45 +152,45 @@ class _AttendancePopupState extends State<AttendancePopup> {
                         ),
                         child: Scrollbar(
                           child:
-                              filteredEmployees.isEmpty
-                                  ? Center(
-                                    child: Text(
-                                      "No results found.",
-                                      style: TextStyle(
-                                        color: theme.textTheme.bodyLarge?.color,
-                                      ),
+                          filteredEmployees.isEmpty
+                              ? Center(
+                            child: Text(
+                              "No results found.",
+                              style: TextStyle(
+                                color: theme.textTheme.bodyLarge?.color,
+                              ),
+                            ),
+                          )
+                              : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: filteredEmployees.length,
+                            itemBuilder: (context, index) {
+                              final emp = filteredEmployees[index];
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: theme.cardColor,
+                                  border: Border(
+                                    left: BorderSide(
+                                      color: theme.dividerColor,
                                     ),
-                                  )
-                                  : ListView.builder(
-                                    shrinkWrap: true,
-                                    itemCount: filteredEmployees.length,
-                                    itemBuilder: (context, index) {
-                                      final emp = filteredEmployees[index];
-                                      return Container(
-                                        decoration: BoxDecoration(
-                                          color: theme.cardColor,
-                                          border: Border(
-                                            left: BorderSide(
-                                              color: theme.dividerColor,
-                                            ),
-                                            right: BorderSide(
-                                              color: theme.dividerColor,
-                                            ),
-                                            bottom: BorderSide(
-                                              color: theme.dividerColor,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            _buildCell(emp.id, flex: 2),
-                                            _buildCell(emp.name, flex: 4),
-                                            _buildStatusCell(emp),
-                                          ],
-                                        ),
-                                      );
-                                    },
+                                    right: BorderSide(
+                                      color: theme.dividerColor,
+                                    ),
+                                    bottom: BorderSide(
+                                      color: theme.dividerColor,
+                                    ),
                                   ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    _buildCell(emp.id, flex: 2),
+                                    _buildCell(emp.name, flex: 4),
+                                    _buildStatusCell(emp),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -202,8 +204,11 @@ class _AttendancePopupState extends State<AttendancePopup> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
-                          onPressed: () async {
+                          onPressed: (_isSaving || (widget.isUpdateMode && !_hasChanges))
+                              ? null
+                              : () async {
                             if (_isSaving) return;
+                            // if (_isSaving) return;
 
                             if (selectedShift.isEmpty) {
                               AreaMovementNotifier.showPopup(
@@ -212,14 +217,14 @@ class _AttendancePopupState extends State<AttendancePopup> {
                                 toArea: '',
                                 tableName: 'Shift',
                                 customMessage:
-                                    'Please fill the shift timings field',
+                                'Please fill the shift timings field',
                                 duration: const Duration(seconds: 3),
                               );
                               return;
                             }
 
                             if (!widget.employees.any(
-                              (e) => e.status == 'Present',
+                                  (e) => e.status == 'Present',
                             )) {
                               AreaMovementNotifier.showPopup(
                                 context: context,
@@ -227,7 +232,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
                                 toArea: '',
                                 tableName: 'Employee',
                                 customMessage:
-                                    'Please mark at least one employee as Present.',
+                                'Please mark at least one employee as Present.',
                                 duration: const Duration(seconds: 3),
                               );
                               return;
@@ -236,20 +241,20 @@ class _AttendancePopupState extends State<AttendancePopup> {
                             setState(() => _isSaving = true);
 
                             final startTime =
-                                selectedShift.split(' - ').first.trim();
+                            selectedShift.split(' - ').first.trim();
                             final presentIds =
-                                widget.employees
-                                    .where((e) => e.status == 'Present')
-                                    .map((e) => int.tryParse(e.id))
-                                    .whereType<int>()
-                                    .toList();
+                            widget.employees
+                                .where((e) => e.status == 'Present')
+                                .map((e) => int.tryParse(e.id))
+                                .whereType<int>()
+                                .toList();
 
                             final absentIds =
-                                widget.employees
-                                    .where((e) => e.status == 'Absent')
-                                    .map((e) => int.tryParse(e.id))
-                                    .whereType<int>()
-                                    .toList();
+                            widget.employees
+                                .where((e) => e.status == 'Absent')
+                                .map((e) => int.tryParse(e.id))
+                                .whereType<int>()
+                                .toList();
 
                             final now = DateTime.now();
                             final shiftDate = DateFormat(
@@ -298,12 +303,12 @@ class _AttendancePopupState extends State<AttendancePopup> {
                               } else {
                                 final shiftId = await EmployeeRepository()
                                     .createShift(
-                                      token: widget.token,
-                                      shiftDate: shiftDate,
-                                      startTime: startTime,
-                                      employeeIds: presentIds,
-                                      absentEmployeeIds: absentIds,
-                                    );
+                                  token: widget.token,
+                                  shiftDate: shiftDate,
+                                  startTime: startTime,
+                                  employeeIds: presentIds,
+                                  absentEmployeeIds: absentIds,
+                                );
 
                                 await ShiftDao().saveShift(shiftId, shiftDate);
                                 AppLogger.info(
@@ -336,13 +341,13 @@ class _AttendancePopupState extends State<AttendancePopup> {
                                 'Empty response body',
                               )) {
                                 errorMessage =
-                                    'An open shift already exists. Please close the current shift first.';
+                                'An open shift already exists. Please close the current shift first.';
                               } else if (e.toString().contains('shift_id')) {
                                 errorMessage =
-                                    'Shift response missing shift ID. Please check with admin.';
+                                'Shift response missing shift ID. Please check with admin.';
                               } else {
                                 errorMessage =
-                                    'Shift operation failed. Please try again.';
+                                'Shift operation failed. Please try again.';
                               }
 
                               AreaMovementNotifier.showPopup(
@@ -363,7 +368,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
 
                                 if (context.mounted) {
                                   final prefs =
-                                      await SharedPreferences.getInstance();
+                                  await SharedPreferences.getInstance();
                                   await prefs.clear();
 
                                   Navigator.pushAndRemoveUntil(
@@ -371,12 +376,12 @@ class _AttendancePopupState extends State<AttendancePopup> {
                                     MaterialPageRoute(
                                       builder:
                                           (_) => const EmployeeLoginPage(
-                                            storeBaseUrl: '',
-                                            storeName: '',
-                                            storeId: '',
-                                          ),
+                                        storeBaseUrl: '',
+                                        storeName: '',
+                                        storeId: '',
+                                      ),
                                     ),
-                                    (route) => false,
+                                        (route) => false,
                                   );
                                 }
                               }
@@ -384,26 +389,26 @@ class _AttendancePopupState extends State<AttendancePopup> {
                             setState(() => _isSaving = false);
                           },
                           child:
-                              _isSaving
-                                  ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                  : Text(
-                                    widget.isUpdateMode
-                                        ? "Update"
-                                        : "Save & Continue",
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                          _isSaving
+                              ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                              : Text(
+                            widget.isUpdateMode
+                                ? "Update"
+                                : "Save & Continue",
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -427,12 +432,12 @@ class _AttendancePopupState extends State<AttendancePopup> {
                                 MaterialPageRoute(
                                   builder:
                                       (_) => const EmployeeLoginPage(
-                                        storeBaseUrl: '',
-                                        storeName: '',
-                                        storeId: '',
-                                      ),
+                                    storeBaseUrl: '',
+                                    storeName: '',
+                                    storeId: '',
+                                  ),
                                 ),
-                                (route) => false,
+                                    (route) => false,
                               );
                             }
                           },
@@ -442,9 +447,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
                               vertical: 8,
                             ),
                             backgroundColor:
-                                isDark
-                                    ? Colors.grey.shade800
-                                    : const Color(0xFFFFF3EE),
+                            isDark
+                                ? Colors.grey.shade800
+                                : const Color(0xFFFFF3EE),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -455,9 +460,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
                               Icon(
                                 Icons.logout,
                                 color:
-                                    isDark
-                                        ? Colors.orange.shade300
-                                        : const Color(0xFFFF3D00),
+                                isDark
+                                    ? Colors.orange.shade300
+                                    : const Color(0xFFFF3D00),
                                 size: 22,
                               ),
                               SizedBox(width: 8),
@@ -465,9 +470,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
                                 'Logout',
                                 style: TextStyle(
                                   color:
-                                      isDark
-                                          ? Colors.orange.shade300
-                                          : const Color(0xFFFF3D00),
+                                  isDark
+                                      ? Colors.orange.shade300
+                                      : const Color(0xFFFF3D00),
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -681,10 +686,10 @@ class _AttendancePopupState extends State<AttendancePopup> {
   }
 
   Widget _buildHeaderCell(
-    String text, {
-    required int flex,
-    bool showRightBorder = true,
-  }) {
+      String text, {
+        required int flex,
+        bool showRightBorder = true,
+      }) {
     final theme = Theme.of(context);
 
     return Expanded(
@@ -694,9 +699,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
         decoration: BoxDecoration(
           border: Border(
             right:
-                showRightBorder
-                    ? BorderSide(color: theme.dividerColor)
-                    : BorderSide.none,
+            showRightBorder
+                ? BorderSide(color: theme.dividerColor)
+                : BorderSide.none,
           ),
         ),
         child: Center(
@@ -732,13 +737,13 @@ class _AttendancePopupState extends State<AttendancePopup> {
         decoration: BoxDecoration(
           border: Border(
             left:
-                isFirstColumn
-                    ? BorderSide.none
-                    : BorderSide(color: theme.dividerColor),
+            isFirstColumn
+                ? BorderSide.none
+                : BorderSide(color: theme.dividerColor),
             right:
-                isFirstColumn
-                    ? BorderSide.none
-                    : BorderSide(color: theme.dividerColor),
+            isFirstColumn
+                ? BorderSide.none
+                : BorderSide(color: theme.dividerColor),
           ),
         ),
         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -780,14 +785,14 @@ class _AttendancePopupState extends State<AttendancePopup> {
               emp.status == 'Present',
               '✓ PRESENT',
               Colors.green,
-              () => _updateStatus(emp, 'Present'),
+                  () => _updateStatus(emp, 'Present'),
             ),
             const SizedBox(width: 10),
             _buildStatusButton(
               emp.status == 'Absent',
               '✕ ABSENT',
               Colors.red,
-              () => _updateStatus(emp, 'Absent'),
+                  () => _updateStatus(emp, 'Absent'),
             ),
           ],
         ),
@@ -796,11 +801,11 @@ class _AttendancePopupState extends State<AttendancePopup> {
   }
 
   Widget _buildStatusButton(
-    bool selected,
-    String label,
-    Color color,
-    VoidCallback onTap,
-  ) {
+      bool selected,
+      String label,
+      Color color,
+      VoidCallback onTap,
+      ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -812,21 +817,21 @@ class _AttendancePopupState extends State<AttendancePopup> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color:
-                selected
-                    ? color
-                    : (isDark ? Color(0xFF252837) : const Color(0xFFE0E0E0)),
+            selected
+                ? color
+                : (isDark ? Color(0xFF252837) : const Color(0xFFE0E0E0)),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: selected ? color : theme.dividerColor),
             boxShadow:
-                selected
-                    ? [
-                      BoxShadow(
-                        color: color.withOpacity(0.3),
-                        offset: const Offset(0, 2),
-                        blurRadius: 4,
-                      ),
-                    ]
-                    : [],
+            selected
+                ? [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                offset: const Offset(0, 2),
+                blurRadius: 4,
+              ),
+            ]
+                : [],
           ),
           alignment: Alignment.center,
           child: Text(

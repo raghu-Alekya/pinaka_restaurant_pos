@@ -22,6 +22,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
   // String? selectedVendor;
   String? selectedPurpose = 'Purchase';
   String? selectedPaymentMode = 'Cash';
+  bool _isFormValid = false;
   final VendorPaymentRepository _repository =
   VendorPaymentRepository();
   String _currency = "₹";
@@ -82,6 +83,23 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
       selectedVendorId = widget.editData!.vendorId;
     }
     _loadVendors();
+  }
+  void _validateForm() {
+    final isValid =
+        selectedVendorId != null &&
+            selectedPurpose != null &&
+            selectedPurpose!.isNotEmpty &&
+            amountController.text.trim().isNotEmpty &&
+            double.tryParse(amountController.text.trim()) != null &&
+            (double.tryParse(amountController.text.trim()) ?? 0) > 0 &&
+            selectedPaymentMode != null &&
+            selectedPaymentMode!.isNotEmpty;
+
+    if (_isFormValid != isValid) {
+      setState(() {
+        _isFormValid = isValid;
+      });
+    }
   }
   Future<void> _loadCurrency() async {
     final currency = await SessionManager.getCurrencySymbol();
@@ -307,6 +325,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                             setState(() {
                               selectedVendorId = value;
                             });
+                            _validateForm();
                           },
                         )
                       ],
@@ -388,6 +407,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                             setState(() {
                               selectedPurpose = value;
                             });
+                            _validateForm();
                           },
                         ),
                       ],
@@ -405,8 +425,10 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                         _label("Amount ($_currency) *"),
                         TextFormField(
                           controller: amountController,
-                          keyboardType:
-                          TextInputType.number,
+                          keyboardType: TextInputType.number,
+                          onChanged: (_) {
+                            _validateForm();
+                          },
                           decoration: _fieldDecoration("0.00").copyWith(
                             prefixText: "$_currency ",
                           ),
@@ -447,6 +469,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                             setState(() {
                               selectedPaymentMode = value;
                             });
+                            _validateForm();
                           },
                         ),
                       ],
@@ -514,14 +537,16 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                   Expanded(
                     child: SizedBox(
                       height: 45,
-                      child: ElevatedButton(
-                        onPressed: isLoading
+                      child:ElevatedButton(
+                        onPressed: isLoading || !_isFormValid
                             ? null
                             : () async {
                           await _saveVendorPayment();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF00A63E),
+                          disabledBackgroundColor: const Color(0xFFB8BCC8),
+                          disabledForegroundColor: const Color(0xFF555555),
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -536,7 +561,7 @@ class _AddVendorPayoutDialogState extends State<AddVendorPayoutDialog> {
                             strokeWidth: 2,
                           ),
                         )
-                            :  Text(
+                            : Text(
                           widget.editData == null ? "Save" : "Update",
                           style: theme.textTheme.titleMedium?.copyWith(
                             color: Colors.white,

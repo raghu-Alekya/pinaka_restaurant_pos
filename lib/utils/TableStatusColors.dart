@@ -5,6 +5,7 @@ class TableStatusColors {
   static const Map<String, Color> tableColors = {
     "available": Color(0xFFBEE8BF),
     "dine in": Color(0xFFF7DDDB),
+    "occupied": Color(0xFFEACA00), // Lemon Yellow
     "reserve": Color(0xFFE0E0E0),
     "ready to pay": Color(0xFFC9D6F2),
   };
@@ -12,13 +13,14 @@ class TableStatusColors {
   static const Map<String, Color> chairColors = {
     "available": Color(0xFF4CAF50),
     "dine in": Color(0xFFF44336),
+    "occupied": Color(0xFFEACA00), // Darker Lemon Yellow
     "reserve": Colors.grey,
     "ready to pay": Color(0xFF4C81F1),
   };
 
   static Color getTableColor(String status) {
     final key = status.trim().toLowerCase();
-    return tableColors[key] ?? Color(0xFFE0E0E0);
+    return tableColors[key] ?? const Color(0xFFE0E0E0);
   }
 
   static Color getChairColor(String status) {

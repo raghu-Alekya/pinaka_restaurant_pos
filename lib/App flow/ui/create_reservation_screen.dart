@@ -55,6 +55,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
   String selectedSlot = '';
   String selectedMeal = '';
   String selectedArea = '';
+  bool _isFormValid = false;
   Set<String> selectedTables = {};
   DateTime selectedDate = DateTime.now();
   List<Map<String, dynamic>> allTables = [];
@@ -143,6 +144,26 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     if (savedPermissions != null) {
       setState(() {
         _userPermissions = savedPermissions;
+      });
+    }
+  }
+
+  void _validateForm() {
+    final people = _peopleController.text.trim();
+    final name = _nameController.text.trim();
+    final contact = _contactController.text.trim();
+
+    final valid =
+        people.isNotEmpty &&
+            (int.tryParse(people) ?? 0) > 0 &&
+            name.isNotEmpty &&
+            contact.length == 10 &&
+            selectedSlot.isNotEmpty &&
+            selectedTables.isNotEmpty;
+
+    if (_isFormValid != valid) {
+      setState(() {
+        _isFormValid = valid;
       });
     }
   }
@@ -1334,6 +1355,8 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
               setState(() {
                 _hasUnsavedChanges = true;
               });
+
+              _validateForm();
             },
             style: TextStyle(
               fontSize: 14,
@@ -1460,9 +1483,14 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           (selectedSlot == time)
                               ? ''
                               : time;
+
                           _isLoadingTables = true;
                           selectedTables.clear();
+
+                          _hasUnsavedChanges = true;
                         });
+
+                        _validateForm();
 
                         if (selectedSlot.isNotEmpty) {
                           await _fetchTables();
@@ -1857,9 +1885,11 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
                           selectedTables.clear();
                           selectedTables.add(tableName);
                         }
-                        _hasUnsavedChanges =
-                        true; // <-- Mark form as modified
+
+                        _hasUnsavedChanges = true;
                       });
+
+                      _validateForm();
                     },
                     onLongPress: () {
                       final int tableCapacity =
@@ -2502,13 +2532,22 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
           SizedBox(
             height: 40,
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _validateAndSubmit,
+              onPressed: _isLoading || !_isFormValid
+                  ? null
+                  : _validateAndSubmit,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(180, 40),
                 maximumSize: const Size(double.infinity, 40),
                 padding: const EdgeInsets.symmetric(horizontal: 20),
+
+                // Enabled
                 backgroundColor: const Color(0xFFFF4D20),
                 foregroundColor: Colors.white,
+
+                // Disabled
+                disabledBackgroundColor: const Color(0xFFB8BCC8),
+                disabledForegroundColor: const Color(0xFF555555),
+
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

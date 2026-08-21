@@ -709,13 +709,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                           builder: (context, state) {
                                             final isTakeAwayOrder =
                                                 state.tableId == 0 &&
-                                                state.tableName.isEmpty;
+                                                    state.tableName.isEmpty;
                                             final activeOrderCount =
 
-                                                (state.orderItems.isNotEmpty &&
-                                                        isTakeAwayOrder)
-                                                    ? "1"
-                                                    : "0";
+                                            (state.orderItems.isNotEmpty &&
+                                                isTakeAwayOrder)
+                                                ? "1"
+                                                : "0";
 
                                             state.orderItems.isNotEmpty
                                                 ? "1"
@@ -759,7 +759,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                                                   final isTableOrder =
                                                       state.tableId != 0 ||
-                                                      state.tableName.isNotEmpty;
+                                                          state.tableName.isNotEmpty;
 
                                                   if (state.orderItems.isEmpty ||
                                                       isTableOrder) {
@@ -847,15 +847,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       token: widget.token,
                                                       pin: widget.pin,
                                                       restaurantId:
-                                                          widget.restaurantId,
+                                                      widget.restaurantId,
                                                       restaurantName:
-                                                          widget.restaurantName,
+                                                      widget.restaurantName,
                                                       userPermissions:
-                                                          _userPermissions,
+                                                      _userPermissions,
                                                       orders: const [],
                                                       loadedTables: const [],
                                                       initialOrderType:
-                                                          "Online Orders",
+                                                      "Online Orders",
                                                     ),
                                                   ),
                                                 ),
@@ -1530,17 +1530,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 24),
 
           //Raghu
-          _overviewRow(
-            Icons.room_service_outlined,
-            Colors.grey.shade100,
-            Colors.grey,
-            "Queue Kot's",
-            "${statusCount?.queue ?? 0}",
-            isDark,
-          ),
+          // _overviewRow(
+          //   Icons.room_service_outlined,
+          //   Colors.grey.shade100,
+          //   Colors.grey,
+          //   "Queue Kot's",
+          //   "${statusCount?.queue ?? 0}",
+          //   isDark,
+          // ),
 
           _overviewRow(
             Icons.access_time,
@@ -1556,7 +1556,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Color(0xFFEAF2FF),
             Colors.blue,
             "Ready to Serve Kot's",
-            "${statusCount?.kotReady ?? 0}",
+            "${statusCount?.served ?? 0}",
             isDark,
           ),
 
@@ -1611,15 +1611,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       token: widget.token,
                       pin: widget.pin,
                       restaurantId:
-                          widget.restaurantId,
+                      widget.restaurantId,
                       restaurantName:
-                          widget.restaurantName,
+                      widget.restaurantName,
                       userPermissions:
-                          _userPermissions,
+                      _userPermissions,
                       orders: const [],
                       loadedTables: const [],
                       initialOrderType:
-                          "Online Orders",
+                      "Online Orders",
                     ),
                   ),
                 ),
@@ -1658,42 +1658,42 @@ class _HomeScreenState extends State<HomeScreen> {
           )
               : null,
         ),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 18, color: iconColor),
             ),
-            child: Icon(icon, size: 18, color: iconColor),
-          ),
 
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
 
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 15,
-                color: isDark ? Colors.white : const Color(0xFF333333),
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isDark ? Colors.white : const Color(0xFF333333),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          ),
 
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 

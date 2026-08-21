@@ -70,6 +70,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
   List<Map<String, dynamic>> _modifiedItems = [];
   bool _isLoadingLineItems = false;
   bool _hasQuantityChanged = false;
+  // List<Map<String, dynamic>> _modifiedItems = [];
   final List<String> voidReasons = [
     "Wrong Item",
     "Customer Cancelled",
@@ -1019,7 +1020,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                             final modifiedAt = DateTime.now();
 
                             final selectedItems = itemsNotifier.value;
-                            final modifiedItems = <Map<String, dynamic>>[];
+                            _modifiedItems = [];
 
                             for (final originalItem in originalKotItems) {
                               final modifiedItem = selectedItems.firstWhere(
@@ -1031,7 +1032,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                               );
 
                               if (originalItem.originalQuantity != modifiedItem.quantity) {
-                                modifiedItems.add({
+                                _modifiedItems.add({
                                   "itemId": originalItem.id,
                                   "productId": originalItem.productId,
                                   "itemName": originalItem.productName,
@@ -1052,7 +1053,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                               "kotNo": widget.kotNo,
                               "kotId": widget.kotId,
                               "reason": selectedReason,
-                              "items": modifiedItems,
+                              "items": _modifiedItems,
                             };
 
                             debugPrint("========== VOID ITEM AUDIT ==========");
@@ -1062,7 +1063,7 @@ class _VoidItemsDialogState extends State<VoidItemsDialog> {
                             debugPrint("Table: ${widget.tableNo}");
                             debugPrint("KOT: ${widget.kotNo}");
                             debugPrint("Reason: $selectedReason");
-                            debugPrint("Modified Items: $modifiedItems");
+                            debugPrint("Modified Items: $_modifiedItems");
                             debugPrint("=====================================");
 
                             final request = UpdatekotRequest(

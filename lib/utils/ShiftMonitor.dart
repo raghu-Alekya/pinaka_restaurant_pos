@@ -115,6 +115,9 @@ class ShiftMonitor {
       final String? shiftEndTimeStr =
       currentShift['shift_timings']?['end_time'];
 
+      final String? shiftStartTimeStr =
+      currentShift['shift_timings']?['start_time'];
+
       final String? shiftDateStr =
       currentShift['shift_date'];
 
@@ -122,27 +125,46 @@ class ShiftMonitor {
         "Shift ID: $shiftId, "
             "Status: $shiftStatus, "
             "Date: $shiftDateStr, "
+            "Start Time: $shiftStartTimeStr, "
             "End Time: $shiftEndTimeStr",
       );
 
-      if (shiftEndTimeStr == null ||
+      if (shiftStartTimeStr == null ||
+          shiftEndTimeStr == null ||
           shiftDateStr == null ||
+          shiftStartTimeStr.isEmpty ||
           shiftEndTimeStr.isEmpty ||
           shiftDateStr.isEmpty) {
         AppLogger.error(
-          "Shift date or end time is null/empty.",
+          "Shift date, start time or end time is null/empty.",
         );
         return;
       }
 
+      DateTime shiftStartDateTime;
       DateTime shiftEndDateTime;
 
       try {
-        final parsedEndTime =
-        DateFormat('hh:mma').parse(shiftEndTimeStr);
-
         final parsedShiftDate =
         DateFormat('yyyy-MM-dd').parse(shiftDateStr);
+
+        final parsedStartTime =
+        DateFormat('hh:mma').parse(
+          shiftStartTimeStr.replaceAll(' ', ''),
+        );
+
+        final parsedEndTime =
+        DateFormat('hh:mma').parse(
+          shiftEndTimeStr.replaceAll(' ', ''),
+        );
+
+        shiftStartDateTime = DateTime(
+          parsedShiftDate.year,
+          parsedShiftDate.month,
+          parsedShiftDate.day,
+          parsedStartTime.hour,
+          parsedStartTime.minute,
+        );
 
         shiftEndDateTime = DateTime(
           parsedShiftDate.year,
@@ -152,8 +174,25 @@ class ShiftMonitor {
           parsedEndTime.minute,
         );
 
+        // Overnight shift
+        if (!shiftEndDateTime.isAfter(shiftStartDateTime)) {
+          shiftEndDateTime =
+              shiftEndDateTime.add(const Duration(days: 1));
+
+          AppLogger.info(
+            "Overnight shift detected. "
+                "End time belongs to next day.",
+          );
+        }
+
         AppLogger.info(
-          "Parsed shift end datetime: $shiftEndDateTime",
+          "Parsed shift start datetime: "
+              "$shiftStartDateTime",
+        );
+
+        AppLogger.info(
+          "Parsed shift end datetime: "
+              "$shiftEndDateTime",
         );
       } catch (e) {
         AppLogger.error(
@@ -164,7 +203,9 @@ class ShiftMonitor {
 
       final now = DateTime.now();
 
-      AppLogger.info("Current time: $now");
+      AppLogger.info(
+        "Current time: $now",
+      );
 
       if (now.isAfter(shiftEndDateTime) &&
           shiftStatus.toLowerCase() == 'open') {
@@ -185,7 +226,6 @@ class ShiftMonitor {
           "Shift $shiftId successfully auto-closed.",
         );
 
-        // ✅ Clear user session
         await SessionManager.clearPermissions();
 
         stopMonitoring();
@@ -198,14 +238,19 @@ class ShiftMonitor {
             barrierDismissible: false,
             builder: (_) => ShiftClosedPopup(
               message:
-              "Shift auto-closed at ${DateFormat('hh:mm a').format(now)}",
+              "Shift auto-closed at "
+                  "${DateFormat('hh:mm a').format(now)}",
             ),
           );
 
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (_) => const EmployeeLoginPage(storeBaseUrl: '', storeName: '', storeId: '',),
+              builder: (_) => const EmployeeLoginPage(
+                storeBaseUrl: '',
+                storeName: '',
+                storeId: '',
+              ),
             ),
                 (route) => false,
           );

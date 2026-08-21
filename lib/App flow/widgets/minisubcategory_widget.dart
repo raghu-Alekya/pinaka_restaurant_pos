@@ -2536,9 +2536,17 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
     // 6. CREATE API REQUEST
     // ============================================================
 
+    final String oldStatus =
+    item.inStock ? 'instock' : 'outofstock';
+
     final request = ProductStatusRequest(
-      productId: item.id,
-      status: newStatus,
+      products: [
+        ProductStatusItem(
+          productId: item.id,
+          oldStatus: oldStatus,
+          newStatus: newStatus,
+        ),
+      ],
       pin: pin,
     );
 
@@ -2705,7 +2713,6 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
       );
     }
   }
-
   void _showVariantPopup(
     BuildContext context,
     Product product,
