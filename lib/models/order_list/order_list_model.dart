@@ -191,12 +191,12 @@ class OrderlistModel {
         for (final item in itemsList) {
           if (item is Map) {
             lineItemsSum += parseAmount(
-              item['total'] ??
-              item['total_with_tax'] ??
-              item['amount'] ??
-              item['price'] ??
-              item['line_total'] ??
-              item['subtotal']
+                item['total'] ??
+                    item['total_with_tax'] ??
+                    item['amount'] ??
+                    item['price'] ??
+                    item['line_total'] ??
+                    item['subtotal']
             );
           }
         }
@@ -204,8 +204,21 @@ class OrderlistModel {
     }
 
     final effectiveAmount = rawTotal > 0 ? rawTotal : (itemsSum > 0 ? itemsSum : lineItemsSum);
-
+    debugPrint("🔥 ===== TOTAL DEBUG =====");
+    debugPrint("🔥 backend gross_total = ${json['gross_total']}");
+    debugPrint("🔥 backend sub_total = ${json['sub_total']}");
+    debugPrint("🔥 backend total_tax = ${json['total_tax']}");
+    debugPrint("🔥 backend net_total = ${json['net_total']}");
+    debugPrint("🔥 backend net_payable = ${json['net_payable']}");
+    debugPrint("🔥 backend total = ${json['total']}");
+    debugPrint("🔥 backend amount = ${json['amount']}");
+    debugPrint("🔥 rawTotal = $rawTotal");
+    debugPrint("🔥 itemsSum = $itemsSum");
+    debugPrint("🔥 lineItemsSum = $lineItemsSum");
+    debugPrint("🔥 effectiveAmount = $effectiveAmount");
+    debugPrint("🔥 =======================");
     return OrderlistModel(
+
       completedByUserId: json['completed_by_user_id']?.toString(),
 
       orderId: json['order_id'] is int ? json['order_id'] : int.tryParse(json['order_id']?.toString() ?? json['id']?.toString() ?? ''),
@@ -216,20 +229,38 @@ class OrderlistModel {
       paymentType: json['payment_type'] ?? json['payment_method_title'],
       kotOrderId: json['kot_order_id'] is int ? json['kot_order_id'] : int.tryParse(json['kot_order_id']?.toString() ?? json['id']?.toString() ?? ''),
 
-      grossTotal: parseFirstPositive([json['gross_total'], effectiveAmount]),
-      subTotal: parseFirstPositive([json['sub_total'], effectiveAmount]),
-      totalTax: parseAmount(json['total_tax']),
-      netTotal: parseFirstPositive([json['net_total'], effectiveAmount]),
+      grossTotal: json.containsKey('gross_total')
+          ? parseAmount(json['gross_total'])
+          : effectiveAmount,
+
+      subTotal: json.containsKey('sub_total')
+          ? parseAmount(json['sub_total'])
+          : effectiveAmount,
+
+      totalTax: json.containsKey('total_tax')
+          ? parseAmount(json['total_tax'])
+          : 0,
+
+      netTotal: json.containsKey('net_total')
+          ? parseAmount(json['net_total'])
+          : effectiveAmount,
       merchantDiscount: parseAmount(json['merchant_discount']),
-      netPayable: effectiveAmount,
+      netPayable: json.containsKey('net_payable')
+          ? parseAmount(json['net_payable'])
+          : effectiveAmount,
       roundOff: parseAmount(json['round_off']),
 
 
 
 
-      amount: effectiveAmount,
+
+      amount: json.containsKey('amount')
+          ? parseAmount(json['amount'])
+          : effectiveAmount,
       discount: parseAmount(json['discount']),
-      total: effectiveAmount,
+      total: json.containsKey('total')
+          ? parseAmount(json['total'])
+          : effectiveAmount,
 
       orderPrevTotal: parseAmount(json['order_prev_total']),
 
@@ -596,10 +627,10 @@ extension LineItemMapping on LineItem {
     final effectiveItemAmount = (amount != null && amount! > 0)
         ? amount!
         : ((total != null && total! > 0)
-            ? total!
-            : ((itemPrice != null && quantity != null && itemPrice! > 0 && quantity! > 0)
-                ? itemPrice! * quantity!
-                : 0));
+        ? total!
+        : ((itemPrice != null && quantity != null && itemPrice! > 0 && quantity! > 0)
+        ? itemPrice! * quantity!
+        : 0));
 
     return {
       "name": name ?? 'Item',
@@ -717,5 +748,22 @@ class OrderModificationRevision {
     required this.kotOrderId,
     required this.revisionNumber,
     required this.revision,
+  });
+}
+class ModificationRevision {
+  final double previousTotal;
+  final double updatedTotal;
+  final double difference;
+  final String modifiedBy;
+  final String modifiedOn;
+  final String reason;
+
+  ModificationRevision({
+    required this.previousTotal,
+    required this.updatedTotal,
+    required this.difference,
+    required this.modifiedBy,
+    required this.modifiedOn,
+    required this.reason,
   });
 }

@@ -71,7 +71,7 @@ class OrdersDetailsScreen extends StatefulWidget {
   final OrderlistModel? initialOrder; // Pass clicked order for instant load
   final UserPermissions? userPermissions;
   final Function(UserPermissions)? onPermissionsReceived;
-
+  final bool forceRefresh;
   const OrdersDetailsScreen({
     super.key,
     required this.token,
@@ -83,6 +83,7 @@ class OrdersDetailsScreen extends StatefulWidget {
     this.userPermissions,
     this.onPermissionsReceived,
     Map<String, dynamic>? selectedUser,
+    this.forceRefresh = false,
   });
 
   @override
@@ -99,12 +100,15 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   UserPermissions? _permissions;
   double? _oldNetPayable;
   String? _oldEditReason;
+  OrderlistModel? _currentOrder;
+  bool _isLoadingOrder = true;
   VoidedItemsResponse? voidedItemsResponse;
   bool isVoidedLoading = false;
   int? selectedKotOrderId;
   String _currency = "₹";
   final Map<int, VoidedItemsResponse> _voidedItemsCache = {}; // add as field
-
+  List<double> _modificationTotalHistory = [];
+  final List<ModificationRevision> _modificationHistory = [];
   void _onKotSelected(int kotId) {
     setState(() {
       selectedKotId = kotId;
@@ -114,7 +118,21 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
     loadVoidedItems(kotId);
   }
+  void _recordModificationTotal(OrderlistModel orderModel) {
+    final currentTotal =
+    (orderModel.netPayable ?? 0).toDouble();
 
+    final previousTotal =
+    (orderModel.orderPrevTotal ?? 0).toDouble();
+
+    if (_modificationTotalHistory.isEmpty) {
+      _modificationTotalHistory.add(previousTotal);
+    }
+
+    if (_modificationTotalHistory.last != currentTotal) {
+      _modificationTotalHistory.add(currentTotal);
+    }
+  }
   KotRevision _buildOriginalRevision(KotOrder kot) {
     final originalItems = List<LineItem>.from(
       kot.initialKotItems ?? kot.lineItems ?? [],
@@ -202,8 +220,11 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
     return const [];
   }
-
   String _formatCurrency(num value) {
+    if (value < 0) {
+      return "-$_currency${value.abs().toStringAsFixed(2)}";
+    }
+
     return "$_currency${value.toStringAsFixed(2)}";
   }
 
@@ -365,10 +386,68 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   @override
   void initState() {
     super.initState();
+
     _userPermissions = widget.userPermissions;
-    _ordersFuture = _getOrdersFuture(); // <-- changed
+
+    // Immediately show the order passed from the edit screen.
+    _currentOrder = widget.initialOrder;
+    _isLoadingOrder = _currentOrder == null;
+
     _loadPermissions();
     _loadCurrency();
+
+    // Refresh from API only when needed.
+    if (_currentOrder == null || widget.forceRefresh) {
+      _refreshOrderDetails();
+    }
+  }
+  Future<void> _refreshOrderDetails() async {
+    try {
+      debugPrint(
+        "🔄 REFRESHING ORDER ${widget.orderId}...",
+      );
+
+      final orders = await _orderRepo.fetchOrders(
+        widget.token,
+        restaurantId: widget.restaurantId,
+      );
+
+      if (!mounted) return;
+
+      final latestOrder = orders.firstWhere(
+            (item) => item.orderId == widget.orderId,
+        orElse: () => widget.initialOrder!,
+      );
+
+      debugPrint(
+        """
+================ UPDATED ORDER ================
+Order ID       : ${latestOrder.orderId}
+Net Payable    : ${latestOrder.netPayable}
+Previous Total: ${latestOrder.orderPrevTotal}
+Gross Total    : ${latestOrder.grossTotal}
+Is Updated     : ${latestOrder.isUpdated}
+Status         : ${latestOrder.status}
+===============================================
+""",
+      );
+
+      setState(() {
+        _currentOrder = latestOrder;
+        _isLoadingOrder = false;
+      });
+    } catch (e) {
+      debugPrint(
+        "❌ Failed to refresh order: $e",
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _currentOrder = widget.initialOrder;
+        _isLoadingOrder = false;
+      });
+    }
   }
 
   Future<List<OrderlistModel>> _getOrdersFuture() async {
@@ -961,8 +1040,12 @@ amount: ${item.amount}
                     context,
                     index,
                     ) {
-                  final revision =
-                  revisions[index];
+                  final revision = revisions[index];
+
+                  final modificationRevision =
+                  index < _modificationHistory.length
+                      ? _modificationHistory[index]
+                      : null;
 
                   return _buildKotRevisionCard(
                     revision: revision,
@@ -972,8 +1055,9 @@ amount: ${item.amount}
                         ? originalRevision
                         : revisions[index - 1],
                     current:
-                    index ==
-                        revisions.length - 1,
+                    index == revisions.length - 1,
+                    modificationRevision:
+                    modificationRevision,
                   );
                 },
               ),
@@ -1108,7 +1192,8 @@ amount: ${item.amount}
     required KotRevision? previousRevision,
     required bool current,
     required OrderlistModel orderModel,
-  }) {
+    ModificationRevision? modificationRevision,
+  }){
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -1878,6 +1963,11 @@ amount: ${item.amount}
                   (role == 'administrator' ||
                       role == 'manager' ||
                       role == 'merchant');
+          final bool isOrderUpdated =
+              (orderModel.isUpdated ?? '').trim().toLowerCase() == 'yes';
+
+          final bool canEditThisOrder =
+              canEditOrder && !isOrderUpdated;
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             child: Column(
@@ -1953,7 +2043,7 @@ amount: ${item.amount}
                               'completed')
                             ElevatedButton(
                               onPressed:
-                              !canEditOrder
+                              !canEditThisOrder
                                   ? null
                                   : () async {
                                 // -----------------------------------------
@@ -3852,15 +3942,20 @@ amount: ${item.amount}
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final previousTotal = orderModel.orderPrevTotal ?? 0;
+    final currentTotal =
+    (orderModel.netPayable ?? 0).toDouble();
 
-    // Current amount after modification
-    final currentTotal = orderModel.netPayable ?? 0;
+    final previousTotal =
+    (orderModel.orderPrevTotal ?? 0).toDouble();
 
-    final difference = currentTotal - previousTotal;
+    final difference =
+        currentTotal - previousTotal;
 
-    final refundDue = difference < 0 ? difference.abs() : 0;
-    final additionalDue = difference > 0 ? difference : 0;
+    final refundDue =
+    difference < 0 ? difference.abs() : 0;
+
+    final additionalDue =
+    difference > 0 ? difference : 0;
 
     final modifiedBy = () {
       final name = orderModel.placedByName?.trim() ?? '';
@@ -3957,6 +4052,7 @@ amount: ${item.amount}
                       difference: difference,
                       refundDue: refundDue,
                       additionalDue: additionalDue,
+                      history: _modificationTotalHistory,
                     ),
                   ),
                 ],
@@ -4009,6 +4105,7 @@ amount: ${item.amount}
     required num difference,
     required num refundDue,
     required num additionalDue,
+    required List<double> history,
   }) {
     final isRefund = refundDue > 0;
 
@@ -4025,8 +4122,9 @@ amount: ${item.amount}
                 : 'No Amount Change',
             textAlign: TextAlign.right,
             style: TextStyle(
-              color:
-              isRefund ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+              color: isRefund
+                  ? const Color(0xFFDC2626)
+                  : const Color(0xFF16A34A),
               fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
@@ -4034,8 +4132,18 @@ amount: ${item.amount}
 
           const SizedBox(height: 3),
 
+          // =====================================================
+          // MODIFICATION HISTORY
+          // =====================================================
           Text(
-            '$_currency${previousTotal.toStringAsFixed(2)}'
+            history.isNotEmpty
+                ? history
+                .map(
+                  (value) =>
+              '$_currency${value.toStringAsFixed(2)}',
+            )
+                .join(' → ')
+                : '$_currency${previousTotal.toStringAsFixed(2)}'
                 ' → '
                 '$_currency${currentTotal.toStringAsFixed(2)}',
             textAlign: TextAlign.right,
@@ -4347,17 +4455,16 @@ amount: ${item.amount}
             // ======================================================
             // INNER KOT CONTAINER
             // ======================================================
-
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
                 color: cardColor,
-                borderRadius:
-                BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: borderColor,
                 ),
               ),
+              clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
 
@@ -4520,72 +4627,56 @@ amount: ${item.amount}
                   // ==================================================
                   // ITEMS
                   // ==================================================
-
-                  isVoidedLoading && showVoided
-                      ? const Padding(
-                    padding:
-                    EdgeInsets.symmetric(
-                      vertical: 28,
+                  ConstrainedBox(
+                    constraints:  BoxConstraints(
+                      minHeight: 100,
+                      maxHeight: showVoided ? 180 : 280,
                     ),
-                    child: Center(
-                      child:
-                      CircularProgressIndicator(
+                    child: isVoidedLoading && showVoided
+                        ? const Center(
+                      child: CircularProgressIndicator(
                         strokeWidth: 2,
                       ),
-                    ),
-                  )
-                      : ListView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    )
+                        : ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: normalItems.length + voidedItems.length,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemBuilder: (context, index) {
+                        // ========================================
+                        // NORMAL ITEM
+                        // ========================================
 
-                    itemCount:
-                    normalItems.length +
-                        voidedItems.length,
+                        if (index < normalItems.length) {
+                          final item = normalItems[index];
 
-                    itemBuilder:
-                        (context, index) {
+                          return _buildPosNormalRow(
+                            item: item,
+                            index: index,
+                            isDark: isDark,
+                            backgroundColor:
+                            index.isEven
+                                ? rowColor
+                                : alternateRowColor,
+                            borderColor: borderColor,
+                            primaryText: primaryText,
+                            secondaryText: secondaryText,
+                          );
+                        }
 
-                      // ========================================
-                      // NORMAL ITEM
-                      // ========================================
+                        // ========================================
+                        // VOIDED ITEM
+                        // ========================================
 
-                      if (index <
-                          normalItems.length) {
-                        final item =
-                        normalItems[index];
+                        final int voidedIndex =
+                            index - normalItems.length;
 
-                        return _buildPosNormalRow(
-                          item: item,
-                          index: index,
-                          isDark: isDark,
-                          backgroundColor:
-                          index.isEven
-                              ? rowColor
-                              : alternateRowColor,
-                          borderColor:
-                          borderColor,
-                          primaryText:
-                          primaryText,
-                          secondaryText:
-                          secondaryText,
+                        return _buildVoidedRow(
+                          voidedItems[voidedIndex],
+                          index,
                         );
-                      }
-
-                      // ========================================
-                      // VOIDED ITEM
-                      // ========================================
-
-                      final int voidedIndex =
-                          index -
-                              normalItems.length;
-
-                      return _buildVoidedRow(
-                        voidedItems[
-                        voidedIndex],
-                        index,
-                      );
-                    },
+                      },
+                    ),
                   ),
 
                   // ==================================================
@@ -5035,7 +5126,7 @@ amount: ${item.amount}
           SizedBox(
             width: 90,
             child: Text(
-              "${item.origQty}",
+              "${item.origQty} → ${item.newQty}",
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,

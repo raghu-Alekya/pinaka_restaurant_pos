@@ -64,6 +64,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
   String? _selectedStatus;
   String? _selectedOrderType;
   String? _selectedDate;
+  bool _isRefreshing = false;
   Timer? _searchDebounce;
   String _currency = "₹";
   final List<String> statusOptions = [
@@ -138,7 +139,29 @@ class _OrdersListTableState extends State<OrdersListTable> {
       });
     });
   }
+  Future<void> _refreshOrders() async {
+    if (_isRefreshing) return;
 
+    final today = DateTime.now();
+    final dateStr = DateFormat('yyyy-MM-dd').format(today);
+
+    setState(() {
+      _isRefreshing = true;
+
+      selectedDate = today;
+      _dateController.text = DateFormat('dd/MM/yyyy').format(today);
+
+      _currentPage = 0;
+    });
+
+    context.read<OrderstatusBloc>().add(
+      FetchOrders(
+        token: widget.token,
+        date: dateStr,
+        restaurantId: widget.restaurantId,
+      ),
+    );
+  }
   Future<void> _loadCurrency() async {
     final currency = await SessionManager.getCurrencySymbol();
 
@@ -319,7 +342,27 @@ class _OrdersListTableState extends State<OrdersListTable> {
     _dateController.dispose();
     super.dispose();
   }
+  int _getOrderModificationCount(OrderlistModel order) {
+    int count = 0;
 
+    for (final kot in order.kotOrders ?? []) {
+      // Each unique voidedAt/modification timestamp represents
+      // one modification revision.
+      final modificationTimes = <String>{};
+
+      for (final item in kot.voidedItems ?? []) {
+        final time = item.voidedAt?.toIso8601String();
+
+        if (time != null && time.isNotEmpty) {
+          modificationTimes.add(time);
+        }
+      }
+
+      count += modificationTimes.length;
+    }
+
+    return count;
+  }
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -759,88 +802,156 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            SizedBox(
-                              height: 40,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // =========================
+                                // RESET BUTTON
+                                // =========================
+                                SizedBox(
+                                  height: 40,
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
                                       _isResetEnabled()
                                           ? (isDark
-                                              ? const Color(0xFF34384F)
-                                              : const Color(0xFFFDF8F8))
+                                          ? const Color(0xFF34384F)
+                                          : const Color(0xFFFDF8F8))
                                           : (isDark
-                                              ? const Color(0xFF2B3042)
-                                              : Colors.grey.shade300),
-                                  foregroundColor:
+                                          ? const Color(0xFF2B3042)
+                                          : Colors.grey.shade300),
+                                      foregroundColor:
                                       _isResetEnabled()
                                           ? Colors.red
                                           : (isDark
-                                              ? Colors.white54
-                                              : Colors.grey),
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 0,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    side: BorderSide(
-                                      color:
+                                          ? Colors.white54
+                                          : Colors.grey),
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        side: BorderSide(
+                                          color:
                                           _isResetEnabled()
                                               ? Colors.red
                                               : (isDark
-                                                  ? Colors.white24
-                                                  : Colors.grey.shade400),
+                                              ? Colors.white24
+                                              : Colors.grey.shade400),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                onPressed:
+                                    onPressed:
                                     _isResetEnabled()
                                         ? () {
-                                          setState(() {
-                                            // 🔹 Search
-                                            _searchQuery = '';
-                                            _searchController.clear();
+                                      setState(() {
+                                        // Search
+                                        _searchQuery = '';
+                                        _searchController.clear();
 
-                                            // 🔹 Status
-                                            _selectedStatus = 'All';
+                                        // Status
+                                        _selectedStatus = 'All';
 
-                                            // 🔹 Order Type
-                                            _selectedOrderType = 'All Types';
+                                        // Order Type
+                                        _selectedOrderType = 'All Types';
 
-                                            // 🔹 Date
-                                            selectedDate = null;
-                                            _dateController.clear();
+                                        // Date
+                                        selectedDate = null;
+                                        _dateController.clear();
 
-                                            // 🔹 Pagination
-                                            _currentPage = 0;
-                                            _updateFilteredOrders();
-                                          });
-                                        }
+                                        // Pagination
+                                        _currentPage = 0;
+
+                                        _updateFilteredOrders();
+                                      });
+                                    }
                                         : null,
-                                icon: Icon(
-                                  Icons.refresh,
-                                  size: 16,
-                                  color:
+                                    icon: Icon(
+                                      Icons.refresh,
+                                      size: 16,
+                                      color:
                                       _isResetEnabled()
                                           ? Colors.red
                                           : (isDark
-                                              ? Colors.white54
-                                              : Colors.grey),
-                                ),
-                                label: Text(
-                                  "Reset",
-                                  style: TextStyle(
-                                    color:
+                                          ? Colors.white54
+                                          : Colors.grey),
+                                    ),
+                                    label: Text(
+                                      "Reset",
+                                      style: TextStyle(
+                                        color:
                                         _isResetEnabled()
                                             ? Colors.red
                                             : (isDark
-                                                ? Colors.white54
-                                                : Colors.grey),
-                                    fontSize: 14,
+                                            ? Colors.white54
+                                            : Colors.grey),
+                                        fontSize: 14,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+
+                                const SizedBox(width: 8),
+
+                                // =========================
+                                // REFRESH BUTTON
+                                // =========================
+                                SizedBox(
+                                  height: 40,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      final today = DateTime.now();
+
+                                      setState(() {
+                                        selectedDate = today;
+                                        _dateController.text =
+                                            DateFormat('dd/MM/yyyy').format(today);
+
+                                        _currentPage = 0;
+                                      });
+
+                                      final dateStr =
+                                      DateFormat('yyyy-MM-dd').format(today);
+
+                                      context.read<OrderstatusBloc>().add(
+                                        FetchOrders(
+                                          token: widget.token,
+                                          date: dateStr,
+                                          restaurantId: widget.restaurantId,
+                                        ),
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor:
+                                      isDark
+                                          ? const Color(0xFF34384F)
+                                          : const Color(0xFF4C81F1),
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.refresh,
+                                      size: 17,
+                                      color: Colors.white,
+                                    ),
+                                    label: const Text(
+                                      "Refresh",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -922,15 +1033,51 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                           return DataRow(
                                             cells: [
                                               DataCell(
-                                                Text(
-                                                  order.orderId?.toString() ??
-                                                      '-',
-                                                  style: TextStyle(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white
-                                                            : Colors.black,
-                                                  ),
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Text(
+                                                      order.orderId?.toString() ?? '-',
+                                                      style: TextStyle(
+                                                        color: isDark ? Colors.white : Colors.black,
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(width: 4),
+
+                                                    if (_getOrderModificationCount(order) > 0)
+                                                      // Text(
+                                                      //   '✏️ ${_getOrderModificationCount(order)}×',
+                                                      //   style: const TextStyle(
+                                                      //     color: Color(0xFFB45309),
+                                                      //     fontSize: 10,
+                                                      //     fontFamily: 'Inter',
+                                                      //     fontWeight: FontWeight.w600,
+                                                      //     height: 1.38,
+                                                      //   ),
+                                                      // ),
+                                                      Container(
+                                                        width: 40,
+                                                        height: 20,
+                                                        decoration: ShapeDecoration(
+                                                          color: const Color(0xFFFEF3C7),
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(4),
+                                                          ),
+                                                        ),
+                                                        alignment: Alignment.center,
+                                                        child: Text(
+                                                          '✏️ ${_getOrderModificationCount(order)}×',
+                                                          style: const TextStyle(
+                                                            color: Color(0xFFB45309),
+                                                            fontSize: 10,
+                                                            fontFamily: 'Inter',
+                                                            fontWeight: FontWeight.w600,
+                                                            height: 1.38,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
                                                 ),
                                               ),
                                               DataCell(
