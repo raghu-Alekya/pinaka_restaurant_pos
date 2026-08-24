@@ -881,13 +881,36 @@ class _TablesScreenState extends State<TablesScreen> {
                                 index: index,
                                 tableData: tableData,
                                 token: widget.token,
-                                onMergeEdit: (i, data) async {
+                                onMergeEdit: (
+                                    i,
+                                    data,
+                                    parentTableId,
+                                    childTableIds,
+                                    ) async {
                                   setState(() {
+                                    // Parent table
                                     placedTables[i]['is_merged'] = true;
+                                    placedTables[i]['is_child'] = false;
+
+                                    // Disable all child tables
+                                    for (final childId in childTableIds) {
+                                      final childIndex = placedTables.indexWhere(
+                                            (table) =>
+                                        int.tryParse(table['table_id']?.toString() ?? '') == childId,
+                                      );
+
+                                      if (childIndex != -1) {
+                                        placedTables[childIndex]['is_child'] = true;
+                                        placedTables[childIndex]['is_merged'] = true;
+                                        placedTables[childIndex]['parent_table_id'] = parentTableId;
+                                        placedTables[childIndex]['status'] = 'Disabled';
+                                      }
+                                    }
                                   });
-                                  context
-                                      .read<TableBloc>()
-                                      .add(LoadTablesEvent(widget.token));
+
+                                  // context.read<TableBloc>().add(
+                                  //   LoadTablesEvent(widget.token),
+                                  // );
                                 },
                               ),
                             );
@@ -925,6 +948,10 @@ class _TablesScreenState extends State<TablesScreen> {
   /// - [tableData]: The table data map including name, area, shape, position, etc.
   Widget _buildPlacedTable(int index, Map<String, dynamic> tableData) {
     final capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+    final bool isChildTable =
+        tableData['is_child'] == true ||
+            tableData['is_child']?.toString() == 'true' ||
+            capacity == 0;
     final mergedTables = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
     final area = tableData['areaName'];
     final shape = tableData['shape'];
@@ -934,18 +961,17 @@ class _TablesScreenState extends State<TablesScreen> {
 
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
     final String status = tableData['status'] ?? 'Available';
-
-    Widget tableContent = PlacedTableBuilder.buildPlacedTableWidget(
+    Widget tableContent =
+    PlacedTableBuilder.buildPlacedTableWidget(
       name: mergedTables,
       capacity: capacity,
       area: area,
       shape: shape,
       size: size,
       rotation: rotation,
-      status: status,
+      status: isChildTable ? 'disabled' : status,
       isMerged: isMerged,
     );
-
     Widget paddedTable = Padding(
       padding: const EdgeInsets.all(8.0),
       child: tableContent,
@@ -971,7 +997,9 @@ class _TablesScreenState extends State<TablesScreen> {
 
     Widget gestureTable = GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () async {
+      onTap: isChildTable
+          ? null
+          : () async {
         final statusLower = status.toLowerCase();
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
@@ -1219,14 +1247,36 @@ class _TablesScreenState extends State<TablesScreen> {
       int filteredIndex,
       ) {
     final actualIndex = placedTables.indexOf(tableData);
-    final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+
+    // Get capacity FIRST
+    final int capacity =
+        int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+
+    // Identify child/disabled table
+    final bool isChildTable =
+        tableData['is_child'] == true ||
+            tableData['is_child']?.toString().toLowerCase() == 'true' ||
+            tableData['status']?.toString().toLowerCase() == 'disabled' ||
+            capacity == 0;
 
     return ShapeBasedGridItem(
       tableData: tableData,
-      onTap: () async {
-        final status = tableData['status']?.toLowerCase() ?? 'available';
-        final reservationDateStr = tableData['reservationDate'];
-        final reservationTimeStr = tableData['reservationTime'];
+
+      // =========================
+      // TABLE TAP
+      // =========================
+      onTap: isChildTable
+          ? null
+          : () async {
+        final status =
+            tableData['status']?.toLowerCase() ?? 'available';
+
+        final reservationDateStr =
+        tableData['reservationDate'];
+
+        final reservationTimeStr =
+        tableData['reservationTime'];
+
         if (capacity == 0) {
           AreaMovementNotifier.showPopup(
             context: context,
@@ -1238,13 +1288,14 @@ class _TablesScreenState extends State<TablesScreen> {
           );
           return;
         }
+
         if (status == 'reserve' &&
             reservationDateStr != null &&
             reservationTimeStr != null &&
             !isReservationTimePassed(
               reservationDateStr,
               reservationTimeStr,
-              30, // or backend buffer value
+              30,
             )) {
           showDialog(
             context: context,
@@ -1254,74 +1305,106 @@ class _TablesScreenState extends State<TablesScreen> {
               reservationTime: reservationTimeStr,
               onOk: () {
                 Navigator.of(context).pop();
+
                 if (!_showPopup) {
-                  _showGuestDetailsPopup(context, actualIndex, tableData, widget.token,);
+                  _showGuestDetailsPopup(
+                    context,
+                    actualIndex,
+                    tableData,
+                    widget.token,
+                  );
                 }
               },
             ),
           );
           return;
         }
+
         if (status == 'available') {
           if (!_showPopup) {
-            _showGuestDetailsPopup(context, actualIndex, tableData, widget.token,);
+            _showGuestDetailsPopup(
+              context,
+              actualIndex,
+              tableData,
+              widget.token,
+            );
           }
           return;
         }
+
         if (status == 'dine' ||
             status == 'dine in' ||
             status == 'ready to pay' ||
             status == 'occupied') {
           final orderRepository = OrderRepository(
-            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+            baseUrl:
+            'https://merchantrestaurant.alektasolutions.com',
           );
 
           OrderModel? existingOrder;
+
           try {
-            existingOrder = await orderRepository.getOrderByTable(
+            existingOrder =
+            await orderRepository.getOrderByTable(
               tableId: tableData['table_id'] ?? 0,
               token: widget.token,
               restaurantId: int.parse(widget.restaurantId),
               zoneId: tableData['zone_id'] != null
-                  ? int.parse(tableData['zone_id'].toString())
+                  ? int.parse(
+                tableData['zone_id'].toString(),
+              )
                   : null,
             );
           } catch (e) {
-            AppLogger.error("Failed to fetch existing order: $e");
+            AppLogger.error(
+              "Failed to fetch existing order: $e",
+            );
           }
 
-          final List<KotModel> existingKots = existingOrder?.kotOrders ?? [];
-          final List<OrderItems> existingOrderItems = existingOrder?.kotOrders
-              ?.expand((kot) => kot.items)
-              .toList() ??
-              [];
-          final guestDetails = Guestcount(guestCount: 0); // replace if real data available
+          final List<KotModel> existingKots =
+              existingOrder?.kotOrders ?? [];
+
+          final guestDetails = Guestcount(
+            guestCount: existingOrder?.guestCount ?? 0,
+          );
 
           final orderBloc = context.read<OrderBloc>();
-          orderBloc.add(LoadExistingOrder(
-            orderId: existingOrder?.orderId ?? 0,
-            tableId: existingOrder?.tableId ?? tableData['table_id'] ?? 0,
-            zoneId: existingOrder?.zoneId ?? tableData['zone_id'] ?? 0,
-            tableName: existingOrder?.tableName ?? tableData['tableName'] ?? '',
-            zoneName: existingOrder?.zoneName ?? tableData['zoneName'] ?? '',
-            restaurantId: widget.restaurantId,
-            kotList: existingKots,
-            // orderItems: existingOrderItems,
-            // guests: [guestDetails],
-            guestDetails: Guestcount(
-              guestCount: existingOrder?.guestCount ?? 0, // default 0 if null
-            ),
-          ));
 
-          // Navigate to DashboardScreen
+          orderBloc.add(
+            LoadExistingOrder(
+              orderId: existingOrder?.orderId ?? 0,
+              tableId: existingOrder?.tableId ??
+                  tableData['table_id'] ??
+                  0,
+              zoneId: existingOrder?.zoneId ??
+                  tableData['zone_id'] ??
+                  0,
+              tableName: existingOrder?.tableName ??
+                  tableData['tableName'] ??
+                  '',
+              zoneName: existingOrder?.zoneName ??
+                  tableData['zoneName'] ??
+                  '',
+              restaurantId: widget.restaurantId,
+              kotList: existingKots,
+              guestDetails: guestDetails,
+            ),
+          );
+
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => MultiBlocProvider(
                 providers: [
-                  BlocProvider.value(value: context.read<OrderBloc>()),
-                  BlocProvider.value(value: context.read<KotBloc>()),
-                  BlocProvider.value(value: context.read<CheckInBloc>()),
+                  BlocProvider.value(
+                    value: context.read<OrderBloc>(),
+                  ),
+                  BlocProvider.value(
+                    value: context.read<KotBloc>(),
+                  ),
+                  BlocProvider.value(
+                    value: context.read<CheckInBloc>(),
+                  ),
                 ],
                 child: DashboardScreen(
                   token: widget.token,
@@ -1336,7 +1419,9 @@ class _TablesScreenState extends State<TablesScreen> {
                   kotList: orderBloc.state.kotList,
                   restaurantName: widget.restaurantName,
                   userPermissions: widget.userPermissions,
-                  guestDetails: tableData['guestDetails'] ?? guestDetails,
+                  guestDetails:
+                  tableData['guestDetails'] ??
+                      guestDetails,
                   loadedTables: widget.loadedTables,
                 ),
               ),
@@ -1345,8 +1430,12 @@ class _TablesScreenState extends State<TablesScreen> {
         }
       },
 
-      onLongPress: () {
-        // Don't show Merge popup while Table Setup/Edit is active
+      // =========================
+      // LONG PRESS
+      // =========================
+      onLongPress: isChildTable
+          ? null
+          : () {
         if (_showPopup || _showEditPopup) {
           return;
         }
@@ -1363,7 +1452,9 @@ class _TablesScreenState extends State<TablesScreen> {
           return;
         }
 
-        final status = tableData['status']?.toLowerCase() ?? 'available';
+        final status =
+            tableData['status']?.toLowerCase() ??
+                'available';
 
         if (status == 'reserve') {
           AreaMovementNotifier.showPopup(
@@ -1371,12 +1462,17 @@ class _TablesScreenState extends State<TablesScreen> {
             fromArea: tableData['areaName'] ?? '',
             toArea: '',
             tableName: tableData['tableName'] ?? '',
-            customMessage: 'You cannot merge a reserved table',
+            customMessage:
+            'You cannot merge a reserved table',
           );
           return;
         }
 
-        _showTableActionPopup(context, actualIndex, tableData);
+        _showTableActionPopup(
+          context,
+          actualIndex,
+          tableData,
+        );
       },
     );
   }
@@ -1387,10 +1483,17 @@ class _TablesScreenState extends State<TablesScreen> {
       ) {
     final actualIndex = placedTables.indexOf(tableData);
     final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+    final bool isChildTable =
+        tableData['is_child'] == true ||
+            tableData['is_child']?.toString().toLowerCase() == 'true' ||
+            tableData['status']?.toString().toLowerCase() == 'disabled' ||
+            capacity == 0;
 
     return CommonGridItem(
       tableData: tableData,
-      onTap: () async {
+      onTap: isChildTable
+          ? null
+          : () async {
         final status = tableData['status']?.toLowerCase() ?? 'available';
         final reservationDateStr = tableData['reservationDate'];
         final reservationTimeStr = tableData['reservationTime'];
@@ -1512,7 +1615,9 @@ class _TablesScreenState extends State<TablesScreen> {
         }
       },
 
-      onLongPress: () {
+      onLongPress: isChildTable
+          ? null
+          : () {
         // Disable long press in Table Setup/Edit mode
         if (_showPopup || _showEditPopup) {
           return;

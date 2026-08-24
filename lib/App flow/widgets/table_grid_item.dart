@@ -15,13 +15,27 @@ class ShapeBasedGridItem extends StatelessWidget {
   });
 
   @override
+  @override
   Widget build(BuildContext context) {
     final shape = tableData['shape'];
-    final status = tableData['status'] ?? 'available';
+
+    final status =
+        tableData['status']?.toString().toLowerCase() ?? 'available';
+
+    final bool isChildTable =
+        tableData['is_child'] == true ||
+            tableData['is_child']?.toString().toLowerCase() == 'true' ||
+            status == 'disabled';
+
     final isMerged = tableData['is_merged'] == true;
-    final tableName = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+
+    final tableName =
+        tableData['merged_tables'] ??
+            tableData['tableName'] ??
+            '';
 
     String imagePath;
+
     if (shape == 'circle') {
       imagePath = 'assets/circle1.png';
     } else if (shape == 'square') {
@@ -30,13 +44,22 @@ class ShapeBasedGridItem extends StatelessWidget {
       imagePath = 'assets/rectangle1.png';
     }
 
-    final tableColor = TableStatusColors.getTableColor(status);
-    final iconColor = TableStatusColors.getChairColor(status);
+    final tableColor = isChildTable
+        ? const Color(0xFFBDBDBD)
+        : TableStatusColors.getTableColor(status);
+    final iconColor = isChildTable
+        ? const Color(0xFF757575)
+        : TableStatusColors.getChairColor(status);
 
+// Make text/icons clearly visible on yellow cards.
+    final visibleColor =
+    status == 'available'
+        ? const Color(0xFF344054)
+        : iconColor;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      onLongPress: onLongPress,
+      onTap: isChildTable ? null : onTap,
+      onLongPress: isChildTable ? null : onLongPress,
       child: _buildGridItem(
         context,
         tableData,

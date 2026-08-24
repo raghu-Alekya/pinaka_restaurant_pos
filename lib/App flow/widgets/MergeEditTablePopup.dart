@@ -5,7 +5,12 @@ import 'area_movement_notifier.dart';
 class MergeEditTablePopup extends StatefulWidget {
   final int index;
   final Map<String, dynamic> tableData;
-  final Function(int, Map<String, dynamic>) onMergeEdit;
+  final Function(
+      int,
+      Map<String, dynamic>,
+      int,
+      List<int>,
+      ) onMergeEdit;
   final String token;
 
   const MergeEditTablePopup({
@@ -361,7 +366,12 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                         'Table "${parentTable['table_name']}" merged with ${childTableIds.length} table(s) successfully.',
                       );
 
-                      widget.onMergeEdit(widget.index, widget.tableData);
+                      widget.onMergeEdit(
+                        widget.index,
+                        widget.tableData,
+                        parentTableId,
+                        childTableIds,
+                      );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

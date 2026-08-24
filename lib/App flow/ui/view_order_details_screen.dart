@@ -383,23 +383,14 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
         .toList();
   }
 
+
   @override
   void initState() {
     super.initState();
-
     _userPermissions = widget.userPermissions;
-
-    // Immediately show the order passed from the edit screen.
-    _currentOrder = widget.initialOrder;
-    _isLoadingOrder = _currentOrder == null;
-
+    _ordersFuture = _orderRepo.fetchOrders(widget.token);
     _loadPermissions();
-    _loadCurrency();
-
-    // Refresh from API only when needed.
-    if (_currentOrder == null || widget.forceRefresh) {
-      _refreshOrderDetails();
-    }
+    _loadCurrency();   // <-- Add this
   }
   Future<void> _refreshOrderDetails() async {
     try {
@@ -1913,6 +1904,11 @@ amount: ${item.amount}
       body: FutureBuilder<List<OrderlistModel>>(
         future: _ordersFuture,
         builder: (context, snapshot) {
+          debugPrint("Orders Connection: ${snapshot.connectionState}");
+          debugPrint("Orders Has Data: ${snapshot.hasData}");
+          debugPrint("Orders Error: ${snapshot.error}");
+          debugPrint("Orders Data Length: ${snapshot.data?.length}");
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -4429,7 +4425,7 @@ amount: ${item.amount}
                             return DropdownMenuItem<int>(
                               value: kot["kotNo"],
                               child: Text(
-                                "KOT ${kot["kotNo"]}",
+                                "${kotNumber}",
                                 style: const TextStyle(
                                   color: Colors.white,
                                 ), // dropdown items text

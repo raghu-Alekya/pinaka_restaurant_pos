@@ -113,7 +113,7 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
 
     _priorityFocusNode.addListener(() {
       if (_priorityFocusNode.hasFocus) {
-        _showOverlay(context);
+        // _showOverlay(context);
       } else {
         _removeOverlay();
       }
@@ -635,55 +635,55 @@ class _CreateReservationScreenState extends State<CreateReservationScreen> {
     }
   }
 
-  void _showOverlay(BuildContext context) {
-    _removeOverlay();
-
-    final overlay = Overlay.of(context);
-    _overlayEntry = OverlayEntry(
-      builder:
-          (context) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: 300,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 14,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade300),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ValueListenableBuilder<TextEditingValue>(
-              valueListenable: _priorityController,
-              builder:
-                  (_, value, __) => Text(
-                value.text.isEmpty
-                    ? "Specify your reservation (VIP, Birthday, Dinner)"
-                    : value.text,
-                style: TextStyle(
-                  fontSize: 13,
-                  color:
-                  value.text.isEmpty ? Colors.grey : Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(_overlayEntry!);
-  }
+  // void _showOverlay(BuildContext context) {
+  //   _removeOverlay();
+  //
+  //   final overlay = Overlay.of(context);
+  //   _overlayEntry = OverlayEntry(
+  //     builder:
+  //         (context) => Center(
+  //       child: Material(
+  //         color: Colors.transparent,
+  //         child: Container(
+  //           width: 300,
+  //           padding: const EdgeInsets.symmetric(
+  //             horizontal: 12,
+  //             vertical: 14,
+  //           ),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white,
+  //             borderRadius: BorderRadius.circular(10),
+  //             border: Border.all(color: Colors.grey.shade300),
+  //             boxShadow: [
+  //               BoxShadow(
+  //                 color: Colors.black12,
+  //                 blurRadius: 8,
+  //                 offset: Offset(0, 4),
+  //               ),
+  //             ],
+  //           ),
+  //           child: ValueListenableBuilder<TextEditingValue>(
+  //             valueListenable: _priorityController,
+  //             builder:
+  //                 (_, value, __) => Text(
+  //               value.text.isEmpty
+  //                   ? "Specify your reservation (VIP, Birthday, Dinner)"
+  //                   : value.text,
+  //               style: TextStyle(
+  //                 fontSize: 13,
+  //                 color:
+  //                 value.text.isEmpty ? Colors.grey : Colors.black,
+  //               ),
+  //               textAlign: TextAlign.center,
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  //
+  //   overlay.insert(_overlayEntry!);
+  // }
 
   void _removeOverlay() {
     _overlayEntry?.remove();

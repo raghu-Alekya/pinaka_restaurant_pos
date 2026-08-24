@@ -193,39 +193,38 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       _isKotLoadingForSelected = false;
     });
 
-    // 1. INSTANT HOT LOAD FROM MEMORY:
+    // ------------------------------------------------------------
+    // 1. LOAD CACHE
+    // ------------------------------------------------------------
     List<Map<String, dynamic>>? cached;
+
     if (selectedOrderType == "All") {
-      cached = _ordersCache[cacheKey];
-      if (cached == null || cached.isEmpty) {
-        final combinedFromCache = <Map<String, dynamic>>[];
-        for (final type in _orderTypes) {
-          if (type == "All") continue;
-          final k = "$type|${selectedArea ?? 'All'}";
-          final perTypeCached = _ordersCache[k];
-          if (perTypeCached != null) {
-            combinedFromCache.addAll(perTypeCached);
-          }
-        }
-        if (combinedFromCache.isNotEmpty) {
-          cached = combinedFromCache;
-        }
-      }
+      // Don't show partial cached data for "All".
+      // "All" must wait until all order types are fetched.
+      cached = null;
     } else {
       cached = _ordersCache[cacheKey];
+
+      // For individual order types, we can still show cached data
+      // immediately while the API refresh happens.
+      if (cached != null && cached.isNotEmpty && mounted) {
+        setState(() {
+          _orders = cached!;
+        });
+      }
     }
 
-    // Immediately render cached orders in 0ms!
-    if (cached != null && cached.isNotEmpty && mounted) {
-      setState(() {
-        _orders = cached!;
-      });
-    }
-
-    // 2. ASYNCHRONOUS BACKGROUND REFRESH:
+    // ------------------------------------------------------------
+    // 2. FETCH ORDERS
+    // ------------------------------------------------------------
     List<Map<String, dynamic>> orders = [];
+
     if (selectedOrderType == "All") {
-      orders = await _fetchAllOrderTypes(forceRefresh: false);
+      // IMPORTANT:
+      // Fetch all order types before updating _orders.
+      orders = await _fetchAllOrderTypes(
+        forceRefresh: true,
+      );
     } else {
       orders = await kitchenRepo.fetchOrders(
         selectedOrderType: selectedOrderType,
@@ -238,28 +237,31 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     if (!mounted) return;
 
+    // ------------------------------------------------------------
+    // 3. SAVE COMPLETE RESULT
+    // ------------------------------------------------------------
     _ordersCache[cacheKey] = orders;
+
+    // For "All", this is now the COMPLETE combined list.
     _orders = orders;
 
-    // Fetch / Refresh KOT data
-    final needsKotFetch = _orders.any((o) => o['kotOrders'] == null);
-    if (cached == null || needsKotFetch) {
+    // ------------------------------------------------------------
+    // 4. FETCH / REFRESH KOT DATA
+    // ------------------------------------------------------------
+    if (_orders.isNotEmpty) {
       await Future.wait(
         _orders.map(
-              (order) => _fetchParentKotOrders(order, updateState: false),
+              (order) => _fetchParentKotOrders(
+            order,
+            updateState: false,
+          ),
         ),
       );
-    } else {
-      // Background non-blocking update for existing KOTs
-      Future.wait(
-        _orders.map(
-              (order) => _fetchParentKotOrders(order, updateState: false),
-        ),
-      ).then((_) {
-        if (mounted) setState(() {});
-      });
     }
 
+    // ------------------------------------------------------------
+    // 5. UPDATE UI ONCE
+    // ------------------------------------------------------------
     if (mounted) {
       setState(() {});
     }
@@ -270,10 +272,13 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }) async {
     final List<Map<String, dynamic>> combined = [];
 
-    // Guard against race condition where _orderTypes is empty
+    // ------------------------------------------------------------
+    // 1. MAKE SURE ORDER TYPES ARE AVAILABLE
+    // ------------------------------------------------------------
     if (_orderTypes.isEmpty) {
       try {
         final types = await kitchenRepo.fetchOrderTypes();
+
         if (mounted) {
           setState(() {
             _orderTypes = types;
@@ -282,58 +287,72 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           _orderTypes = types;
         }
       } catch (e) {
-        debugPrint("Error fetching order types for 'All' tab: $e");
+        debugPrint(
+          "Error fetching order types for 'All' tab: $e",
+        );
       }
     }
 
-    final typesToFetch = _orderTypes.where((t) => t != "All").toList();
+    // Remove "All" because it is our combined tab.
+    final typesToFetch = _orderTypes
+        .where((type) => type != "All")
+        .toList();
 
-    // FIX: fetch every order type IN PARALLEL (instead of one-by-one with
-    // await in a loop) so a single slow type doesn't hold back the others,
-    // and so the "All" tab reflects every type reliably and quickly.
+    // ------------------------------------------------------------
+    // 2. FETCH ALL ORDER TYPES IN PARALLEL
+    // ------------------------------------------------------------
     final results = await Future.wait(
       typesToFetch.map((type) async {
-        final typeCacheKey = "$type|${selectedArea ?? 'All'}";
-        List<Map<String, dynamic>> typeOrders =
-            _ordersCache[typeCacheKey] ?? [];
+        final typeCacheKey =
+            "$type|${selectedArea ?? 'All'}";
 
+        List<Map<String, dynamic>> typeOrders = [];
+
+        // ----------------------------------------------------------
+        // 3. FETCH FRESH DATA
+        // ----------------------------------------------------------
         final shouldFetchFresh =
             forceRefresh ||
-                typeOrders.isEmpty ||
-                !_ordersCache.containsKey(typeCacheKey);
+                !_ordersCache.containsKey(typeCacheKey) ||
+                (_ordersCache[typeCacheKey]?.isEmpty ?? true);
 
         if (shouldFetchFresh) {
           try {
             typeOrders = await kitchenRepo.fetchOrders(
               selectedOrderType: type,
               restaurantId: widget.restaurantId,
-              selectedArea: selectedArea == "All" ? null : selectedArea,
+              selectedArea:
+              selectedArea == "All" ? null : selectedArea,
               zones: _zones,
               selectedUser: _selectedUser,
             );
 
+            // Save latest result for this specific order type.
             _ordersCache[typeCacheKey] = typeOrders;
           } catch (e) {
             debugPrint(
-              "Error fetching orders for type '$type' in 'All' tab: $e",
+              "Error fetching orders for type '$type': $e",
             );
-            // If fetch fails and we have cached data, use it even if empty
-            if (!_ordersCache.containsKey(typeCacheKey)) {
-              _ordersCache[typeCacheKey] = [];
-            }
-            typeOrders = _ordersCache[typeCacheKey] ?? [];
+
+            // If API fails, fall back to existing cache.
+            typeOrders =
+                _ordersCache[typeCacheKey] ?? [];
           }
+        } else {
+          // Use cached data only when refresh is not required.
+          typeOrders =
+              _ordersCache[typeCacheKey] ?? [];
         }
 
-        // FIX: always (re)tag every order with its real type — not just the
-        // ones that were freshly fetched this call. Previously, orders
-        // served from cache could keep an empty `order_type`, which made the
-        // "All" tab misclassify a Takeaway/Online order as a Dine-In card
-        // (or vice-versa) on a later render — this is what caused the
-        // Takeaway card flicker and, downstream, KOT lookups using the
-        // wrong "effective" order type.
+        // ----------------------------------------------------------
+        // 4. ALWAYS SET THE CORRECT ORDER TYPE
+        // ----------------------------------------------------------
         for (final order in typeOrders) {
-          final currentType = (order['order_type'] ?? '').toString().trim();
+          final currentType =
+          (order['order_type'] ?? '')
+              .toString()
+              .trim();
+
           if (currentType.isEmpty) {
             order['order_type'] = type;
           }
@@ -343,6 +362,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       }),
     );
 
+    // ------------------------------------------------------------
+    // 5. COMBINE ALL ORDER TYPES
+    // ------------------------------------------------------------
     for (final typeOrders in results) {
       combined.addAll(typeOrders);
     }
