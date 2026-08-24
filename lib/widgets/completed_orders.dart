@@ -17,6 +17,7 @@ import 'login_screen.dart';
 class CompletedOrdersScreen extends StatefulWidget {
   final String token;
   final int restaurantId;
+  // final int storeId;
   final bool isEmbedded;
   final VoidCallback? onRecallSuccess;
 
@@ -24,6 +25,7 @@ class CompletedOrdersScreen extends StatefulWidget {
     super.key,
     required this.token,
     required this.restaurantId,
+    // required this.storeId,
     this.isEmbedded = false,
     this.onRecallSuccess,
   });
@@ -1367,6 +1369,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
               builder: (context) => KitchenDashboardScreen(
                 token: widget.token,
                 restaurantId: widget.restaurantId,
+                // storeId: widget.storeId,
               ),
             ),
           );
@@ -1385,6 +1388,8 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
               builder: (context) => StockScreen(
                 token: widget.token,
                 restaurantId: widget.restaurantId,
+                // storeId: widget.storeId,
+
               ),
             ),
           );
@@ -1443,6 +1448,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                         token: config.apiToken,
                         restaurantId:
                         int.tryParse(config.restaurantId) ?? 0,
+                        // storeId: int.tryParse(config.storeId) ?? 0,
                       ),
                     ),
                         (route) => false,

@@ -13,11 +13,13 @@ import 'login_screen.dart';
 class StockScreen extends StatefulWidget {
   final String token;
   final int restaurantId;
+  // final int storeId;
 
   const StockScreen({
     super.key,
     required this.token,
     required this.restaurantId,
+    // required this.storeId,
   });
 
   @override
@@ -316,17 +318,20 @@ class _StockScreenState extends State<StockScreen> {
       );
 
       // ==========================================
-      // DETERMINE NEW STATUS
+      // DETERMINE OLD AND NEW STATUS
       // ==========================================
 
-      final newStatus = item.isEnabled
-          ? 'outofstock'
-          : 'instock';
+      final oldStatus =
+      item.isEnabled ? 'instock' : 'outofstock';
+
+      final newStatus =
+      item.isEnabled ? 'outofstock' : 'instock';
 
       debugPrint('======================================');
       debugPrint('UPDATING PRODUCT STOCK');
       debugPrint('PRODUCT ID: ${item.id}');
       debugPrint('PRODUCT NAME: ${item.name}');
+      debugPrint('OLD STATUS: $oldStatus');
       debugPrint('NEW STATUS: $newStatus');
       debugPrint('======================================');
 
@@ -337,7 +342,8 @@ class _StockScreenState extends State<StockScreen> {
       final success =
       await repository.updateProductStatus(
         productId: item.id,
-        status: newStatus,
+        oldStatus: oldStatus,
+        newStatus: newStatus,
         pin: pin,
       );
 
@@ -347,11 +353,10 @@ class _StockScreenState extends State<StockScreen> {
         );
       }
 
-      // ❌ REMOVE loadProducts() from here
-      // ❌ REMOVE SnackBar from here
-
     } catch (e) {
-      debugPrint('UPDATE STOCK ERROR: $e');
+      debugPrint(
+        'UPDATE STOCK ERROR: $e',
+      );
 
       rethrow;
     }
@@ -1727,14 +1732,11 @@ class _StockScreenState extends State<StockScreen> {
                           context,
 
                           MaterialPageRoute(
-                            builder: (_) =>
-                                KitchenDashboardScreen(
-                                  token:
-                                  widget.token,
-
-                                  restaurantId:
-                                  widget.restaurantId,
-                                ),
+                            builder: (_) => KitchenDashboardScreen(
+                              token: widget.token,
+                              restaurantId: widget.restaurantId,
+                              // storeId: widget.storeId,
+                            ),
                           ),
                         );
                       },
@@ -1810,11 +1812,9 @@ class _StockScreenState extends State<StockScreen> {
                           MaterialPageRoute(
                             builder: (_) =>
                                 CompletedOrdersScreen(
-                                  token:
-                                  widget.token,
-
-                                  restaurantId:
-                                  widget.restaurantId,
+                                  token: widget.token,
+                                  restaurantId: widget.restaurantId,
+                                  // storeId: widget.storeId,
                                 ),
                           ),
                         );
@@ -2036,14 +2036,19 @@ class _StockScreenState extends State<StockScreen> {
                         MaterialPageRoute(
                           builder: (context) =>
                               KitchenDashboardScreen(
-                                token:
-                                config.apiToken,
+                                token: config.apiToken,
 
                                 restaurantId:
                                 int.tryParse(
                                   config.restaurantId,
                                 ) ??
                                     0,
+
+                                // storeId:
+                                // int.tryParse(
+                                //   config.storeId,
+                                // ) ??
+                                //     0,
                               ),
                         ),
 

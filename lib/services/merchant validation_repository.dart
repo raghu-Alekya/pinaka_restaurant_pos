@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 import '../models/merchantlogin_response.dart';
 import '../utils/AppConstant.dart';
 import '../utils/apiexception_handler.dart';
-// import '../utils/app_constants.dart';
+// import '../utils/session_manager.dart';
+import '../utils/sessionmanger.dart';
 
 class MerchantLoginRepository {
   Future<MerchantLoginResponse> login({
@@ -29,22 +30,60 @@ class MerchantLoginRepository {
       final streamedResponse =
       await ApiExceptionHandler.multipart(request);
 
-      final response = await http.Response.fromStream(streamedResponse);
+      final response =
+      await http.Response.fromStream(streamedResponse);
 
-      print("Merchant Login URL: ${AppConstants.merchantLoginEndpoint}");
-      print("Merchant Login Status: ${response.statusCode}");
-      print("Merchant Login Response: ${response.body}");
+      print(
+        "Merchant Login URL: "
+            "${AppConstants.merchantLoginEndpoint}",
+      );
+
+      print(
+        "Merchant Login Status: "
+            "${response.statusCode}",
+      );
+
+      print(
+        "Merchant Login Response: "
+            "${response.body}",
+      );
 
       if (response.statusCode == 200) {
-        return MerchantLoginResponse.fromJson(
+        final loginResponse =
+        MerchantLoginResponse.fromJson(
           jsonDecode(response.body),
         );
+
+        // =====================================================
+        // SAVE STORE ID FROM MERCHANT LOGIN
+        // =====================================================
+
+        final merchantStoreId =
+            loginResponse.storeId?.toString().trim() ?? '';
+
+        if (merchantStoreId.isEmpty) {
+          print(
+            "❌ Store ID is missing in merchant login response",
+          );
+        } else {
+          await SessionManager.saveStoreId(
+            merchantStoreId,
+          );
+
+          print(
+            "✅ Merchant Store ID saved: "
+                "$merchantStoreId",
+          );
+        }
+
+        return loginResponse;
       }
 
       throw Exception(
         ApiExceptionHandler.parseError(
           response,
-          defaultMessage: "Merchant login failed. Please try again.",
+          defaultMessage:
+          "Merchant login failed. Please try again.",
         ),
       );
     } catch (e) {

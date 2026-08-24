@@ -173,6 +173,7 @@ class _MyAppState extends State<MyApp> {
         home: KitchenDashboardScreen(
           token: _config!.apiToken,
           restaurantId: int.tryParse(_config!.restaurantId) ?? 1,
+          // storeId: int.tryParse(_config!.storeId) ?? 0,
           onOpenSettings: () async {
             final prefs = await SharedPreferences.getInstance();
             final token = prefs.getString('token') ?? '';

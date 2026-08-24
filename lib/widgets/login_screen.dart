@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/connection_setup_screen.dart';
 import '../services/login_respository.dart';
+import '../utils/sessionmanger.dart';
 import 'pin_input.dart';
 import 'number_pad.dart';
 
@@ -83,9 +84,11 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
 
   Future<void> _login() async {
     if (enteredPin.length != 6) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please enter 6 digit PIN")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter 6 digit PIN"),
+        ),
+      );
       return;
     }
 
@@ -94,59 +97,184 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
     });
 
     try {
-      final response = await _repository.loginWithPin(empLoginPin: enteredPin);
+      final response =
+      await _repository.loginWithPin(
+        empLoginPin: enteredPin,
+      );
 
       if (!mounted) return;
 
-      // Save token
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString("token", response.data.token);
-      await prefs.setInt("restaurant_id", response.data.restaurantId);
-      await prefs.setInt("emp_login_pin", int.tryParse(enteredPin) ?? 0);
-      await prefs.setString("emp_login_pin_str", enteredPin);
-      await prefs.setString("display_name", response.data.restaurantName);
-      await prefs.setString("role", response.data.role);
+      // ======================================================
+      // SAVE EMPLOYEE LOGIN DETAILS
+      // ======================================================
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(response.message)));
+      final prefs =
+      await SharedPreferences.getInstance();
 
-      final config = KdsConfig(
-        brokerHost: KdsConfig.defaultBrokerHost,
-        brokerPort: KdsConfig.defaultBrokerPort,
-        restaurantId: response.data.restaurantId.toString(),
-        apiToken: response.data.token,
+      await prefs.setString(
+        "token",
+        response.data.token,
       );
 
+      await prefs.setInt(
+        "restaurant_id",
+        response.data.restaurantId,
+      );
+
+      await prefs.setInt(
+        "emp_login_pin",
+        int.tryParse(enteredPin) ?? 0,
+      );
+
+      await prefs.setString(
+        "emp_login_pin_str",
+        enteredPin,
+      );
+
+      await prefs.setString(
+        "display_name",
+        response.data.restaurantName,
+      );
+
+      await prefs.setString(
+        "role",
+        response.data.role,
+      );
+
+      // ======================================================
+      // GET STORE ID FROM MERCHANT LOGIN
+      // ======================================================
+
+      final storeId =
+      await SessionManager.getStoreId();
+
+      debugPrint(
+        '==========================================',
+      );
+
+      debugPrint(
+        'Employee Login Success',
+      );
+
+      debugPrint(
+        'Restaurant ID : '
+            '${response.data.restaurantId}',
+      );
+
+      debugPrint(
+        'Store ID      : $storeId',
+      );
+
+      debugPrint(
+        'Token         : '
+            '${response.data.token}',
+      );
+
+      debugPrint(
+        '==========================================',
+      );
+
+      // ======================================================
+      // STORE ID VALIDATION
+      // ======================================================
+
+      if (storeId.isEmpty) {
+        debugPrint(
+          '❌ Store ID not found in merchant session',
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Store ID not found. Please login again.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+
+        return;
+      }
+
+      // ======================================================
+      // CREATE KDS CONFIG
+      // ======================================================
+
+      final config = KdsConfig(
+        brokerHost:
+        KdsConfig.defaultBrokerHost,
+
+        brokerPort:
+        KdsConfig.defaultBrokerPort,
+
+        // Employee login provides restaurant ID
+        restaurantId:
+        response.data.restaurantId.toString(),
+
+        // Merchant login provides store ID
+        storeId:
+        storeId,
+
+        // Employee login provides token
+        apiToken:
+        response.data.token,
+      );
+
+      debugPrint(
+        '✅ KDS Config Created',
+      );
+
+      debugPrint(
+        'Restaurant ID: ${config.restaurantId}',
+      );
+
+      debugPrint(
+        'Store ID: ${config.storeId}',
+      );
+
+      // ======================================================
+      // CONTINUE
+      // ======================================================
+
       widget.onLoginSuccess(config);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
 
-      String errorMessage = "invalid please enter valid pin";
+      String errorMessage =
+          "Invalid. Please enter a valid PIN";
+
       final errorStr = e.toString();
 
       if (errorStr.contains("SocketException") ||
           errorStr.contains("Host lookup failed")) {
-        errorMessage = "Network error. Please check your internet connection.";
+        errorMessage =
+        "Network error. Please check your internet connection.";
       } else if (errorStr.contains("not authorized")) {
         errorMessage =
-            "You are not authorized to access the Kitchen Display System.";
+        "You are not authorized to access the Kitchen Display System.";
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errorMessage),
-          backgroundColor: Colors.red.shade800,
-          behavior: SnackBarBehavior.floating,
+          backgroundColor:
+          Colors.red.shade800,
+          behavior:
+          SnackBarBehavior.floating,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
-
-    if (!mounted) return;
-
-    setState(() {
-      isLoading = false;
-    });
   }
 
   void _onKeyPressed(String value) {

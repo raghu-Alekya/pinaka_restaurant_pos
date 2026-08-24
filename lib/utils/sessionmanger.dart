@@ -21,6 +21,27 @@ class SessionManager {
     return prefs.getInt("restaurant_id") ?? 0;
   }
 
+  // ==========================================================
+  // STORE ID
+  // ==========================================================
+
+  static Future<void> saveStoreId(String storeId) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString(
+      "store_id",
+      storeId,
+    );
+
+    print("✅ Store ID saved: $storeId");
+  }
+
+  static Future<String> getStoreId() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    return prefs.getString("store_id") ?? '';
+  }
+
   static Future<void> clear() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

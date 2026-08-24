@@ -22,6 +22,7 @@ class LoginData {
   final String token;
   final int id;
   final String email;
+  final dynamic storeId;
   final String displayName;
   final String role;
   final int restaurantId;
@@ -35,6 +36,7 @@ class LoginData {
     required this.displayName,
     required this.role,
     required this.restaurantId,
+    required this.storeId,
     required this.restaurantName,
     required this.permissions,
   });
@@ -47,6 +49,7 @@ class LoginData {
       displayName: json["displayName"] ?? "",
       role: json["role"] ?? "",
       restaurantId: json["restaurant_id"] ?? 0,
+      storeId: json['store_id'],
       restaurantName: json["restaurant_name"] ?? "",
       permissions: Permissions.fromJson(
         json["permissions"] ?? {},

@@ -1,22 +1,19 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 import '../models/login_model.dart';
 import '../utils/AppConstant.dart';
-// import '../utils/app_constants.dart';
-
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-
-import '../models/login_model.dart';
-import '../utils/AppConstant.dart';
+// import '../utils/session_manager.dart';
+import '../utils/sessionmanger.dart';
 
 class EmployeePinLoginRepository {
   Future<LoginModel> loginWithPin({
     required String empLoginPin,
   }) async {
     try {
-      final uri = Uri.parse(AppConstants.authTokenEndpoint);
+      final uri =
+      Uri.parse(AppConstants.authTokenEndpoint);
 
       print("==========================================");
       print("Employee Login API");
@@ -42,23 +39,49 @@ class EmployeePinLoginRepository {
         final login = LoginModel.fromJson(
           jsonDecode(response.body),
         );
+
+        // ------------------------------------------------------
+        // KDS PERMISSION CHECK
+        // ------------------------------------------------------
+
         if (!login.data.permissions.canViewKDS) {
           throw Exception(
             "You are not authorized to access the Kitchen Display System.",
           );
         }
 
+        // ------------------------------------------------------
+        // GET STORE ID FROM MERCHANT LOGIN SESSION
+        // ------------------------------------------------------
+
+        final storeId =
+        await SessionManager.getStoreId();
+
+        print("==========================================");
         print("Login Success");
         print("User ID      : ${login.data.id}");
         print("RestaurantId : ${login.data.restaurantId}");
         print("Restaurant   : ${login.data.restaurantName}");
+        print("Store ID     : $storeId");
         print("Token        : ${login.data.token}");
+        print("==========================================");
+
+        // ------------------------------------------------------
+        // STORE ID VALIDATION
+        // ------------------------------------------------------
+
+        if (storeId.isEmpty) {
+          throw Exception(
+            "Store ID not found. Please login through merchant login again.",
+          );
+        }
 
         return login;
       }
 
       throw Exception(
-        "Employee PIN Login Failed (${response.statusCode}) : ${response.body}",
+        "Employee PIN Login Failed "
+            "(${response.statusCode}) : ${response.body}",
       );
     } catch (e, stackTrace) {
       print("==========================================");
@@ -66,23 +89,34 @@ class EmployeePinLoginRepository {
       print(e);
       print(stackTrace);
       print("==========================================");
+
       rethrow;
     }
   }
 }
 
+// ============================================================
+// LOGOUT
+// ============================================================
 
 class LogoutRepository {
   Future<LogoutResponse> logout({
     required String token,
     required int empLoginPin,
   }) async {
-    final url = AppConstants.logoutEndpoint;
+    final url =
+        AppConstants.logoutEndpoint;
+
     print("==========================================");
     print("Employee Logout API");
     print("URL      : $url");
-    print("Headers  : {Content-Type: application/json, Authorization: Bearer $token}");
-    print("Body     : {emp_login_pin: $empLoginPin}");
+    print(
+      "Headers  : "
+          "{Content-Type: application/json, Authorization: Bearer $token}",
+    );
+    print(
+      "Body     : {emp_login_pin: $empLoginPin}",
+    );
 
     final response = await http.post(
       Uri.parse(url),
@@ -100,11 +134,14 @@ class LogoutRepository {
     print("==========================================");
 
     if (response.statusCode == 200) {
-      return LogoutResponse.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception(
-        "Logout Failed (${response.statusCode}) : ${response.body}",
+      return LogoutResponse.fromJson(
+        jsonDecode(response.body),
       );
     }
+
+    throw Exception(
+      "Logout Failed "
+          "(${response.statusCode}) : ${response.body}",
+    );
   }
 }

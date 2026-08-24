@@ -21,6 +21,8 @@ import 'services/kds_mqtt_service.dart';
 class KitchenDashboardScreen extends StatefulWidget {
   final String token;
   final int restaurantId;
+  // final int storeId;
+
   final VoidCallback? onOpenSettings;
   final VoidCallback? onMenuTap;
 
@@ -28,8 +30,10 @@ class KitchenDashboardScreen extends StatefulWidget {
     super.key,
     required this.token,
     required this.restaurantId,
+    // required this.storeId,
     this.onOpenSettings,
     this.onMenuTap,
+
 
   });
 
@@ -431,6 +435,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         bodyWidget = CompletedOrdersScreen(
           token: widget.token,
           restaurantId: widget.restaurantId,
+          // storeId: widget.storeId,
           isEmbedded: true,
           onRecallSuccess: () {
             setState(() {
@@ -653,6 +658,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                             builder: (context) => StockScreen(
                               token: widget.token,
                               restaurantId: widget.restaurantId,
+                              // storeId: widget.storeId,
                             ),
                           ),
                         );
@@ -680,6 +686,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                   token: widget.token,
                                   restaurantId:
                                   widget.restaurantId,
+                                  // storeId: widget.storeId,
                                 ),
                           ),
                         );
@@ -793,11 +800,18 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       builder: (context) =>
                           KitchenDashboardScreen(
                             token: config.apiToken,
+
                             restaurantId:
                             int.tryParse(
                               config.restaurantId,
                             ) ??
                                 0,
+
+                            // storeId:
+                            // int.tryParse(
+                            //   config.storeId,
+                            // ) ??
+                            //     0,
                           ),
                     ),
                         (route) => false,
@@ -1578,26 +1592,23 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               // CATEGORY TOTAL
               // ====================================================
 
-              Container(
-                constraints: const BoxConstraints(
-                  minWidth: 26,
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 3,
-                ),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  '$categoryTotal',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.montserrat(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: categoryColor,
+              SizedBox(
+                width: 32,
+                height: 24,
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '$categoryTotal',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: categoryColor,
+                    ),
                   ),
                 ),
               ),
@@ -1675,14 +1686,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     // QUANTITY
                     // ==================================================
 
-                    Text(
-                      '$quantity',
-                      textAlign: TextAlign.right,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 12,
-                        height: 1.0,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xff172033),
+                    SizedBox(
+                      width: 32,
+                      child: Text(
+                        '$quantity',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.montserrat(
+                          fontSize: 12,
+                          height: 1.0,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xff172033),
+                        ),
                       ),
                     ),
                   ],

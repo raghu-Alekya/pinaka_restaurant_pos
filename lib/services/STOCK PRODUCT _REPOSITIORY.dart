@@ -83,7 +83,8 @@ class ProductRepository {
 
   Future<bool> updateProductStatus({
     required int productId,
-    required String status,
+    required String oldStatus,
+    required String newStatus,
     required String pin,
   }) async {
     final url = Uri.parse(
@@ -92,31 +93,23 @@ class ProductRepository {
 
     try {
       final requestBody = {
-        'product_id': productId,
-        'status': status,
+        'products': [
+          {
+            'product_id': productId,
+            'old_status': oldStatus,
+            'new_status': newStatus,
+          },
+        ],
         'pin': pin,
       };
 
+      print('==========================================');
+      print('UPDATE PRODUCT STATUS API');
+      print('URL: $url');
       print(
-        '==========================================',
+        'REQUEST BODY: ${jsonEncode(requestBody)}',
       );
-
-      print(
-        'UPDATE PRODUCT STATUS API',
-      );
-
-      print(
-        'URL: $url',
-      );
-
-      print(
-        'REQUEST BODY: '
-            '${jsonEncode(requestBody)}',
-      );
-
-      print(
-        '==========================================',
-      );
+      print('==========================================');
 
       final response = await http.post(
         url,
@@ -128,27 +121,17 @@ class ProductRepository {
       );
 
       print(
-        'UPDATE STATUS CODE: '
-            '${response.statusCode}',
+        'UPDATE STATUS CODE: ${response.statusCode}',
       );
 
       print(
-        'UPDATE STATUS RESPONSE: '
-            '${response.body}',
+        'UPDATE STATUS RESPONSE: ${response.body}',
       );
-
-      // ==========================================
-      // SUCCESS
-      // ==========================================
 
       if (response.statusCode == 200 ||
           response.statusCode == 201) {
         return true;
       }
-
-      // ==========================================
-      // ERROR
-      // ==========================================
 
       throw Exception(
         'Failed to update product status. '

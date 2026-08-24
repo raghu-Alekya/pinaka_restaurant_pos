@@ -57,14 +57,22 @@ class OrderApiService {
   OrderApiService({
     required this.getToken,
     this.restaurantId = 1,
+    this.storeId = '',
     http.Client? client,
   }) : _client = client ?? http.Client();
-  final Future<String?> Function() getToken;
-  final int restaurantId;
-  // final String baseUrl;
-  final http.Client _client;
-  final Map<String, String> productCategoryById = {};
 
+  final Future<String?> Function() getToken;
+
+  // Existing restaurant ID
+  final int restaurantId;
+
+  // Store ID from merchant login
+  // Example: Pinaka_013
+  final String storeId;
+
+  final http.Client _client;
+
+  final Map<String, String> productCategoryById = {};
   final Map<String, String> productCategoryByName = {};
 
 
@@ -306,7 +314,9 @@ class OrderApiService {
     final token = await _requireToken();
 
     final url = Uri.parse(
-      '${AppConstants.kitchenDisplayOrdersEndpoint}?restaurant_id=$restaurantId',
+      '${AppConstants.kitchenDisplayOrdersEndpoint}'
+          '?restaurant_id=$restaurantId'
+          '&store_id=${Uri.encodeComponent(storeId)}',
     );
 
     KdsDebugLog.info('GET $url');
