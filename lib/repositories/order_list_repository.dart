@@ -234,6 +234,17 @@ class OrderstatusRepository {
   }
   // -----------------------------------------------------------------------------------------------------
 
+  static void updateCachedOrderStatus(int orderId, String newStatus) {
+    for (final list in _cache.values) {
+      for (final order in list) {
+        if (order.orderId == orderId) {
+          order.status = newStatus;
+        }
+      }
+    }
+    _cacheTimestamps.clear();
+  }
+
   static void invalidateCache([String? cacheKey]) {
     if (cacheKey == null) {
       _cache.clear();

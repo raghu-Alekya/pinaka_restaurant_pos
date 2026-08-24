@@ -159,6 +159,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
         token: widget.token,
         date: dateStr,
         restaurantId: widget.restaurantId,
+        forceRefresh: true,
       ),
     );
   }
@@ -1197,11 +1198,18 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                                     final String statusLower =
                                                         (order.status ?? "")
                                                             .toLowerCase();
+                                                    final bool hasKot =
+                                                        (order.kotOrders != null &&
+                                                            order.kotOrders!.isNotEmpty) ||
+                                                        (order.kotOrderId != null &&
+                                                            order.kotOrderId! > 0);
                                                     final bool isPayDisabled =
                                                         statusLower ==
                                                             "completed" ||
                                                         statusLower ==
-                                                            "cancelled";
+                                                            "cancelled" ||
+                                                        order.displayTotal <= 0 ||
+                                                        !hasKot;
 
                                                     return Row(
                                                       mainAxisSize:

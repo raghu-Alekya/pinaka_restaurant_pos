@@ -20,6 +20,7 @@ import '../../repositories/TIP_repository.dart';
 import '../../repositories/coupon_repository.dart';
 import '../../repositories/create_payment_repository.dart';
 import '../../repositories/discount_repository.dart';
+import '../../repositories/order_list_repository.dart';
 import '../../repositories/service_charge_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../ui/dashboard screen.dart';
@@ -999,6 +1000,17 @@ class _paymentsummaryState extends State<paymentsummary> {
               final double fullNet = getGrandTotal(paymentBlocState);
               final double newTotalPaid = _totalPaidAmount + paidThisTxn;
               final double remainingAfter = fullNet - newTotalPaid;
+
+              // Immediately update order status in local cache and clear timestamps
+              final String targetStatus = (remainingAfter <= 0.01)
+                  ? 'completed'
+                  : (state.response.orderStatus.isNotEmpty
+                      ? state.response.orderStatus
+                      : 'processing');
+              OrderstatusRepository.updateCachedOrderStatus(
+                state.response.orderId,
+                targetStatus,
+              );
 
               if (remainingAfter > 0.01) {
                 // ── Partial payment: show Void / Next Payment popup

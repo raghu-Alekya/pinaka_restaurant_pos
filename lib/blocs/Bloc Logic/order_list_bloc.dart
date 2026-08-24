@@ -32,6 +32,7 @@ class OrderstatusBloc extends Bloc<OrderstatusEvent, OrderstatusState> {
         event.token,
         date: event.date,
         restaurantId: event.restaurantId,
+        forceRefresh: event.forceRefresh,
       );
       emit(OrderLoaded(orders));
     } catch (e) {
