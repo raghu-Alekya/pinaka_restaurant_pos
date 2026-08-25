@@ -4,13 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // import '../../constants/constants.dart';
 // import '../../repositories/merchantvalidation_repository.dart';
+import '../screens/connection_setup_screen.dart';
 import '../services/merchant validation_repository.dart';
 import '../utils/AppConstant.dart';
 import 'login_screen.dart';
 // import 'employee_login_page.dart';
 
 class MerchantOnboardingScreen extends StatefulWidget {
-  final Function(dynamic) onLoginSuccess;
+  final Function(KdsConfig) onLoginSuccess;
 
   const MerchantOnboardingScreen({
     super.key,

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/connection_setup_screen.dart';
 import '../services/login_respository.dart';
 import '../utils/sessionmanger.dart';
+import 'mercahant validation screen.dart';
 import 'pin_input.dart';
 import 'number_pad.dart';
 
@@ -83,23 +84,116 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
   }
 
   Future<void> _login() async {
+    // ======================================================
+    // VALIDATE PIN
+    // ======================================================
+
     if (enteredPin.length != 6) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Please enter 6 digit PIN"),
         ),
       );
+
       return;
     }
 
-    setState(() {
-      isLoading = true;
-    });
+    // ======================================================
+    // START LOADING
+    // ======================================================
+
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
 
     try {
+      // ======================================================
+      // GET CURRENT STORE INFORMATION
+      // ======================================================
+
+      final prefs =
+      await SharedPreferences.getInstance();
+
+      final savedBaseUrl =
+          prefs.getString('store_base_url') ?? '';
+
+      final savedStoreId =
+          prefs.getString('store_id') ?? '';
+
+      debugPrint(
+        '==========================================',
+      );
+
+      debugPrint(
+        'EMPLOYEE LOGIN',
+      );
+
+      debugPrint(
+        'PIN            : $enteredPin',
+      );
+
+      debugPrint(
+        'PIN LENGTH     : ${enteredPin.length}',
+      );
+
+      debugPrint(
+        'WIDGET URL     : ${widget.storeBaseUrl}',
+      );
+
+      debugPrint(
+        'WIDGET STORE ID: ${widget.storeId}',
+      );
+
+      debugPrint(
+        'SAVED URL      : $savedBaseUrl',
+      );
+
+      debugPrint(
+        'SAVED STORE ID : $savedStoreId',
+      );
+
+      debugPrint(
+        '==========================================',
+      );
+
+      // ======================================================
+      // LOGIN API
+      // ======================================================
+
       final response =
       await _repository.loginWithPin(
         empLoginPin: enteredPin,
+      );
+
+      debugPrint(
+        '==========================================',
+      );
+
+      debugPrint(
+        'EMPLOYEE LOGIN API SUCCESS',
+      );
+
+      debugPrint(
+        'RESTAURANT ID : '
+            '${response.data.restaurantId}',
+      );
+
+      debugPrint(
+        'RESTAURANT    : '
+            '${response.data.restaurantName}',
+      );
+
+      debugPrint(
+        'ROLE          : '
+            '${response.data.role}',
+      );
+
+      debugPrint(
+        '==========================================',
       );
 
       if (!mounted) return;
@@ -108,36 +202,33 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       // SAVE EMPLOYEE LOGIN DETAILS
       // ======================================================
 
-      final prefs =
-      await SharedPreferences.getInstance();
-
       await prefs.setString(
-        "token",
+        'token',
         response.data.token,
       );
 
       await prefs.setInt(
-        "restaurant_id",
+        'restaurant_id',
         response.data.restaurantId,
       );
 
       await prefs.setInt(
-        "emp_login_pin",
+        'emp_login_pin',
         int.tryParse(enteredPin) ?? 0,
       );
 
       await prefs.setString(
-        "emp_login_pin_str",
+        'emp_login_pin_str',
         enteredPin,
       );
 
       await prefs.setString(
-        "display_name",
+        'display_name',
         response.data.restaurantName,
       );
 
       await prefs.setString(
-        "role",
+        'role',
         response.data.role,
       );
 
@@ -179,9 +270,15 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       // ======================================================
 
       if (storeId.isEmpty) {
+        if (!mounted) return;
+
         debugPrint(
           '❌ Store ID not found in merchant session',
         );
+
+        setState(() {
+          isLoading = false;
+        });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -189,6 +286,7 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
               'Store ID not found. Please login again.',
             ),
             backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
 
@@ -220,7 +318,11 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       );
 
       debugPrint(
-        '✅ KDS Config Created',
+        '==========================================',
+      );
+
+      debugPrint(
+        '✅ KDS CONFIG CREATED',
       );
 
       debugPrint(
@@ -228,36 +330,88 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       );
 
       debugPrint(
-        'Store ID: ${config.storeId}',
+        'Store ID      : ${config.storeId}',
+      );
+
+      debugPrint(
+        '==========================================',
       );
 
       // ======================================================
-      // CONTINUE
+      // STOP LOADING BEFORE NAVIGATION
       // ======================================================
 
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+
+      // ======================================================
+      // NAVIGATE / CONTINUE
+      // ======================================================
+
+      // IMPORTANT:
+      // This callback navigates away from this screen.
+      // Do not use context after this call.
       widget.onLoginSuccess(config);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(response.message),
-        ),
+      return;
+    } catch (e, stackTrace) {
+      // ======================================================
+      // LOGIN FAILED
+      // ======================================================
+
+      debugPrint(
+        '==========================================',
       );
-    } catch (e) {
+
+      debugPrint(
+        '❌ EMPLOYEE LOGIN FAILED',
+      );
+
+      debugPrint(
+        'ERROR: $e',
+      );
+
+      debugPrint(
+        'STACK TRACE:',
+      );
+
+      debugPrint(
+        '$stackTrace',
+      );
+
+      debugPrint(
+        '==========================================',
+      );
+
+      // The screen may already have been removed.
       if (!mounted) return;
 
-      String errorMessage =
-          "Invalid. Please enter a valid PIN";
+      final errorStr =
+      e.toString().toLowerCase();
 
-      final errorStr = e.toString();
+      String errorMessage;
 
-      if (errorStr.contains("SocketException") ||
-          errorStr.contains("Host lookup failed")) {
+      if (errorStr.contains('socketexception') ||
+          errorStr.contains('host lookup failed')) {
         errorMessage =
-        "Network error. Please check your internet connection.";
-      } else if (errorStr.contains("not authorized")) {
+        'Network error. Please check your internet connection.';
+      } else if (errorStr.contains('401') ||
+          errorStr.contains('unauthorized') ||
+          errorStr.contains('invalid pin') ||
+          errorStr.contains('invalid credential')) {
         errorMessage =
-        "You are not authorized to access the Kitchen Display System.";
+        'Invalid PIN. Please enter a valid PIN.';
+      } else {
+        errorMessage =
+        'Employee login failed. Please try again.';
       }
+
+      setState(() {
+        isLoading = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -268,12 +422,8 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
           SnackBarBehavior.floating,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+
+      return;
     }
   }
 
@@ -390,79 +540,124 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                           child: Column(
                             children: [
                               PinInput(pin: enteredPin),
+
                               const SizedBox(height: 20),
-                              NumberPad(onKeyPressed: _onKeyPressed),
+
+                              NumberPad(
+                                onKeyPressed: _onKeyPressed,
+                              ),
+
                               const SizedBox(height: 25),
-                              ElevatedButton(
-                                onPressed:
-                                    isLoading
-                                        ? null
-                                        : () {
-                                          if (enteredPin.length == 6) {
-                                            _login();
-                                          } else {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'PIN must be exactly 6 digits',
-                                                ),
-                                                duration: Duration(seconds: 1),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                          }
-                                        },
-                                style: ButtonStyle(
-                                  backgroundColor:
-                                      WidgetStateProperty.resolveWith<Color>((
-                                        Set<WidgetState> states,
-                                      ) {
-                                        if (states.contains(
-                                          WidgetState.disabled,
-                                        )) {
-                                          return Colors.red;
-                                        }
-                                        return Colors.red;
-                                      }),
-                                  foregroundColor:
-                                      WidgetStateProperty.all<Color>(
-                                        Colors.white,
+
+                              // ============================
+                              // LOGIN BUTTON
+                              // ============================
+                              SizedBox(
+                                width: screenWidth * 0.29,
+                                child: ElevatedButton(
+                                  onPressed: isLoading
+                                      ? null
+                                      : () {
+                                    if (enteredPin.length == 6) {
+                                      _login();
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'PIN must be exactly 6 digits',
+                                          ),
+                                          duration: Duration(seconds: 1),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  style: ButtonStyle(
+                                    backgroundColor:
+                                    WidgetStateProperty.all<Color>(
+                                      Colors.red,
+                                    ),
+                                    foregroundColor:
+                                    WidgetStateProperty.all<Color>(
+                                      Colors.white,
+                                    ),
+                                    padding:
+                                    WidgetStateProperty.all<EdgeInsets>(
+                                      const EdgeInsets.symmetric(
+                                        vertical: 13,
                                       ),
-                                  padding: WidgetStateProperty.all<EdgeInsets>(
-                                    const EdgeInsets.symmetric(vertical: 13),
-                                  ),
-                                  shape: WidgetStateProperty.all<
-                                    RoundedRectangleBorder
-                                  >(
-                                    RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    shape:
+                                    WidgetStateProperty.all<
+                                        RoundedRectangleBorder>(
+                                      RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    minimumSize:
+                                    WidgetStateProperty.all<Size>(
+                                      Size(
+                                        screenWidth * 0.29,
+                                        25,
+                                      ),
                                     ),
                                   ),
-                                  minimumSize: WidgetStateProperty.all<Size>(
-                                    Size(screenWidth * 0.29, 25),
+                                  child: isLoading
+                                      ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                      backgroundColor:
+                                      Colors.transparent,
+                                    ),
+                                  )
+                                      : const Text(
+                                    'Login',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                                child:
-                                    isLoading
-                                        ? const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2,
-                                            backgroundColor: Colors.transparent,
-                                          ),
-                                        )
-                                        : const Text(
-                                          "Login",
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // ============================
+                              // SWITCH STORE / MERCHANT LOGIN
+                              // ============================
+                              TextButton(
+                                onPressed: () {
+                                  if (!mounted) return;
+
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(
+                                      builder: (_) => MerchantOnboardingScreen(
+                                        onLoginSuccess: (config) {
+                                          // Pass the newly created config
+                                          // back to the application entry point.
+                                          widget.onLoginSuccess(config);
+                                        },
+                                      ),
+                                    ),
+                                        (route) => false,
+                                  );
+                                },
+                                child: Text(
+                                  'Switch Store / Merchant Login',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.lightBlueAccent
+                                        : Colors.blue,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
