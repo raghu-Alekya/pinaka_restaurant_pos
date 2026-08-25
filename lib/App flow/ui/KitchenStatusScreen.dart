@@ -91,7 +91,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     kitchenRepo = KitchenRepository(token: widget.token);
     _loadPermissions();
     _initializeData();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) {
       _refreshSelectedTable();
     });
     _searchController.addListener(() {
@@ -124,17 +124,28 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   Future<void> _refreshSelectedTable() async {
     if (_selectedTable == null) return;
 
-    // Snapshot the current KOT data before refreshing so we can tell
-    // whether anything actually changed. Previously this rebuilt the
-    // whole widget tree every 1 second regardless of whether the data
-    // changed, which caused the status badge / KOT list to flicker.
     final oldKotOrdersJson = jsonEncode(_selectedTable!['kotOrders'] ?? []);
 
-    await _fetchParentKotOrders(_selectedTable!);
+    await _fetchParentKotOrders(_selectedTable!, updateState: false);
 
     final newKotOrdersJson = jsonEncode(_selectedTable!['kotOrders'] ?? []);
 
     if (mounted && oldKotOrdersJson != newKotOrdersJson) {
+      if (_selectedKot != null) {
+        final allKotOrders =
+            (_selectedTable!['kotOrders'] as List<dynamic>?)
+                ?.cast<Map<String, dynamic>>() ??
+            [];
+        final matchingKot = allKotOrders.firstWhere(
+          (k) => k['kot_number']?.toString() == _selectedKot,
+          orElse: () => <String, dynamic>{},
+        );
+        if (matchingKot.isNotEmpty) {
+          _kotItems = List<Map<String, dynamic>>.from(
+            matchingKot['line_items'] ?? [],
+          );
+        }
+      }
       setState(() {});
     }
   }
@@ -238,32 +249,36 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     if (!mounted) return;
 
     // ------------------------------------------------------------
-    // 3. SAVE COMPLETE RESULT
+    // 3. SAVE COMPLETE RESULT AND UPDATE UI IMMEDIATELY
     // ------------------------------------------------------------
     _ordersCache[cacheKey] = orders;
 
     // For "All", this is now the COMPLETE combined list.
     _orders = orders;
 
+    // Update UI immediately so order/table cards load without waiting for KOT details
+    if (mounted) {
+      setState(() {});
+    }
+
     // ------------------------------------------------------------
-    // 4. FETCH / REFRESH KOT DATA
+    // 4. FETCH KOT DATA IN BACKGROUND ASYNCHRONOUSLY
     // ------------------------------------------------------------
     if (_orders.isNotEmpty) {
-      await Future.wait(
+      Future.wait(
         _orders.map(
-              (order) => _fetchParentKotOrders(
+          (order) => _fetchParentKotOrders(
             order,
             updateState: false,
           ),
         ),
-      );
-    }
-
-    // ------------------------------------------------------------
-    // 5. UPDATE UI ONCE
-    // ------------------------------------------------------------
-    if (mounted) {
-      setState(() {});
+      ).then((_) {
+        if (mounted) {
+          setState(() {});
+        }
+      }).catchError((e) {
+        debugPrint("Background KOT fetch error: $e");
+      });
     }
   }
 
@@ -387,18 +402,28 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return (order?['order_type'] ?? '').toString();
   }
 
+  bool _isNonZoneOrderType(String type) {
+    final normalized = normalizeOrderType(type);
+    return normalized == "takeaways" ||
+        normalized == "takeaway" ||
+        normalized == "onlineorders" ||
+        normalized == "onlineorder" ||
+        normalized == "online" ||
+        normalized == "delivery";
+  }
+
   Future<void> _fetchParentKotOrders(
       Map<String, dynamic> order, {
         bool updateState = true,
       }) async {
     final orderType = _effectiveOrderType(order);
-    final normalizedOrderType = _normalizeOrderType(orderType);
+    final isNonZone = _isNonZoneOrderType(orderType);
 
-    if (selectedArea == null && normalizedOrderType != "takeaways") return;
+    if (selectedArea == null && !isNonZone) return;
 
     final parentOrderId = (order['order_id'] ?? order['id']).toString();
     final zoneId =
-    normalizedOrderType != "takeaways"
+    !isNonZone
         ? (order['zone_id'] ?? order['zoneId'])?.toString()
         : null;
 
@@ -411,17 +436,57 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         selectedUser: _selectedUser,
       );
 
-      order['kots'] =
-          kotOrders.map((kot) => kot['kot_number']?.toString() ?? '').toList();
-      order['kotOrders'] = kotOrders;
+      if (kotOrders.isEmpty) {
+        final directItems = (order['line_items'] ??
+            order['items'] ??
+            order['order_items'] ??
+            order['details']) as List<dynamic>?;
+        if (directItems != null && directItems.isNotEmpty) {
+          final kotNo = "KOT#1";
+          final fallbackKot = {
+            'kot_number': kotNo,
+            'order_by': order['customer_name'] ?? order['captain_name'] ?? order['order_type'] ?? 'Online',
+            'time': order['order_time'] ?? order['created_at'] ?? '',
+            'status': order['status'] ?? 'Preparing',
+            'line_items': directItems,
+          };
+          order['kots'] = [kotNo];
+          order['kotOrders'] = [fallbackKot];
+        } else {
+          order['kots'] =
+              kotOrders.map((kot) => kot['kot_number']?.toString() ?? '').toList();
+          order['kotOrders'] = kotOrders;
+        }
+      } else {
+        order['kots'] =
+            kotOrders.map((kot) => kot['kot_number']?.toString() ?? '').toList();
+        order['kotOrders'] = kotOrders;
+      }
 
       if (updateState && mounted) {
         setState(() {
           if (_selectedTable != null &&
               _selectedTable!['order_id'] == order['order_id'] &&
-              order['kots'].isNotEmpty &&
-              normalizedOrderType != "dinein") {
-            _onKotSelected(order['kots'].first, 0);
+              (order['kots'] as List).isNotEmpty) {
+            if (_selectedKot == null || !(order['kots'] as List).contains(_selectedKot)) {
+              _onKotSelected((order['kots'] as List).first, 0, toggleIfSelected: false);
+            } else {
+              final selectedKotOrder = (order['kotOrders'] as List).firstWhere(
+                (k) => k['kot_number']?.toString() == _selectedKot,
+                orElse: () => <String, dynamic>{},
+              );
+              if (selectedKotOrder.isNotEmpty) {
+                final rawItems = (selectedKotOrder['line_items'] ??
+                    selectedKotOrder['items'] ??
+                    selectedKotOrder['order_items'] ??
+                    selectedKotOrder['kot_items'] ??
+                    selectedKotOrder['details'] ??
+                    []) as List<dynamic>;
+                _kotItems = List<Map<String, dynamic>>.from(
+                  rawItems.map((e) => Map<String, dynamic>.from(e as Map)),
+                );
+              }
+            }
           }
         });
       }
@@ -447,7 +512,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
 
   String _normalizeOrderType(String type) {
-    return type.toLowerCase().replaceAll(" ", "");
+    return normalizeOrderType(type);
   }
 
   DateTime _parseOrderDateTime(Map<String, dynamic> order) {
@@ -520,12 +585,13 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return result;
   }
 
-  void _onKotSelected(String kot, int index) {
+  void _onKotSelected(String kot, int index, {bool toggleIfSelected = true}) {
     setState(() {
       final effectiveType = normalizeOrderType(
         _effectiveOrderType(_selectedTable),
       );
-      if (_selectedKot == kot && effectiveType != "takeaways") {
+      final isNonZone = _isNonZoneOrderType(effectiveType);
+      if (toggleIfSelected && _selectedKot == kot && !isNonZone) {
         _selectedKot = null;
         _expandedKotIndex = null;
         _kotItems.clear();
@@ -539,8 +605,15 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           orElse: () => <String, dynamic>{},
         );
 
+        final rawItems = (selectedKotOrder['line_items'] ??
+            selectedKotOrder['items'] ??
+            selectedKotOrder['order_items'] ??
+            selectedKotOrder['kot_items'] ??
+            selectedKotOrder['details'] ??
+            []) as List<dynamic>;
+
         _kotItems = List<Map<String, dynamic>>.from(
-          selectedKotOrder['line_items'] ?? [],
+          rawItems.map((e) => Map<String, dynamic>.from(e as Map)),
         );
       }
     });
@@ -2150,10 +2223,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     selectedOrderType == "All"
         ? (_selectedTable?['order_type'] ?? '').toString()
         : selectedOrderType;
+    final bool showTableFields = !_isNonZoneOrderType(selectedOrderTypeForDetails);
     final String normalizedSelectedType = normalizeOrderType(
       selectedOrderTypeForDetails,
     );
-    final bool showTableFields = normalizedSelectedType != "takeaways";
     final bool showDineInActions = normalizedSelectedType == "dinein";
 
     return Container(
@@ -2833,9 +2906,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             _kotItems.asMap().entries.map((entry) {
               final index = entry.key + 1;
               final item = entry.value;
-              final qty = (item['quantity'] ?? 0).toDouble();
-              final price = (item['price'] ?? 0).toDouble();
-              final total = qty * price;
+              final itemName = (item['item_name'] ?? item['product_name'] ?? item['name'] ?? item['title'] ?? '').toString();
+              final qty = ((item['quantity'] ?? item['qty'] ?? item['count'] ?? 0) as num).toDouble();
+              final price = ((item['price'] ?? item['rate'] ?? item['unit_price'] ?? item['amount'] ?? 0) as num).toDouble();
+              final total = price != 0 ? (qty * price) : (((item['total'] ?? item['total_price'] ?? item['amount'] ?? 0) as num).toDouble());
 
               return DataRow(
                 cells: [
@@ -2850,7 +2924,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                   ),
                   DataCell(
                     Text(
-                      item['item_name'] ?? '',
+                      itemName,
                       style: TextStyle(
                         color: isDark ? Colors.white : Colors.black,
                         fontSize: 15,
