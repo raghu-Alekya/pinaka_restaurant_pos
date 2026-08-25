@@ -773,7 +773,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     ),
                                   )
                                       : Icon(
-                                    Icons.refresh,
+                                    Icons.sync,
                                     size: 22,
                                     color:
                                     isDark

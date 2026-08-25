@@ -142,15 +142,14 @@ class _OrdersListTableState extends State<OrdersListTable> {
   Future<void> _refreshOrders() async {
     if (_isRefreshing) return;
 
-    final today = DateTime.now();
-    final dateStr = DateFormat('yyyy-MM-dd').format(today);
+    final refreshDate = selectedDate ?? DateTime.now();
+
+    final dateStr = DateFormat(
+      'yyyy-MM-dd',
+    ).format(refreshDate);
 
     setState(() {
       _isRefreshing = true;
-
-      selectedDate = today;
-      _dateController.text = DateFormat('dd/MM/yyyy').format(today);
-
       _currentPage = 0;
     });
 
@@ -226,18 +225,18 @@ class _OrdersListTableState extends State<OrdersListTable> {
     return orders.where((order) {
       final matchesSearch =
           query.isEmpty ||
-          (order.orderId?.toString().toLowerCase() ?? '').contains(query) ||
-          (order.orderType?.toLowerCase() ?? '').contains(query) ||
-          (order.zoneName?.toLowerCase() ?? '').contains(query) ||
-          (order.tableName?.toLowerCase() ?? '').contains(query) ||
-          (order.customerPhone?.toLowerCase() ?? '').contains(query) ||
-          (order.customerName?.toLowerCase() ?? '').contains(query);
+              (order.orderId?.toString().toLowerCase() ?? '').contains(query) ||
+              (order.orderType?.toLowerCase() ?? '').contains(query) ||
+              (order.zoneName?.toLowerCase() ?? '').contains(query) ||
+              (order.tableName?.toLowerCase() ?? '').contains(query) ||
+              (order.customerPhone?.toLowerCase() ?? '').contains(query) ||
+              (order.customerName?.toLowerCase() ?? '').contains(query);
 
       bool matchesStatus = true;
       if (_selectedStatus != null && _selectedStatus != 'All') {
         matchesStatus =
             (order.status?.toLowerCase() ?? '') ==
-            _selectedStatus!.toLowerCase();
+                _selectedStatus!.toLowerCase();
       }
 
       bool matchesOrderType = true;
@@ -274,8 +273,8 @@ class _OrdersListTableState extends State<OrdersListTable> {
         if (orderDate != null) {
           matchesDate =
               orderDate.year == selectedDate!.year &&
-              orderDate.month == selectedDate!.month &&
-              orderDate.day == selectedDate!.day;
+                  orderDate.month == selectedDate!.month &&
+                  orderDate.day == selectedDate!.day;
         }
       }
 
@@ -329,9 +328,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
     if (startPage < 0) startPage = 0;
 
     final visibleCount =
-        (totalPages - startPage) >= maxVisible
-            ? maxVisible
-            : totalPages - startPage;
+    (totalPages - startPage) >= maxVisible
+        ? maxVisible
+        : totalPages - startPage;
 
     return List.generate(visibleCount, (i) => startPage + i);
   }
@@ -369,7 +368,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor:
-          isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
+      isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -422,12 +421,23 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
           // MAIN CONTENT (BlocBuilder)
           Expanded(
-            child: BlocBuilder<OrderstatusBloc, OrderstatusState>(
+            child: BlocConsumer<OrderstatusBloc, OrderstatusState>(
               buildWhen: (previous, current) {
                 return current is OrderLoading ||
                     current is OrderLoaded ||
                     current is OrderError;
               },
+
+              listener: (context, state) {
+                if (state is OrderLoaded || state is OrderError) {
+                  if (mounted) {
+                    setState(() {
+                      _isRefreshing = false;
+                    });
+                  }
+                }
+              },
+
               builder: (context, state) {
                 if (state is OrderLoading) {
                   return const Center(child: CircularProgressIndicator());
@@ -445,9 +455,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                   final pageOrders = _currentPageOrders(_filteredOrders);
 
                   final totalPages =
-                      _filteredOrders.isEmpty
-                          ? 1
-                          : ((_filteredOrders.length - 1) ~/ _rowsPerPage) + 1;
+                  _filteredOrders.isEmpty
+                      ? 1
+                      : ((_filteredOrders.length - 1) ~/ _rowsPerPage) + 1;
 
                   final int totalOrders = _allOrders.length;
                   final int displayedOrders = _filteredOrders.length;
@@ -465,15 +475,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
                       color: isDark ? const Color(0xFF202433) : Colors.white,
                       borderRadius: BorderRadius.circular(10),
                       boxShadow:
-                          isDark
-                              ? []
-                              : const [
-                                BoxShadow(
-                                  color: Color(0x3F474747),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 1),
-                                ),
-                              ],
+                      isDark
+                          ? []
+                          : const [
+                        BoxShadow(
+                          color: Color(0x3F474747),
+                          blurRadius: 10,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
@@ -486,9 +496,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               "Orders List",
                               style: TextStyle(
                                 color:
-                                    isDark
-                                        ? Colors.white
-                                        : const Color(0xFF3D3D3D),
+                                isDark
+                                    ? Colors.white
+                                    : const Color(0xFF3D3D3D),
                                 fontSize: 24,
                                 fontFamily: 'Inter',
                                 fontWeight: FontWeight.w600,
@@ -506,9 +516,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               ),
                               decoration: ShapeDecoration(
                                 color:
-                                    isDark
-                                        ? const Color(0xFF2B3042)
-                                        : Colors.white,
+                                isDark
+                                    ? const Color(0xFF2B3042)
+                                    : Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -532,15 +542,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                     child: TextField(
                                       controller: _searchController,
                                       textAlignVertical:
-                                          TextAlignVertical.center,
+                                      TextAlignVertical.center,
                                       decoration: const InputDecoration(
                                         hintText:
-                                            'Search order ID, Order Type, Zone, Table, or Cust name, phone....',
+                                        'Search order ID, Order Type, Zone, Table, or Cust name, phone....',
                                         border: InputBorder.none,
                                         isDense: true,
                                         contentPadding: EdgeInsets.only(
                                           bottom:
-                                              6, // moves text slightly upward
+                                          6, // moves text slightly upward
                                         ),
                                         hintStyle: TextStyle(
                                           color: Color(0xFFB0B0B0),
@@ -563,35 +573,35 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color:
-                                      isDark
-                                          ? const Color(0xFF12171E)
-                                          : Colors.white,
+                                  isDark
+                                      ? const Color(0xFF12171E)
+                                      : Colors.white,
                                   border: Border.all(
                                     color:
-                                        isDark
-                                            ? const Color(0xFF374151)
-                                            : Colors.grey.shade300,
+                                    isDark
+                                        ? const Color(0xFF374151)
+                                        : Colors.grey.shade300,
                                     width: 1,
                                   ),
                                   borderRadius: BorderRadius.circular(10),
                                   boxShadow:
-                                      isDark
-                                          ? [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                0.35,
-                                              ),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ]
-                                          : const [
-                                            BoxShadow(
-                                              color: Colors.black12,
-                                              blurRadius: 4,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
+                                  isDark
+                                      ? [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(
+                                        0.35,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                      : const [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
                                 child: TextField(
                                   controller: _dateController,
@@ -601,40 +611,40 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                     color:
-                                        isDark
-                                            ? Colors.white
-                                            : const Color(0xFF111827),
+                                    isDark
+                                        ? Colors.white
+                                        : const Color(0xFF111827),
                                   ),
                                   onTap: () async {
                                     final picked = await showDatePicker(
                                       context: context,
                                       initialDate:
-                                          selectedDate ?? DateTime.now(),
+                                      selectedDate ?? DateTime.now(),
                                       firstDate: DateTime(2020),
                                       lastDate: DateTime(2030),
                                       builder: (context, child) {
                                         return Theme(
                                           data: Theme.of(context).copyWith(
                                             colorScheme:
-                                                isDark
-                                                    ? const ColorScheme.dark(
-                                                      primary: Color(
-                                                        0xFFFFFFFF,
-                                                      ),
-                                                      onPrimary: Colors.black,
-                                                      surface: Color(
-                                                        0xFF1F2937,
-                                                      ),
-                                                      onSurface: Colors.white,
-                                                    )
-                                                    : Theme.of(
-                                                      context,
-                                                    ).colorScheme,
+                                            isDark
+                                                ? const ColorScheme.dark(
+                                              primary: Color(
+                                                0xFFFFFFFF,
+                                              ),
+                                              onPrimary: Colors.black,
+                                              surface: Color(
+                                                0xFF1F2937,
+                                              ),
+                                              onSurface: Colors.white,
+                                            )
+                                                : Theme.of(
+                                              context,
+                                            ).colorScheme,
                                             dialogTheme: DialogThemeData(
                                               backgroundColor:
-                                                  isDark
-                                                      ? const Color(0xFF1F2937)
-                                                      : Colors.white,
+                                              isDark
+                                                  ? const Color(0xFF1F2937)
+                                                  : Colors.white,
                                             ),
                                           ),
                                           child: child!,
@@ -645,7 +655,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                       setState(() {
                                         selectedDate = picked;
                                         _dateController.text =
-                                            "${picked.day.toString().padLeft(2, '0')}/"
+                                        "${picked.day.toString().padLeft(2, '0')}/"
                                             "${picked.month.toString().padLeft(2, '0')}/"
                                             "${picked.year}";
                                         _currentPage = 0;
@@ -677,9 +687,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                       Icons.calendar_today,
                                       size: 18,
                                       color:
-                                          isDark
-                                              ? Colors.white70
-                                              : const Color(0xFF6B7280),
+                                      isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF6B7280),
                                     ),
                                   ),
                                 ),
@@ -697,43 +707,43 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                                 color:
-                                    isDark
-                                        ? const Color(0xFF34384F)
-                                        : const Color(0xFF4C81F1),
+                                isDark
+                                    ? const Color(0xFF34384F)
+                                    : const Color(0xFF4C81F1),
                                 border: Border.all(
                                   color:
-                                      isDark
-                                          ? Colors.white24
-                                          : const Color(0xFF4C81F1),
+                                  isDark
+                                      ? Colors.white24
+                                      : const Color(0xFF4C81F1),
                                 ),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   value: _selectedOrderType,
                                   dropdownColor:
-                                      isDark
-                                          ? const Color(0xFF34384F)
-                                          : const Color(0xFF4C81F1),
+                                  isDark
+                                      ? const Color(0xFF34384F)
+                                      : const Color(0xFF4C81F1),
                                   iconEnabledColor: Colors.white,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
                                   ),
                                   items:
-                                      orderTypeOptions
-                                          .map(
-                                            (e) => DropdownMenuItem<String>(
-                                              value: e,
-                                              child: Text(
-                                                e,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
+                                  orderTypeOptions
+                                      .map(
+                                        (e) => DropdownMenuItem<String>(
+                                      value: e,
+                                      child: Text(
+                                        e,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                      .toList(),
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedOrderType = val;
@@ -755,43 +765,43 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                                 color:
-                                    isDark
-                                        ? const Color(0xFF34384F)
-                                        : const Color(0xFF4C81F1),
+                                isDark
+                                    ? const Color(0xFF34384F)
+                                    : const Color(0xFF4C81F1),
                                 border: Border.all(
                                   color:
-                                      isDark
-                                          ? Colors.white24
-                                          : const Color(0xFF4C81F1),
+                                  isDark
+                                      ? Colors.white24
+                                      : const Color(0xFF4C81F1),
                                 ),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   value: _selectedStatus,
                                   dropdownColor:
-                                      isDark
-                                          ? const Color(0xFF34384F)
-                                          : const Color(0xFF4C81F1),
+                                  isDark
+                                      ? const Color(0xFF34384F)
+                                      : const Color(0xFF4C81F1),
                                   iconEnabledColor: Colors.white,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
                                   ),
                                   items:
-                                      statusOptions
-                                          .map(
-                                            (e) => DropdownMenuItem<String>(
-                                              value: e,
-                                              child: Text(
-                                                e,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
+                                  statusOptions
+                                      .map(
+                                        (e) => DropdownMenuItem<String>(
+                                      value: e,
+                                      child: Text(
+                                        e,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                      .toList(),
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedStatus = val;
@@ -843,9 +853,10 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                         ),
                                       ),
                                     ),
-                                    onPressed:
-                                    _isResetEnabled()
+                                    onPressed: _isResetEnabled()
                                         ? () {
+                                      final today = DateTime.now();
+
                                       setState(() {
                                         // Search
                                         _searchQuery = '';
@@ -857,15 +868,26 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                         // Order Type
                                         _selectedOrderType = 'All Types';
 
-                                        // Date
-                                        selectedDate = null;
-                                        _dateController.clear();
+                                        // Date → RESET TO TODAY
+                                        selectedDate = today;
+                                        _dateController.text =
+                                            DateFormat('dd/MM/yyyy').format(today);
 
                                         // Pagination
                                         _currentPage = 0;
-
-                                        _updateFilteredOrders();
                                       });
+
+                                      // Fetch today's orders
+                                      final dateStr =
+                                      DateFormat('yyyy-MM-dd').format(today);
+
+                                      context.read<OrderstatusBloc>().add(
+                                        FetchOrders(
+                                          token: widget.token,
+                                          date: dateStr,
+                                          restaurantId: widget.restaurantId,
+                                        ),
+                                      );
                                     }
                                         : null,
                                     icon: Icon(
@@ -901,55 +923,40 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 SizedBox(
                                   height: 40,
                                   child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      final today = DateTime.now();
-
-                                      setState(() {
-                                        selectedDate = today;
-                                        _dateController.text =
-                                            DateFormat('dd/MM/yyyy').format(today);
-
-                                        _currentPage = 0;
-                                      });
-
-                                      final dateStr =
-                                      DateFormat('yyyy-MM-dd').format(today);
-
-                                      context.read<OrderstatusBloc>().add(
-                                        FetchOrders(
-                                          token: widget.token,
-                                          date: dateStr,
-                                          restaurantId: widget.restaurantId,
-                                        ),
-                                      );
-                                    },
+                                    onPressed: _isRefreshing ? null : _refreshOrders,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor:
-                                      isDark
+                                      backgroundColor: isDark
                                           ? const Color(0xFF34384F)
-                                          : const Color(0xFF4C81F1),
-                                      foregroundColor: Colors.white,
+                                          : Colors.white,
+                                      foregroundColor: const Color(0xFF1E2A5A),
                                       elevation: 0,
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
+                                        horizontal: 0,
                                       ),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
+                                        side: BorderSide(
+                                          color: isDark
+                                              ? Colors.white24
+                                              : const Color(0xFF1E2A5A),
+                                        ),
                                       ),
                                     ),
-                                    icon: const Icon(
-                                      Icons.refresh,
-                                      size: 17,
-                                      color: Colors.white,
-                                    ),
-                                    label: const Text(
-                                      "Refresh",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
+                                    icon: SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: _isRefreshing
+                                          ? const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF1E2A5A),
+                                      )
+                                          : const Icon(
+                                        Icons.sync,
+                                        size: 24,
+                                        color: Color(0xFF1E2A5A),
                                       ),
                                     ),
+                                    label: const SizedBox.shrink(),
                                   ),
                                 ),
                               ],
@@ -964,9 +971,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                           child: Container(
                             decoration: BoxDecoration(
                               color:
-                                  isDark
-                                      ? const Color(0xFF202433)
-                                      : const Color(0xFFF2F2F2),
+                              isDark
+                                  ? const Color(0xFF202433)
+                                  : const Color(0xFFF2F2F2),
                               borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(8),
                                 topRight: Radius.circular(8),
@@ -981,7 +988,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 scrollDirection: Axis.horizontal,
                                 child: SizedBox(
                                   width:
-                                      MediaQuery.of(context).size.width * 0.99,
+                                  MediaQuery.of(context).size.width * 0.99,
                                   child: DataTable(
                                     showCheckboxColumn: false,
                                     headingTextStyle: const TextStyle(
@@ -1018,615 +1025,615 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                       ), // New column
                                     ],
                                     rows:
-                                        pageOrders.map((order) {
-                                          // Check if this specific row is a Takeaway or Online order
-                                          final bool isTakeAwayType =
-                                              [
-                                                "takeaway",
-                                                "online",
-                                                "takeaways",
-                                              ].contains(
-                                                (order.orderType ?? "")
-                                                    .toLowerCase(),
-                                              ) ||
+                                    pageOrders.map((order) {
+                                      // Check if this specific row is a Takeaway or Online order
+                                      final bool isTakeAwayType =
+                                          [
+                                            "takeaway",
+                                            "online",
+                                            "takeaways",
+                                          ].contains(
+                                            (order.orderType ?? "")
+                                                .toLowerCase(),
+                                          ) ||
                                               (order.tableId == null ||
                                                   order.tableId == 0);
-                                          return DataRow(
-                                            cells: [
-                                              DataCell(
-                                                Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Text(
-                                                      order.orderId?.toString() ?? '-',
-                                                      style: TextStyle(
-                                                        color: isDark ? Colors.white : Colors.black,
-                                                      ),
-                                                    ),
+                                      return DataRow(
+                                        cells: [
+                                          DataCell(
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  order.orderId?.toString() ?? '-',
+                                                  style: TextStyle(
+                                                    color: isDark ? Colors.white : Colors.black,
+                                                  ),
+                                                ),
 
-                                                    const SizedBox(width: 4),
+                                                const SizedBox(width: 4),
 
-                                                    if (_getOrderModificationCount(order) > 0)
-                                                      // Text(
-                                                      //   '✏️ ${_getOrderModificationCount(order)}×',
-                                                      //   style: const TextStyle(
-                                                      //     color: Color(0xFFB45309),
-                                                      //     fontSize: 10,
-                                                      //     fontFamily: 'Inter',
-                                                      //     fontWeight: FontWeight.w600,
-                                                      //     height: 1.38,
-                                                      //   ),
-                                                      // ),
-                                                      Container(
-                                                        width: 40,
-                                                        height: 20,
-                                                        decoration: ShapeDecoration(
-                                                          color: const Color(0xFFFEF3C7),
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius: BorderRadius.circular(4),
-                                                          ),
-                                                        ),
-                                                        alignment: Alignment.center,
-                                                        child: Text(
-                                                          '✏️ ${_getOrderModificationCount(order)}×',
-                                                          style: const TextStyle(
-                                                            color: Color(0xFFB45309),
-                                                            fontSize: 10,
-                                                            fontFamily: 'Inter',
-                                                            fontWeight: FontWeight.w600,
-                                                            height: 1.38,
-                                                          ),
-                                                        ),
+                                                if (_getOrderModificationCount(order) > 0)
+                                                // Text(
+                                                //   '✏️ ${_getOrderModificationCount(order)}×',
+                                                //   style: const TextStyle(
+                                                //     color: Color(0xFFB45309),
+                                                //     fontSize: 10,
+                                                //     fontFamily: 'Inter',
+                                                //     fontWeight: FontWeight.w600,
+                                                //     height: 1.38,
+                                                //   ),
+                                                // ),
+                                                  Container(
+                                                    width: 40,
+                                                    height: 20,
+                                                    decoration: ShapeDecoration(
+                                                      color: const Color(0xFFFEF3C7),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius.circular(4),
                                                       ),
-                                                  ],
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text(
-                                                  (order.orderType != null &&
-                                                          order.orderType!.trim().isNotEmpty &&
-                                                          order.orderType != '-')
-                                                      ? order.orderType!
-                                                      : (isTakeAwayType ? 'Online Order' : 'Dine In'),
-                                                  style: TextStyle(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white
-                                                            : Colors.black,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text(
-                                                  order.date ?? '-',
-                                                  style: TextStyle(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white
-                                                            : Colors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text(
-                                                  isTakeAwayType
-                                                      ? 'N/A'
-                                                      : (order.zoneName ?? '-'),
-                                                  style: TextStyle(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white
-                                                            : Colors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                              // 2. Table Cell (Displays 'N/A' if it is a takeaway order)
-                                              DataCell(
-                                                Text(
-                                                  isTakeAwayType
-                                                      ? 'N/A'
-                                                      : (order.tableName ??
-                                                          '-'),
-                                                  style: TextStyle(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white
-                                                            : Colors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text(
-                                                  order.paymentType ?? '-',
-                                                  style: TextStyle(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white
-                                                            : Colors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Text(
-                                                  "$_currency${order.displayTotal.toStringAsFixed(2)}",
-                                                  style: TextStyle(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white
-                                                            : Colors.black,
-                                                  ),
-                                                ),
-                                              ),
-                                              DataCell(
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 6,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: _statusColor(
-                                                      order.status ?? '',
-                                                    ).withOpacity(
-                                                      isDark ? 0.25 : 0.1,
                                                     ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    order.status?.isNotEmpty ==
-                                                            true
-                                                        ? order.status!
-                                                        : '-',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color: _statusColor(
-                                                        order.status ?? '',
+                                                    alignment: Alignment.center,
+                                                    child: Text(
+                                                      '✏️ ${_getOrderModificationCount(order)}×',
+                                                      style: const TextStyle(
+                                                        color: Color(0xFFB45309),
+                                                        fontSize: 10,
+                                                        fontFamily: 'Inter',
+                                                        fontWeight: FontWeight.w600,
+                                                        height: 1.38,
                                                       ),
                                                     ),
                                                   ),
+                                              ],
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              (order.orderType != null &&
+                                                  order.orderType!.trim().isNotEmpty &&
+                                                  order.orderType != '-')
+                                                  ? order.orderType!
+                                                  : (isTakeAwayType ? 'Online Order' : 'Dine In'),
+                                              style: TextStyle(
+                                                color:
+                                                isDark
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.date ?? '-',
+                                              style: TextStyle(
+                                                color:
+                                                isDark
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              isTakeAwayType
+                                                  ? 'N/A'
+                                                  : (order.zoneName ?? '-'),
+                                              style: TextStyle(
+                                                color:
+                                                isDark
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          // 2. Table Cell (Displays 'N/A' if it is a takeaway order)
+                                          DataCell(
+                                            Text(
+                                              isTakeAwayType
+                                                  ? 'N/A'
+                                                  : (order.tableName ??
+                                                  '-'),
+                                              style: TextStyle(
+                                                color:
+                                                isDark
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              order.paymentType ?? '-',
+                                              style: TextStyle(
+                                                color:
+                                                isDark
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Text(
+                                              "$_currency${order.displayTotal.toStringAsFixed(2)}",
+                                              style: TextStyle(
+                                                color:
+                                                isDark
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Container(
+                                              padding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 6,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: _statusColor(
+                                                  order.status ?? '',
+                                                ).withOpacity(
+                                                  isDark ? 0.25 : 0.1,
+                                                ),
+                                                borderRadius:
+                                                BorderRadius.circular(
+                                                  12,
                                                 ),
                                               ),
-                                              DataCell(
-                                                Builder(
-                                                  builder: (context) {
-                                                    final String statusLower =
-                                                        (order.status ?? "")
-                                                            .toLowerCase();
-                                                    final bool hasKot =
-                                                        (order.kotOrders != null &&
-                                                            order.kotOrders!.isNotEmpty) ||
+                                              child: Text(
+                                                order.status?.isNotEmpty ==
+                                                    true
+                                                    ? order.status!
+                                                    : '-',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight:
+                                                  FontWeight.w500,
+                                                  color: _statusColor(
+                                                    order.status ?? '',
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          DataCell(
+                                            Builder(
+                                              builder: (context) {
+                                                final String statusLower =
+                                                (order.status ?? "")
+                                                    .toLowerCase();
+                                                final bool hasKot =
+                                                    (order.kotOrders != null &&
+                                                        order.kotOrders!.isNotEmpty) ||
                                                         (order.kotOrderId != null &&
                                                             order.kotOrderId! > 0);
-                                                    final bool isPayDisabled =
-                                                        statusLower ==
-                                                            "completed" ||
+                                                final bool isPayDisabled =
+                                                    statusLower ==
+                                                        "completed" ||
                                                         statusLower ==
                                                             "cancelled" ||
                                                         order.displayTotal <= 0 ||
                                                         !hasKot;
 
-                                                    return Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        // 1. VIEW BUTTON (Enabled by default)
-                                                        SizedBox(
-                                                          width: 65,
-                                                          height: 30,
-                                                          child: ElevatedButton(
-                                                            onPressed: () async {
-                                                              await Navigator.push(
-                                                                context,
-                                                                MaterialPageRoute(
-                                                                  builder:
-                                                                      (_) => OrdersDetailsScreen(
-                                                                        token: widget.token,
-                                                                        pin: widget.pin,
-                                                                        restaurantId: widget.restaurantId,
-                                                                        restaurantName: widget.restaurantName,
-                                                                        userPermissions: _userPermissions,
-                                                                        orderId: order.orderId ?? 0,
-                                                                        initialOrder: order,
-                                                                      ),
+                                                return Row(
+                                                  mainAxisSize:
+                                                  MainAxisSize.min,
+                                                  children: [
+                                                    // 1. VIEW BUTTON (Enabled by default)
+                                                    SizedBox(
+                                                      width: 65,
+                                                      height: 30,
+                                                      child: ElevatedButton(
+                                                        onPressed: () async {
+                                                          await Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (_) => OrdersDetailsScreen(
+                                                                token: widget.token,
+                                                                pin: widget.pin,
+                                                                restaurantId: widget.restaurantId,
+                                                                restaurantName: widget.restaurantName,
+                                                                userPermissions: _userPermissions,
+                                                                orderId: order.orderId ?? 0,
+                                                                initialOrder: order,
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                          const Color(
+                                                            0xFF4C81F1,
+                                                          ),
+                                                          foregroundColor:
+                                                          Colors.white,
+                                                          elevation: 0,
+                                                          padding:
+                                                          EdgeInsets.zero,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        child: const Text(
+                                                          "View",
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                            FontWeight
+                                                                .w600,
+                                                            color:
+                                                            Colors
+                                                                .white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 6),
+
+                                                    // 2. PAY BUTTON (Disabled when status is completed or cancelled)
+                                                    SizedBox(
+                                                      width: 65,
+                                                      height: 30,
+                                                      child: ElevatedButton(
+                                                        onPressed: isPayDisabled
+                                                            ? null
+                                                            : () async {
+                                                          try {
+                                                            // Show loading overlay
+                                                            showDialog(
+                                                              context:
+                                                              context,
+                                                              barrierDismissible:
+                                                              false,
+                                                              builder:
+                                                                  (
+                                                                  _,
+                                                                  ) => const Center(
+                                                                child:
+                                                                CircularProgressIndicator(),
+                                                              ),
+                                                            );
+
+                                                            final repository =
+                                                            OrderRepository(
+                                                              baseUrl:
+                                                              AppConstants
+                                                                  .baseDomain,
+                                                            );
+
+                                                            OrderModel?
+                                                            orderModel;
+
+                                                            if (isTakeAwayType) {
+                                                              final url =
+                                                              Uri.parse(
+                                                                '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders/${order.orderId}',
+                                                              );
+
+                                                              final body = {
+                                                                "flag_type":
+                                                                "get_order_details",
+                                                                "order_id":
+                                                                order
+                                                                    .orderId ??
+                                                                    0,
+                                                                "restaurant_id":
+                                                                int.parse(
+                                                                  widget
+                                                                      .restaurantId,
+                                                                ),
+                                                              };
+
+                                                              final response = await ApiExceptionHandler.post(
+                                                                url,
+                                                                headers: {
+                                                                  'Content-Type':
+                                                                  'application/json',
+                                                                  'Authorization':
+                                                                  widget.token.startsWith(
+                                                                    "Bearer ",
+                                                                  )
+                                                                      ? widget.token
+                                                                      : "Bearer ${widget.token}",
+                                                                },
+                                                                body: jsonEncode(
+                                                                  body,
                                                                 ),
                                                               );
-                                                            },
-                                                            style: ElevatedButton.styleFrom(
-                                                              backgroundColor:
-                                                                  const Color(
-                                                                    0xFF4C81F1,
+
+                                                              if (response.statusCode ==
+                                                                  200 ||
+                                                                  response.statusCode ==
+                                                                      201) {
+                                                                final data =
+                                                                jsonDecode(
+                                                                  response
+                                                                      .body,
+                                                                );
+                                                                orderModel =
+                                                                    OrderModel.fromJson(
+                                                                      data,
+                                                                    );
+                                                              } else {
+                                                                orderModel = OrderModel(
+                                                                  orderId:
+                                                                  order
+                                                                      .orderId ??
+                                                                      0,
+                                                                  tableId:
+                                                                  0,
+                                                                  tableName:
+                                                                  "",
+                                                                  zoneId:
+                                                                  0,
+                                                                  zoneName:
+                                                                  "",
+                                                                  status:
+                                                                  order
+                                                                      .status ??
+                                                                      "",
+                                                                  items:
+                                                                  const [],
+                                                                  kotOrders:
+                                                                  const [],
+                                                                  orderDateTime:
+                                                                  DateTime.tryParse(
+                                                                    order.date ??
+                                                                        "",
                                                                   ),
-                                                              foregroundColor:
-                                                                  Colors.white,
-                                                              elevation: 0,
-                                                              padding:
-                                                                  EdgeInsets.zero,
-                                                              shape: RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      12,
-                                                                    ),
-                                                              ),
-                                                            ),
-                                                            child: const Text(
-                                                              "View",
-                                                              style: TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        const SizedBox(width: 6),
+                                                                );
+                                                              }
+                                                            } else {
+                                                              orderModel = await repository.getOrderByTable(
+                                                                restaurantId:
+                                                                int.parse(
+                                                                  widget
+                                                                      .restaurantId,
+                                                                ),
+                                                                tableId:
+                                                                order
+                                                                    .tableId ??
+                                                                    0,
+                                                                zoneId:
+                                                                order
+                                                                    .zoneId ??
+                                                                    0,
+                                                                token:
+                                                                widget
+                                                                    .token,
+                                                              );
+                                                            }
 
-                                                        // 2. PAY BUTTON (Disabled when status is completed or cancelled)
-                                                        SizedBox(
-                                                          width: 65,
-                                                          height: 30,
-                                                          child: ElevatedButton(
-                                                            onPressed: isPayDisabled
-                                                                ? null
-                                                                : () async {
-                                                                  try {
-                                                                    // Show loading overlay
-                                                                    showDialog(
-                                                                      context:
-                                                                          context,
-                                                                      barrierDismissible:
-                                                                          false,
-                                                                      builder:
-                                                                          (
-                                                                            _,
-                                                                          ) => const Center(
-                                                                            child:
-                                                                                CircularProgressIndicator(),
-                                                                          ),
-                                                                    );
+                                                            if (Navigator.canPop(
+                                                              context,
+                                                            ))
+                                                              Navigator.pop(
+                                                                context,
+                                                              );
 
-                                                                    final repository =
-                                                                        OrderRepository(
-                                                                          baseUrl:
-                                                                              AppConstants
-                                                                                  .baseDomain,
-                                                                        );
-
-                                                                    OrderModel?
-                                                                    orderModel;
-
-                                                                    if (isTakeAwayType) {
-                                                                      final url =
-                                                                          Uri.parse(
-                                                                            '${AppConstants.baseDomain}/wp-json/pinaka-restaurant-pos/v1/orders/${order.orderId}',
-                                                                          );
-
-                                                                      final body = {
-                                                                        "flag_type":
-                                                                            "get_order_details",
-                                                                        "order_id":
-                                                                            order
-                                                                                .orderId ??
-                                                                            0,
-                                                                        "restaurant_id":
-                                                                            int.parse(
-                                                                              widget
-                                                                                  .restaurantId,
-                                                                            ),
-                                                                      };
-
-                                                                      final response = await ApiExceptionHandler.post(
-                                                                        url,
-                                                                        headers: {
-                                                                          'Content-Type':
-                                                                              'application/json',
-                                                                          'Authorization':
-                                                                              widget.token.startsWith(
-                                                                                    "Bearer ",
-                                                                                  )
-                                                                                  ? widget.token
-                                                                                  : "Bearer ${widget.token}",
-                                                                        },
-                                                                        body: jsonEncode(
-                                                                          body,
-                                                                        ),
-                                                                      );
-
-                                                                      if (response.statusCode ==
-                                                                              200 ||
-                                                                          response.statusCode ==
-                                                                              201) {
-                                                                        final data =
-                                                                            jsonDecode(
-                                                                              response
-                                                                                  .body,
-                                                                            );
-                                                                        orderModel =
-                                                                            OrderModel.fromJson(
-                                                                              data,
-                                                                            );
-                                                                      } else {
-                                                                        orderModel = OrderModel(
-                                                                          orderId:
-                                                                              order
-                                                                                  .orderId ??
-                                                                              0,
-                                                                          tableId:
-                                                                              0,
-                                                                          tableName:
-                                                                              "",
-                                                                          zoneId:
-                                                                              0,
-                                                                          zoneName:
-                                                                              "",
-                                                                          status:
-                                                                              order
-                                                                                  .status ??
-                                                                              "",
-                                                                          items:
-                                                                              const [],
-                                                                          kotOrders:
-                                                                              const [],
-                                                                          orderDateTime:
-                                                                              DateTime.tryParse(
-                                                                                order.date ??
-                                                                                    "",
-                                                                              ),
-                                                                        );
-                                                                      }
-                                                                    } else {
-                                                                      orderModel = await repository.getOrderByTable(
-                                                                        restaurantId:
-                                                                            int.parse(
-                                                                              widget
-                                                                                  .restaurantId,
-                                                                            ),
-                                                                        tableId:
-                                                                            order
-                                                                                .tableId ??
-                                                                            0,
-                                                                        zoneId:
-                                                                            order
-                                                                                .zoneId ??
-                                                                            0,
-                                                                        token:
-                                                                            widget
-                                                                                .token,
-                                                                      );
-                                                                    }
-
-                                                                    if (Navigator.canPop(
-                                                                      context,
-                                                                    ))
-                                                                      Navigator.pop(
-                                                                        context,
-                                                                      );
-
-                                                                    if (orderModel ==
-                                                                        null) {
-                                                                      ScaffoldMessenger.of(
-                                                                        context,
-                                                                      ).showSnackBar(
-                                                                        const SnackBar(
-                                                                          content: Text(
-                                                                            "Unable to load order context.",
-                                                                          ),
-                                                                          backgroundColor:
-                                                                              Colors
-                                                                                  .red,
-                                                                        ),
-                                                                      );
-                                                                      return;
-                                                                    }
-
-                                                                    context.read<OrderBloc>().add(
-                                                                      LoadExistingOrder(
-                                                                        orderId:
-                                                                            orderModel
-                                                                                .orderId,
-                                                                        tableId:
-                                                                            orderModel
-                                                                                .tableId,
-                                                                        zoneId:
-                                                                            orderModel
-                                                                                .zoneId,
-                                                                        tableName:
-                                                                            orderModel
-                                                                                .tableName,
-                                                                        zoneName:
-                                                                            orderModel
-                                                                                .zoneName,
-                                                                        restaurantId:
-                                                                            widget
-                                                                                .restaurantId,
-                                                                        guestDetails: Guestcount(
-                                                                          guestCount:
-                                                                              orderModel
-                                                                                  .guestCount,
-                                                                        ),
-                                                                        kotList:
-                                                                            orderModel
-                                                                                .kotOrders,
-                                                                        orderItems:
-                                                                            orderModel
-                                                                                .items,
-                                                                      ),
-                                                                    );
-
-                                                                    AppLogger.info(
-                                                                      "Pay clicked - ${isTakeAwayType ? 'Takeaway/Online' : 'Dine In'}",
-                                                                    );
-
-                                                                    Navigator.push(
-                                                                      context,
-                                                                      MaterialPageRoute(
-                                                                        builder:
-                                                                            (
-                                                                              _,
-                                                                            ) => MultiBlocProvider(
-                                                                              providers: [
-                                                                                BlocProvider.value(
-                                                                                  value:
-                                                                                      context
-                                                                                          .read<
-                                                                                            OrderBloc
-                                                                                          >(),
-                                                                                ),
-                                                                                BlocProvider.value(
-                                                                                  value:
-                                                                                      context
-                                                                                          .read<
-                                                                                            PaymentBloc
-                                                                                          >(),
-                                                                                ),
-                                                                                BlocProvider.value(
-                                                                                  value:
-                                                                                      context
-                                                                                          .read<
-                                                                                            RemoveDiscountBloc
-                                                                                          >(),
-                                                                                ),
-                                                                              ],
-                                                                              child: PaymentScreen(
-                                                                                loadedTables:
-                                                                                    widget.loadedTables,
-                                                                                pin:
-                                                                                    widget.pin,
-                                                                                token:
-                                                                                    widget.token,
-                                                                                restaurantId:
-                                                                                    widget.restaurantId,
-                                                                                restaurantName:
-                                                                                    widget.restaurantName,
-                                                                                zoneId:
-                                                                                    isTakeAwayType
-                                                                                        ? 0
-                                                                                        : orderModel?.zoneId,
-                                                                                isTakeAway:
-                                                                                    isTakeAwayType,
-                                                                              ),
-                                                                            ),
-                                                                      ),
-                                                                    );
-                                                                  } catch (e) {
-                                                                    if (Navigator.canPop(
-                                                                      context,
-                                                                    ))
-                                                                      Navigator.pop(
-                                                                        context,
-                                                                      );
-                                                                    debugPrint(
-                                                                      "Error loading order context layer: $e",
-                                                                    );
-
-                                                                    ScaffoldMessenger.of(
-                                                                      context,
-                                                                    ).showSnackBar(
-                                                                      SnackBar(
-                                                                        content: Text(
-                                                                          "Failed to load order: $e",
-                                                                        ),
-                                                                        backgroundColor:
-                                                                            Colors
-                                                                                .red,
-                                                                      ),
-                                                                    );
-                                                                  }
-                                                                },
-                                                            style: ElevatedButton.styleFrom(
-                                                              backgroundColor:
-                                                                  const Color(
-                                                                    0xFF06A629,
+                                                            if (orderModel ==
+                                                                null) {
+                                                              ScaffoldMessenger.of(
+                                                                context,
+                                                              ).showSnackBar(
+                                                                const SnackBar(
+                                                                  content: Text(
+                                                                    "Unable to load order context.",
                                                                   ),
-                                                              disabledBackgroundColor:
-                                                                  isDark
-                                                                      ? Colors
-                                                                          .white12
-                                                                      : Colors
-                                                                          .grey
-                                                                          .shade300,
-                                                              foregroundColor:
-                                                                  Colors.white,
-                                                              disabledForegroundColor:
+                                                                  backgroundColor:
                                                                   Colors
-                                                                      .grey
-                                                                      .shade500,
-                                                              elevation: 0,
-                                                              padding:
-                                                                  EdgeInsets.zero,
-                                                              shape: RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      12,
-                                                                    ),
-                                                              ),
-                                                            ),
-                                                            child: Text(
-                                                              "Pay",
-                                                              style: TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color:
-                                                                    isPayDisabled
-                                                                        ? Colors
-                                                                            .grey
-                                                                            .shade500
-                                                                        : Colors
-                                                                            .white,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                          width: 4,
-                                                        ),
+                                                                      .red,
+                                                                ),
+                                                              );
+                                                              return;
+                                                            }
 
-                                                        // 3. PRINT BUTTON
-                                                        IconButton(
-                                                          icon: Icon(
-                                                            Icons
-                                                                .print_outlined,
-                                                            color:
-                                                                (order.status ??
-                                                                            "")
-                                                                            .toLowerCase() ==
-                                                                        "cancelled"
-                                                                    ? Colors
-                                                                        .grey
-                                                                    : const Color(
-                                                                      0xFF4C81F1,
+                                                            context.read<OrderBloc>().add(
+                                                              LoadExistingOrder(
+                                                                orderId:
+                                                                orderModel
+                                                                    .orderId,
+                                                                tableId:
+                                                                orderModel
+                                                                    .tableId,
+                                                                zoneId:
+                                                                orderModel
+                                                                    .zoneId,
+                                                                tableName:
+                                                                orderModel
+                                                                    .tableName,
+                                                                zoneName:
+                                                                orderModel
+                                                                    .zoneName,
+                                                                restaurantId:
+                                                                widget
+                                                                    .restaurantId,
+                                                                guestDetails: Guestcount(
+                                                                  guestCount:
+                                                                  orderModel
+                                                                      .guestCount,
+                                                                ),
+                                                                kotList:
+                                                                orderModel
+                                                                    .kotOrders,
+                                                                orderItems:
+                                                                orderModel
+                                                                    .items,
+                                                              ),
+                                                            );
+
+                                                            AppLogger.info(
+                                                              "Pay clicked - ${isTakeAwayType ? 'Takeaway/Online' : 'Dine In'}",
+                                                            );
+
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (
+                                                                    _,
+                                                                    ) => MultiBlocProvider(
+                                                                  providers: [
+                                                                    BlocProvider.value(
+                                                                      value:
+                                                                      context
+                                                                          .read<
+                                                                          OrderBloc
+                                                                      >(),
                                                                     ),
+                                                                    BlocProvider.value(
+                                                                      value:
+                                                                      context
+                                                                          .read<
+                                                                          PaymentBloc
+                                                                      >(),
+                                                                    ),
+                                                                    BlocProvider.value(
+                                                                      value:
+                                                                      context
+                                                                          .read<
+                                                                          RemoveDiscountBloc
+                                                                      >(),
+                                                                    ),
+                                                                  ],
+                                                                  child: PaymentScreen(
+                                                                    loadedTables:
+                                                                    widget.loadedTables,
+                                                                    pin:
+                                                                    widget.pin,
+                                                                    token:
+                                                                    widget.token,
+                                                                    restaurantId:
+                                                                    widget.restaurantId,
+                                                                    restaurantName:
+                                                                    widget.restaurantName,
+                                                                    zoneId:
+                                                                    isTakeAwayType
+                                                                        ? 0
+                                                                        : orderModel?.zoneId,
+                                                                    isTakeAway:
+                                                                    isTakeAwayType,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            );
+                                                          } catch (e) {
+                                                            if (Navigator.canPop(
+                                                              context,
+                                                            ))
+                                                              Navigator.pop(
+                                                                context,
+                                                              );
+                                                            debugPrint(
+                                                              "Error loading order context layer: $e",
+                                                            );
+
+                                                            ScaffoldMessenger.of(
+                                                              context,
+                                                            ).showSnackBar(
+                                                              SnackBar(
+                                                                content: Text(
+                                                                  "Failed to load order: $e",
+                                                                ),
+                                                                backgroundColor:
+                                                                Colors
+                                                                    .red,
+                                                              ),
+                                                            );
+                                                          }
+                                                        },
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                          const Color(
+                                                            0xFF06A629,
                                                           ),
-                                                          tooltip: "Print",
-                                                          onPressed:
-                                                              (order.status ??
-                                                                          "")
-                                                                          .toLowerCase() ==
-                                                                      "cancelled"
-                                                                  ? null
-                                                                  : () {
-                                                                    // Print logic
-                                                                  },
+                                                          disabledBackgroundColor:
+                                                          isDark
+                                                              ? Colors
+                                                              .white12
+                                                              : Colors
+                                                              .grey
+                                                              .shade300,
+                                                          foregroundColor:
+                                                          Colors.white,
+                                                          disabledForegroundColor:
+                                                          Colors
+                                                              .grey
+                                                              .shade500,
+                                                          elevation: 0,
+                                                          padding:
+                                                          EdgeInsets.zero,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                          ),
                                                         ),
-                                                      ],
-                                                    );
-                                                  },
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        }).toList(),
+                                                        child: Text(
+                                                          "Pay",
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                            FontWeight
+                                                                .w600,
+                                                            color:
+                                                            isPayDisabled
+                                                                ? Colors
+                                                                .grey
+                                                                .shade500
+                                                                : Colors
+                                                                .white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(
+                                                      width: 4,
+                                                    ),
+
+                                                    // 3. PRINT BUTTON
+                                                    IconButton(
+                                                      icon: Icon(
+                                                        Icons
+                                                            .print_outlined,
+                                                        color:
+                                                        (order.status ??
+                                                            "")
+                                                            .toLowerCase() ==
+                                                            "cancelled"
+                                                            ? Colors
+                                                            .grey
+                                                            : const Color(
+                                                          0xFF4C81F1,
+                                                        ),
+                                                      ),
+                                                      tooltip: "Print",
+                                                      onPressed:
+                                                      (order.status ??
+                                                          "")
+                                                          .toLowerCase() ==
+                                                          "cancelled"
+                                                          ? null
+                                                          : () {
+                                                        // Print logic
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }).toList(),
                                   ),
                                 ),
                               ),
@@ -1641,15 +1648,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
                           height: 45,
                           decoration: BoxDecoration(
                             color:
-                                isDark
-                                    ? const Color(0xFF202433)
-                                    : const Color(0xFFF2F2F2),
+                            isDark
+                                ? const Color(0xFF202433)
+                                : const Color(0xFFF2F2F2),
                             border: Border(
                               top: BorderSide(
                                 color:
-                                    isDark
-                                        ? Colors.white24
-                                        : const Color(0xFFF2F2F2),
+                                isDark
+                                    ? Colors.white24
+                                    : const Color(0xFFF2F2F2),
                               ),
                             ),
                             borderRadius: const BorderRadius.only(
@@ -1675,14 +1682,14 @@ class _OrdersListTableState extends State<OrdersListTable> {
                               Container(
                                 decoration: BoxDecoration(
                                   color:
-                                      isDark
-                                          ? const Color(0xFF2B3042)
-                                          : Colors.white,
+                                  isDark
+                                      ? const Color(0xFF2B3042)
+                                      : Colors.white,
                                   border: Border.all(
                                     color:
-                                        isDark
-                                            ? Colors.white24
-                                            : const Color(0xFFF2F2F2),
+                                    isDark
+                                        ? Colors.white24
+                                        : const Color(0xFFF2F2F2),
                                   ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
@@ -1691,9 +1698,9 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                   children: [
                                     GestureDetector(
                                       onTap:
-                                          _currentPage > 0
-                                              ? _previousPage
-                                              : null,
+                                      _currentPage > 0
+                                          ? _previousPage
+                                          : null,
                                       child: _paginationButton(
                                         text: "Previous",
                                         borderRadius: const BorderRadius.only(
@@ -1705,73 +1712,73 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
                                     Row(
                                       children:
-                                          _visiblePages(totalPages).map((
-                                            index,
+                                      _visiblePages(totalPages).map((
+                                          index,
                                           ) {
-                                            final isActive =
-                                                index == _currentPage;
+                                        final isActive =
+                                            index == _currentPage;
 
-                                            return GestureDetector(
-                                              onTap:
-                                                  () => setState(
-                                                    () => _currentPage = index,
-                                                  ),
-                                              child: Container(
-                                                width: 30,
-                                                height: 29,
-                                                decoration: BoxDecoration(
+                                        return GestureDetector(
+                                          onTap:
+                                              () => setState(
+                                                () => _currentPage = index,
+                                          ),
+                                          child: Container(
+                                            width: 30,
+                                            height: 29,
+                                            decoration: BoxDecoration(
+                                              color:
+                                              isActive
+                                                  ? const Color(
+                                                0xFFFF4D20,
+                                              )
+                                                  : (isDark
+                                                  ? const Color(
+                                                0xFF34384F,
+                                              )
+                                                  : Colors.white),
+                                              border: Border(
+                                                right: BorderSide(
                                                   color:
-                                                      isActive
-                                                          ? const Color(
-                                                            0xFFFF4D20,
-                                                          )
-                                                          : (isDark
-                                                              ? const Color(
-                                                                0xFF34384F,
-                                                              )
-                                                              : Colors.white),
-                                                  border: Border(
-                                                    right: BorderSide(
-                                                      color:
-                                                          isDark
-                                                              ? Colors.white24
-                                                              : const Color(
-                                                                0xFFEFEFEF,
-                                                              ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                alignment: Alignment.center,
-                                                child: Text(
-                                                  "${index + 1}",
-                                                  style: TextStyle(
-                                                    color:
-                                                        isActive
-                                                            ? Colors.white
-                                                            : (isDark
-                                                                ? Colors.white70
-                                                                : const Color(
-                                                                  0xFF727272,
-                                                                )),
-                                                    fontSize: 11,
-                                                    fontWeight:
-                                                        isActive
-                                                            ? FontWeight.w600
-                                                            : FontWeight.w400,
+                                                  isDark
+                                                      ? Colors.white24
+                                                      : const Color(
+                                                    0xFFEFEFEF,
                                                   ),
                                                 ),
                                               ),
-                                            );
-                                          }).toList(),
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              "${index + 1}",
+                                              style: TextStyle(
+                                                color:
+                                                isActive
+                                                    ? Colors.white
+                                                    : (isDark
+                                                    ? Colors.white70
+                                                    : const Color(
+                                                  0xFF727272,
+                                                )),
+                                                fontSize: 11,
+                                                fontWeight:
+                                                isActive
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
                                     ),
 
                                     GestureDetector(
                                       onTap:
-                                          (_currentPage + 1) < totalPages
-                                              ? () => _nextPage(
-                                                _filteredOrders.length,
-                                              )
-                                              : null,
+                                      (_currentPage + 1) < totalPages
+                                          ? () => _nextPage(
+                                        _filteredOrders.length,
+                                      )
+                                          : null,
                                       child: _paginationButton(
                                         text: "Next",
                                         borderRadius: const BorderRadius.only(

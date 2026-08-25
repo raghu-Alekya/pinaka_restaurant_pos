@@ -106,6 +106,7 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
   bool isVoidedLoading = false;
   int? selectedKotOrderId;
   String _currency = "₹";
+  bool _isOpeningModificationHistory = false;
   final Map<int, VoidedItemsResponse> _voidedItemsCache = {}; // add as field
   List<double> _modificationTotalHistory = [];
   final List<ModificationRevision> _modificationHistory = [];
@@ -878,65 +879,99 @@ amount: ${item.amount}
   }
 
 
-  void _showModificationHistory(OrderlistModel orderModel) async {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final kotId = selectedKotId ??
-        (orderModel.kotOrders != null && orderModel.kotOrders!.isNotEmpty
-            ? orderModel.kotOrders!.first.kotOrderId
-            : null);
-    if (kotId != null && !_voidedItemsCache.containsKey(kotId)) {
-      await loadVoidedItems(kotId);
+  Future<void> _showModificationHistory(
+      OrderlistModel orderModel,
+      ) async {
+    // Prevent multiple taps
+    if (_isOpeningModificationHistory) {
+      return;
     }
-    if (!mounted) return;
 
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Modification History',
-      barrierColor: Colors.black.withOpacity(0.25),
-      transitionDuration: const Duration(milliseconds: 300),
+    _isOpeningModificationHistory = true;
 
-      pageBuilder: (
-          BuildContext context,
-          Animation<double> animation,
-          Animation<double> secondaryAnimation,
-          ) {
-        return const SizedBox.shrink();
-      },
+    try {
+      final screenWidth = MediaQuery.of(context).size.width;
 
-      transitionBuilder: (
-          BuildContext context,
-          Animation<double> animation,
-          Animation<double> secondaryAnimation,
-          Widget child,
-          ) {
-        final slideAnimation = Tween<Offset>(
-          begin: const Offset(1.0, 0.0),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-        );
+      // ============================================================
+      // ORDER LEVEL:
+      // Load voided items for ALL KOTs in this order.
+      // Do NOT use selectedKotId here.
+      // ============================================================
 
-        return SlideTransition(
-          position: slideAnimation,
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Material(
-              color: Colors.transparent,
+      final kots = orderModel.kotOrders ?? [];
 
+      for (final kot in kots) {
+        final kotId = kot.kotOrderId;
 
-              child: SizedBox(
-                width: screenWidth < 500
-                    ? screenWidth * 0.85
-                    : 390,
-                height: MediaQuery.of(context).size.height,
-                child: _buildModificationHistoryPanel(orderModel),
+        if (kotId != null &&
+            !_voidedItemsCache.containsKey(kotId)) {
+          await loadVoidedItems(kotId);
+        }
+      }
+
+      if (!mounted) return;
+
+      // ============================================================
+      // OPEN HISTORY PANEL
+      // await is IMPORTANT:
+      // lock remains active until panel is closed.
+      // ============================================================
+
+      await showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'Modification History',
+        barrierColor: Colors.black.withOpacity(0.25),
+        transitionDuration: const Duration(milliseconds: 300),
+
+        pageBuilder: (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondaryAnimation,
+            ) {
+          return const SizedBox.shrink();
+        },
+
+        transitionBuilder: (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondaryAnimation,
+            Widget child,
+            ) {
+          final slideAnimation = Tween<Offset>(
+            begin: const Offset(1.0, 0.0),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+          );
+
+          return SlideTransition(
+            position: slideAnimation,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Material(
+                color: Colors.transparent,
+                child: SizedBox(
+                  width: screenWidth < 500
+                      ? screenWidth * 0.85
+                      : 390,
+                  height: MediaQuery.of(context).size.height,
+                  child: _buildModificationHistoryPanel(
+                    orderModel,
+                  ),
+                ),
               ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    } finally {
+      // Unlock only after the panel is closed
+      _isOpeningModificationHistory = false;
+    }
   }
 
   Widget _buildModificationHistoryPanel(
@@ -1012,7 +1047,7 @@ amount: ${item.amount}
                 child: Text(
                   "No modification history found",
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 14,
                     color: Color(0xFF64748B),
                   ),
                 ),
@@ -1980,6 +2015,7 @@ amount: ${item.amount}
                       GestureDetector(
                         onTap: () => Navigator.pop(context, true),
                         child: Container(
+                          height: 36,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 8,
@@ -2399,7 +2435,7 @@ amount: ${item.amount}
                                 shadowColor: const Color(0x554C5F7D),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
-                                  vertical: 9,
+                                  vertical: 15,
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -2436,9 +2472,11 @@ amount: ${item.amount}
                           // Modification History Button
                           SizedBox(
                             width: 150,
-                            height: 40,
+                            height: 36,
                             child: OutlinedButton(
-                              onPressed: () {
+                              onPressed: _isOpeningModificationHistory
+                                  ? null
+                                  : () {
                                 _showModificationHistory(orderModel);
                               },
                               style: OutlinedButton.styleFrom(
@@ -4626,7 +4664,7 @@ amount: ${item.amount}
                   ConstrainedBox(
                     constraints:  BoxConstraints(
                       minHeight: 100,
-                      maxHeight: showVoided ? 180 : 280,
+                      maxHeight: showVoided ? 185 : 285,
                     ),
                     child: isVoidedLoading && showVoided
                         ? const Center(

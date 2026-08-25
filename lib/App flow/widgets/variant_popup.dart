@@ -79,7 +79,7 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
       if (entry.value <= 0) continue;
 
       final variant = widget.product.variants.firstWhere(
-        (v) => v.variationId == entry.key,
+            (v) => v.variationId == entry.key,
       );
       print("=========== VARIANT DEBUG ===========");
       print("Parent Product ID : ${widget.product.id}");
@@ -116,7 +116,7 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
     final isDark = theme.brightness == Brightness.dark;
     return Dialog(
       backgroundColor:
-          isDark ? const Color(0xFF252837) : const Color(0xFFF0F4FF),
+      isDark ? const Color(0xFF252837) : const Color(0xFFF0F4FF),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         width: 600,
@@ -211,10 +211,10 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                     final variant = widget.product.variants[index];
                     final quantity = _quantityMap[variant.variationId] ?? 0;
                     final displayVariantName =
-                        variant.name
-                            .replaceFirst(widget.product.name, '')
-                            .replaceFirst('-', '')
-                            .trim();
+                    variant.name
+                        .replaceFirst(widget.product.name, '')
+                        .replaceFirst('-', '')
+                        .trim();
 
                     return Container(
                       width: 170,
@@ -226,9 +226,9 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
                           borderRadius: BorderRadius.circular(10),
                           side: BorderSide(
                             color:
-                                isDark
-                                    ? Colors.white24
-                                    : const Color(0xFFE1E1E1),
+                            isDark
+                                ? Colors.white24
+                                : const Color(0xFFE1E1E1),
                             width: 1.5,
                           ),
                         ),
@@ -269,60 +269,62 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
 
                           quantity == 0
                               ? ElevatedButton(
-                                onPressed: () => _increment(variant),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      isDark
-                                          ? const Color(0xFF05132A)
-                                          : const Color(0xFF4C5F7D),
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(150, 40),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                            onPressed: () => _increment(variant),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                              isDark
+                                  ? const Color(0xFF05132A)
+                                  : const Color(0xFF4C5F7D),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(152, 49),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('+ ADD'),
+                          )
+                              : Container(
+                            height: 40,
+                            width: 150,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF4C5F7D),
+                              borderRadius: BorderRadius.circular(8),
+                              // border: Border.all(
+                              // color: const Color(0xFF386EDA),
+                              // ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                              children: [
+                                _qtyButton(
+                                  context: context,
+                                  icon: Icons.remove,
+                                  onTap: () => _decrement(variant),
+                                ),
+                                Text(
+                                  '$quantity',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                    isDark
+                                        ? const Color(0xFF3B4259)
+                                        : const Color(0xFFFFFFFF),
                                   ),
                                 ),
-                                child: const Text('+ ADD'),
-                              )
-                              : Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
+                                _qtyButton(
+                                  context: context,
+                                  icon: Icons.add,
+                                  onTap: () => _increment(variant),
                                 ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF4C5F7D),
-                                  borderRadius: BorderRadius.circular(8),
-                                  // border: Border.all(
-                                  // color: const Color(0xFF386EDA),
-                                  // ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    _qtyButton(
-                                      context: context,
-                                      icon: Icons.remove,
-                                      onTap: () => _decrement(variant),
-                                    ),
-                                    Text(
-                                      '$quantity',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color:
-                                            isDark
-                                                ? const Color(0xFF3B4259)
-                                                : const Color(0xFFFFFFFF),
-                                      ),
-                                    ),
-                                    _qtyButton(
-                                      context: context,
-                                      icon: Icons.add,
-                                      onTap: () => _increment(variant),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -340,14 +342,14 @@ class _VariantPopupContentState extends State<VariantPopupContent> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
-                      _hasSelectedVariants
-                          ? const Color(0xFF386EDA)
-                          : (isDark
-                              ? const Color(0xFF161513)
-                              : Colors.grey.shade400),
+                  _hasSelectedVariants
+                      ? const Color(0xFF386EDA)
+                      : (isDark
+                      ? const Color(0xFF161513)
+                      : Colors.grey.shade400),
                   foregroundColor: Colors.white,
                   disabledBackgroundColor:
-                      isDark ? const Color(0xFF161513) : Colors.grey.shade400,
+                  isDark ? const Color(0xFF161513) : Colors.grey.shade400,
                   disabledForegroundColor: Colors.white70,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),

@@ -19,9 +19,14 @@ class OrderstatusBloc extends Bloc<OrderstatusEvent, OrderstatusState> {
       Emitter<OrderstatusState> emit,
       ) async {
     final cacheKey = "${event.restaurantId ?? ''}_${event.date ?? ''}";
+
     final cachedOrders = orderRepository.getCachedOrders(cacheKey);
 
-    if (cachedOrders != null && cachedOrders.isNotEmpty) {
+    // For normal loading, show cache immediately if available.
+    // For manual refresh, DO NOT show the old cached table first.
+    if (!event.forceRefresh &&
+        cachedOrders != null &&
+        cachedOrders.isNotEmpty) {
       emit(OrderLoaded(cachedOrders));
     } else {
       emit(OrderLoading());
@@ -34,10 +39,19 @@ class OrderstatusBloc extends Bloc<OrderstatusEvent, OrderstatusState> {
         restaurantId: event.restaurantId,
         forceRefresh: event.forceRefresh,
       );
+
+      // Always emit the fresh API result.
       emit(OrderLoaded(orders));
     } catch (e) {
-      if (cachedOrders == null || cachedOrders.isEmpty) {
-        emit(OrderError('Failed to load orders: ${e.toString()}'));
+      // If refresh fails but we have old data, keep displaying it.
+      if (cachedOrders != null && cachedOrders.isNotEmpty) {
+        emit(OrderLoaded(cachedOrders));
+      } else {
+        emit(
+          OrderError(
+            'Failed to load orders: ${e.toString()}',
+          ),
+        );
       }
     }
   }

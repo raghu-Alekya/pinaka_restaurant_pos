@@ -52,7 +52,7 @@ class ReservationListScreen extends StatefulWidget {
 class _ReservationListScreenState extends State<ReservationListScreen> {
   int currentPage = 1;
   final int entriesPerPage = 9;
-
+  bool _isRefreshing = false;
   String searchQuery = '';
   String? selectedArea = 'All';
   DateTime? selectedDate;
@@ -133,25 +133,50 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     }
   }
 
-  Future<void> _fetchReservations() async {
-    final data = await _reservationRepository.fetchAllReservations(
-      widget.token,
-    );
-    print("Fetched Reservations at ${DateTime.now()}:");
-    for (var reservation in data) {
-      print(reservation);
+  Future<void> _fetchReservations({bool isRefresh = false}) async {
+    if (isRefresh && _isRefreshing) return;
+
+    if (mounted) {
+      setState(() {
+        _isRefreshing = isRefresh;
+        if (!isRefresh) {
+          _isLoading = true;
+        }
+      });
     }
 
-    if (!mounted) return;
+    try {
+      final data = await _reservationRepository.fetchAllReservations(
+        widget.token,
+      );
 
-    setState(() {
-      _reservations = data;
-      _isLoading = false;
-    });
+      if (!mounted) return;
 
-    // Keep the cache fresh so the next time this screen opens, it paints
-    // instantly with this latest data.
-    _ReservationListCache.update(data);
+      setState(() {
+        _reservations = List<Map<String, dynamic>>.from(data);
+        _isLoading = false;
+        _isRefreshing = false;
+
+        // Important
+        currentPage = 1;
+      });
+
+      _ReservationListCache.update(_reservations);
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _isRefreshing = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to refresh reservations: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   bool _isBeforeCutoff(String reservationDate, String cutoffTime) {
@@ -268,34 +293,34 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     final themeProvider = Provider.of<ThemeProvider>(context);
     final isDark = themeProvider.isDark;
     final filteredReservations =
-        _reservations.where((data) {
-          final query = searchQuery.toLowerCase();
-          final name = data['customer_name']?.toLowerCase() ?? '';
-          final phone = data['customer_phone'] ?? '';
-          final table = data['table_no']?.toLowerCase() ?? '';
-          final zone = data['zone_name'] ?? '';
-          final date = data['reservation_date'] ?? '';
+    _reservations.where((data) {
+      final query = searchQuery.toLowerCase();
+      final name = data['customer_name']?.toLowerCase() ?? '';
+      final phone = data['customer_phone'] ?? '';
+      final table = data['table_no']?.toLowerCase() ?? '';
+      final zone = data['zone_name'] ?? '';
+      final date = data['reservation_date'] ?? '';
 
-          final nameMatch =
-              name.contains(query) ||
+      final nameMatch =
+          name.contains(query) ||
               phone.contains(query) ||
               table.contains(query);
-          final areaMatch = selectedArea == 'All' || zone == selectedArea;
-          final dateMatch =
-              selectedDate == null ||
+      final areaMatch = selectedArea == 'All' || zone == selectedArea;
+      final dateMatch =
+          selectedDate == null ||
               date == DateFormat('yyyy-MM-dd').format(selectedDate!);
 
-          return nameMatch && areaMatch && dateMatch;
-        }).toList();
+      return nameMatch && areaMatch && dateMatch;
+    }).toList();
 
     final totalPages = (filteredReservations.length / entriesPerPage).ceil();
     final startIndex = (currentPage - 1) * entriesPerPage;
     final currentData =
-        filteredReservations.skip(startIndex).take(entriesPerPage).toList();
+    filteredReservations.skip(startIndex).take(entriesPerPage).toList();
 
     return Scaffold(
       backgroundColor:
-          isDark ? const Color(0xFF111827) : const Color(0xFFF6F6F6),
+      isDark ? const Color(0xFF111827) : const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -689,9 +714,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             style: TextStyle(
                               // color: Color(0xFF3D3D3D),
                               color:
-                                  isDark
-                                      ? const Color(0xFFFFFFFF)
-                                      : const Color(0xFF3D3D3D),
+                              isDark
+                                  ? const Color(0xFFFFFFFF)
+                                  : const Color(0xFF3D3D3D),
                               fontSize: 24,
                               fontFamily: 'Inter',
                               fontWeight: FontWeight.w600,
@@ -704,7 +729,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                           height: 40,
                           decoration: ShapeDecoration(
                             color:
-                                isDark ? const Color(0xFF374151) : Colors.white,
+                            isDark ? const Color(0xFF374151) : Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -729,18 +754,18 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               prefixIcon: Icon(
                                 Icons.search,
                                 color:
-                                    isDark
-                                        ? Colors.white70
-                                        : const Color(0xFF7A7A7A),
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF7A7A7A),
                               ),
                               hintText: "Search by name, phone or table",
                               hintStyle: TextStyle(
                                 color:
-                                    isDark
-                                        ? Colors.white54
-                                        : const Color(0xFFC3C2C2),
+                                isDark
+                                    ? Colors.white54
+                                    : const Color(0xFFC3C2C2),
                                 fontWeight:
-                                    FontWeight.w400, // change weight here
+                                FontWeight.w400, // change weight here
                                 fontSize: 14,
                               ),
                             ),
@@ -753,33 +778,33 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                           child: Container(
                             decoration: BoxDecoration(
                               color:
-                                  isDark
-                                      ? const Color(0xFF12171E)
-                                      : Colors.white,
+                              isDark
+                                  ? const Color(0xFF12171E)
+                                  : Colors.white,
                               border: Border.all(
                                 color:
-                                    isDark
-                                        ? const Color(0xFF374151)
-                                        : Colors.grey.shade300,
+                                isDark
+                                    ? const Color(0xFF374151)
+                                    : Colors.grey.shade300,
                                 width: 1,
                               ),
                               borderRadius: BorderRadius.circular(10),
                               boxShadow:
-                                  isDark
-                                      ? [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.35),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                      : const [
-                                        BoxShadow(
-                                          color: Colors.black12,
-                                          blurRadius: 4,
-                                          offset: Offset(0, 2),
-                                        ),
-                                      ],
+                              isDark
+                                  ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                                  : const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
                             ),
                             child: TextField(
                               controller: _dateController,
@@ -789,9 +814,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                                 color:
-                                    isDark
-                                        ? Colors.white
-                                        : const Color(0xFF111827),
+                                isDark
+                                    ? Colors.white
+                                    : const Color(0xFF111827),
                               ),
                               onTap: () async {
                                 final picked = await showDatePicker(
@@ -803,27 +828,27 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                     return Theme(
                                       data: Theme.of(context).copyWith(
                                         colorScheme:
-                                            isDark
-                                                ? const ColorScheme.dark(
-                                                  primary: Color(
-                                                    0xFFFFFFFF,
-                                                  ), // Selected date background
-                                                  onPrimary:
-                                                      Colors
-                                                          .black, // Selected date text
-                                                  surface: Color(
-                                                    0xFF1F2937,
-                                                  ), // Dialog background
-                                                  onSurface:
-                                                      Colors
-                                                          .white, // Calendar text
-                                                )
-                                                : Theme.of(context).colorScheme,
+                                        isDark
+                                            ? const ColorScheme.dark(
+                                          primary: Color(
+                                            0xFFFFFFFF,
+                                          ), // Selected date background
+                                          onPrimary:
+                                          Colors
+                                              .black, // Selected date text
+                                          surface: Color(
+                                            0xFF1F2937,
+                                          ), // Dialog background
+                                          onSurface:
+                                          Colors
+                                              .white, // Calendar text
+                                        )
+                                            : Theme.of(context).colorScheme,
                                         dialogTheme: DialogThemeData(
                                           backgroundColor:
-                                              isDark
-                                                  ? const Color(0xFF1F2937)
-                                                  : Colors.white,
+                                          isDark
+                                              ? const Color(0xFF1F2937)
+                                              : Colors.white,
                                         ),
                                       ),
                                       child: child!,
@@ -834,7 +859,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                   setState(() {
                                     selectedDate = picked;
                                     _dateController.text =
-                                        "${picked.day.toString().padLeft(2, '0')}/"
+                                    "${picked.day.toString().padLeft(2, '0')}/"
                                         "${picked.month.toString().padLeft(2, '0')}/"
                                         "${picked.year}";
                                   });
@@ -853,9 +878,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                   Icons.calendar_today,
                                   size: 18,
                                   color:
-                                      isDark
-                                          ? Colors.white70
-                                          : const Color(0xFF6B7280),
+                                  isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF6B7280),
                                 ),
                               ),
                             ),
@@ -868,69 +893,69 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
                             color:
-                                isDark ? const Color(0xFF374151) : Colors.white,
+                            isDark ? const Color(0xFF374151) : Colors.white,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color:
-                                  isDark
-                                      ? Colors.grey.shade700
-                                      : Colors.grey.shade300,
+                              isDark
+                                  ? Colors.grey.shade700
+                                  : Colors.grey.shade300,
                             ),
                           ),
                           child:
-                              _isZonesLoading
-                                  ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        "Loading areas...",
-                                        style: TextStyle(fontSize: 14),
-                                      ),
-                                    ],
-                                  )
-                                  : DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      value: selectedArea,
-                                      icon: Icon(
-                                        Icons.arrow_drop_down,
-                                        color:
-                                            isDark
-                                                ? Colors.white
-                                                : Colors.black,
-                                      ),
-                                      dropdownColor:
-                                          isDark
-                                              ? const Color(0xFF374151)
-                                              : Colors.white,
-                                      style: TextStyle(
-                                        color:
-                                            isDark
-                                                ? Colors.white
-                                                : Colors.black,
-                                      ),
-                                      onChanged:
-                                          (value) => setState(
-                                            () => selectedArea = value,
-                                          ),
-                                      items:
-                                          _areaNames
-                                              .map(
-                                                (area) => DropdownMenuItem(
-                                                  value: area,
-                                                  child: Text(area),
-                                                ),
-                                              )
-                                              .toList(),
-                                    ),
-                                  ),
+                          _isZonesLoading
+                              ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                "Loading areas...",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ],
+                          )
+                              : DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: selectedArea,
+                              icon: Icon(
+                                Icons.arrow_drop_down,
+                                color:
+                                isDark
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                              dropdownColor:
+                              isDark
+                                  ? const Color(0xFF374151)
+                                  : Colors.white,
+                              style: TextStyle(
+                                color:
+                                isDark
+                                    ? Colors.white
+                                    : Colors.black,
+                              ),
+                              onChanged:
+                                  (value) => setState(
+                                    () => selectedArea = value,
+                              ),
+                              items:
+                              _areaNames
+                                  .map(
+                                    (area) => DropdownMenuItem(
+                                  value: area,
+                                  child: Text(area),
+                                ),
+                              )
+                                  .toList(),
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 12),
 
@@ -938,13 +963,13 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
-                                isResetEnabled
-                                    ? (isDark
-                                        ? const Color(0xFF374151)
-                                        : const Color(0xFFFDF8F8))
-                                    : Colors.grey.shade700,
+                            isResetEnabled
+                                ? (isDark
+                                ? const Color(0xFF374151)
+                                : const Color(0xFFFDF8F8))
+                                : Colors.grey.shade700,
                             foregroundColor:
-                                isResetEnabled ? Colors.red : Colors.grey,
+                            isResetEnabled ? Colors.red : Colors.grey,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -954,25 +979,25 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               borderRadius: BorderRadius.circular(10),
                               side: BorderSide(
                                 color:
-                                    isResetEnabled
-                                        ? Colors.red
-                                        : Colors.grey.shade400,
+                                isResetEnabled
+                                    ? Colors.red
+                                    : Colors.grey.shade400,
                               ),
                             ),
                           ),
                           onPressed:
-                              isResetEnabled
-                                  ? () {
-                                    setState(() {
-                                      searchQuery = '';
-                                      selectedArea = 'All';
-                                      selectedDate = null;
-                                      _searchController.clear();
-                                      _dateController.clear();
-                                      currentPage = 1;
-                                    });
-                                  }
-                                  : null,
+                          isResetEnabled
+                              ? () {
+                            setState(() {
+                              searchQuery = '';
+                              selectedArea = 'All';
+                              selectedDate = null;
+                              _searchController.clear();
+                              _dateController.clear();
+                              currentPage = 1;
+                            });
+                          }
+                              : null,
                           icon: Icon(
                             Icons.refresh,
                             size: 16,
@@ -986,27 +1011,62 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(width: 12),
 
+// Refresh button
+                        SizedBox(
+                          height: 40,
+                          width: 42,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor:
+                              isDark ? const Color(0xFF374151) : Colors.white,
+                              foregroundColor:
+                              isDark ? Colors.white : const Color(0xFF374151),
+                              padding: EdgeInsets.zero,
+                              side: BorderSide(
+                                color:
+                                isDark
+                                    ? Colors.grey.shade700
+                                    : Colors.grey.shade300,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed:
+                            _isRefreshing
+                                ? null
+                                : () => _fetchReservations(isRefresh: true),
+                            child: Icon(
+                              Icons.sync,
+                              size: 19,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF374151),
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 12),
                         Container(
                           height: 40,
                           decoration: BoxDecoration(
                             gradient:
-                                _userPermissions?.canCreateReservation ?? false
-                                    ? const LinearGradient(
-                                      begin: Alignment(0.51, 1.00),
-                                      end: Alignment(0.04, -0.20),
-                                      colors: [
-                                        Color(0xFFFF3849),
-                                        Color(0xFFFF5362),
-                                      ],
-                                    )
-                                    : LinearGradient(
-                                      colors: [
-                                        Colors.grey.shade400,
-                                        Colors.grey.shade400,
-                                      ],
-                                    ),
+                            _userPermissions?.canCreateReservation ?? false
+                                ? const LinearGradient(
+                              begin: Alignment(0.51, 1.00),
+                              end: Alignment(0.04, -0.20),
+                              colors: [
+                                Color(0xFFFF3849),
+                                Color(0xFFFF5362),
+                              ],
+                            )
+                                : LinearGradient(
+                              colors: [
+                                Colors.grey.shade400,
+                                Colors.grey.shade400,
+                              ],
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: ElevatedButton(
@@ -1030,11 +1090,11 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                   MaterialPageRoute(
                                     builder:
                                         (_) => CreateReservationScreen(
-                                          pin: widget.pin,
-                                          token: widget.token,
-                                          restaurantId: widget.restaurantId,
-                                          restaurantName: widget.restaurantName,
-                                        ),
+                                      pin: widget.pin,
+                                      token: widget.token,
+                                      restaurantId: widget.restaurantId,
+                                      restaurantName: widget.restaurantName,
+                                    ),
                                   ),
                                 );
                               } else {
@@ -1044,7 +1104,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                   toArea: '',
                                   tableName: 'Reservation',
                                   customMessage:
-                                      "No permission to create reservation",
+                                  "No permission to create reservation",
                                 );
                               }
                             },
@@ -1073,9 +1133,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                       child: Container(
                         decoration: BoxDecoration(
                           color:
-                              isDark
-                                  ? const Color(0xFF374151)
-                                  : const Color(0xFFEFEFEF),
+                          isDark
+                              ? const Color(0xFF374151)
+                              : const Color(0xFFEFEFEF),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         clipBehavior: Clip.antiAlias,
@@ -1089,9 +1149,9 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               height: 50,
                               decoration: BoxDecoration(
                                 color:
-                                    isDark
-                                        ? const Color(0xFF111827)
-                                        : const Color(0xFF2A3558),
+                                isDark
+                                    ? const Color(0xFF111827)
+                                    : const Color(0xFF2A3558),
                                 borderRadius: const BorderRadius.only(
                                   topLeft: Radius.circular(8),
                                   topRight: Radius.circular(8),
@@ -1119,253 +1179,261 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               ),
                             ),
                             Expanded(
-                              child:
-                                  filteredReservations.isEmpty
-                                      ? Center(
-                                        child: Text(
-                                          "There are no reservations",
-                                          style: TextStyle(
-                                            color:
-                                                isDark
-                                                    ? Colors.white70
-                                                    : Colors.grey[800],
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
+                              child: _isRefreshing
+                                  ? Center(
+                                child: CircularProgressIndicator(
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF918E8C),
+                                ),
+                              )
+
+                                  : filteredReservations.isEmpty
+                                  ? Center(
+                                child: Text(
+                                  "There are no reservations",
+                                  style: TextStyle(
+                                    color:
+                                    isDark
+                                        ? Colors.white70
+                                        : Colors.grey[800],
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              )
+                                  : ListView.builder(
+                                physics: NeverScrollableScrollPhysics(),
+                                itemCount: currentData.length,
+                                itemBuilder: (context, index) {
+                                  final data = currentData[index];
+                                  final canEdit = _isBeforeCutoff(
+                                    data['reservation_date'],
+                                    data['cutoff_time'],
+                                  );
+                                  final status =
+                                      data['reservation_status']
+                                          ?.toLowerCase() ??
+                                          '';
+                                  final isRowDisabled =
+                                      status.toLowerCase() ==
+                                          'expired' ||
+                                          status.toLowerCase() ==
+                                              'cancelled' ||
+                                          status.toLowerCase() == 'seated';
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 13,
+                                      horizontal: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                      isDark
+                                          ? const Color(0xFF1F2937)
+                                          : const Color(
+                                        0xFFFCFCFF,
+                                      ), // Data row background color
+                                      border: const Border(
+                                        bottom: BorderSide(
+                                          color: Color(0xFFE0E0E0),
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        _TableCell(
+                                          '${data['reservation_id']}',
+                                          isDark: isDark,
+                                        ),
+                                        _TableCell(
+                                          DateFormat('dd/MM/yy').format(
+                                            DateTime.parse(
+                                              data['reservation_date'],
+                                            ),
+                                          ),
+                                          isDark: isDark,
+                                        ),
+                                        _TableCell(
+                                          data['reservation_time'] ??
+                                              '',
+                                          isDark: isDark,
+                                        ),
+                                        _TableCell(
+                                          data['customer_name'] ?? '',
+                                          isDark: isDark,
+                                        ),
+                                        const SizedBox(width: 20),
+                                        _TableCell(
+                                          data['customer_phone'] ?? '',
+                                          isDark: isDark,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        _TableCell(
+                                          '${data['people_count']}',
+                                          isDark: isDark,
+                                        ),
+                                        _TableCell(
+                                          data['table_no'] ?? '',
+                                          isDark: isDark,
+                                        ),
+                                        _TableCell(
+                                          data['zone_name'] ?? '',
+                                          isDark: isDark,
+                                        ),
+                                        Container(
+                                          alignment: Alignment.center,
+                                          child: _buildStatusBadge(
+                                            data['reservation_status'] ??
+                                                '',
+                                            isDark,
                                           ),
                                         ),
-                                      )
-                                      : ListView.builder(
-                                        physics: NeverScrollableScrollPhysics(),
-                                        itemCount: currentData.length,
-                                        itemBuilder: (context, index) {
-                                          final data = currentData[index];
-                                          final canEdit = _isBeforeCutoff(
-                                            data['reservation_date'],
-                                            data['cutoff_time'],
-                                          );
-                                          final status =
-                                              data['reservation_status']
-                                                  ?.toLowerCase() ??
-                                              '';
-                                          final isRowDisabled =
-                                              status.toLowerCase() ==
-                                                  'expired' ||
-                                              status.toLowerCase() ==
-                                                  'cancelled' ||
-                                              status.toLowerCase() == 'seated';
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 13,
-                                              horizontal: 10,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  isDark
-                                                      ? const Color(0xFF1F2937)
-                                                      : const Color(
-                                                        0xFFFCFCFF,
-                                                      ), // Data row background color
-                                              border: const Border(
-                                                bottom: BorderSide(
-                                                  color: Color(0xFFE0E0E0),
-                                                ),
-                                              ),
-                                            ),
+                                        const SizedBox(width: 24),
+                                        _TableCell(
+                                          '',
+                                          isDark: isDark,
+                                          child: Align(
+                                            alignment: Alignment.center,
                                             child: Row(
+                                              mainAxisSize:
+                                              MainAxisSize.min,
                                               children: [
-                                                _TableCell(
-                                                  '${data['reservation_id']}',
-                                                  isDark: isDark,
-                                                ),
-                                                _TableCell(
-                                                  DateFormat('dd/MM/yy').format(
-                                                    DateTime.parse(
-                                                      data['reservation_date'],
+                                                if (!isRowDisabled &&
+                                                    canEdit)
+                                                  InkWell(
+                                                    onTap: () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder:
+                                                              (
+                                                              _,
+                                                              ) => CreateReservationScreen(
+                                                            pin:
+                                                            widget.pin,
+                                                            token:
+                                                            widget.token,
+                                                            restaurantId:
+                                                            widget.restaurantId,
+                                                            restaurantName:
+                                                            widget.restaurantName,
+                                                            isEditMode:
+                                                            true,
+                                                            reservationData: {
+                                                              'reservation_id':
+                                                              data['reservation_id'],
+                                                              'people':
+                                                              data['people_count']?.toString(),
+                                                              'name':
+                                                              data['customer_name'],
+                                                              'phone':
+                                                              data['customer_phone'],
+                                                              'date':
+                                                              data['reservation_date'],
+                                                              'time':
+                                                              data['reservation_time'],
+                                                              'table':
+                                                              data['table_no'],
+                                                              'priority':
+                                                              data['priority_category'],
+                                                              'area':
+                                                              data['zone_name'],
+                                                            },
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                    child: const Icon(
+                                                      Icons.edit,
+                                                      size: 18,
+                                                      color:
+                                                      Colors.blue,
                                                     ),
+                                                  )
+                                                else
+                                                  Icon(
+                                                    Icons.edit,
+                                                    size: 18,
+                                                    color:
+                                                    Colors
+                                                        .grey
+                                                        .shade400,
                                                   ),
-                                                  isDark: isDark,
+                                                const SizedBox(
+                                                  width: 30,
                                                 ),
-                                                _TableCell(
-                                                  data['reservation_time'] ??
-                                                      '',
-                                                  isDark: isDark,
-                                                ),
-                                                _TableCell(
-                                                  data['customer_name'] ?? '',
-                                                  isDark: isDark,
-                                                ),
-                                                const SizedBox(width: 20),
-                                                _TableCell(
-                                                  data['customer_phone'] ?? '',
-                                                  isDark: isDark,
-                                                ),
-                                                const SizedBox(width: 10),
-                                                _TableCell(
-                                                  '${data['people_count']}',
-                                                  isDark: isDark,
-                                                ),
-                                                _TableCell(
-                                                  data['table_no'] ?? '',
-                                                  isDark: isDark,
-                                                ),
-                                                _TableCell(
-                                                  data['zone_name'] ?? '',
-                                                  isDark: isDark,
-                                                ),
-                                                Container(
-                                                  alignment: Alignment.center,
-                                                  child: _buildStatusBadge(
-                                                    data['reservation_status'] ??
-                                                        '',
-                                                    isDark,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 24),
-                                                _TableCell(
-                                                  '',
-                                                  isDark: isDark,
-                                                  child: Align(
-                                                    alignment: Alignment.center,
-                                                    child: Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        if (!isRowDisabled &&
-                                                            canEdit)
-                                                          InkWell(
-                                                            onTap: () {
-                                                              Navigator.push(
+                                                if (!isRowDisabled)
+                                                  InkWell(
+                                                    onTap: () {
+                                                      showDialog(
+                                                        context:
+                                                        context,
+                                                        barrierDismissible:
+                                                        false,
+                                                        builder:
+                                                            (
+                                                            _,
+                                                            ) => DeleteReservationDialog(
+                                                          onDelete: () async {
+                                                            final success = await _reservationRepository.cancelReservation(
+                                                              context:
+                                                              context,
+                                                              token:
+                                                              widget.token,
+                                                              reservationId:
+                                                              data['reservation_id'],
+                                                              restaurantId: int.parse(
+                                                                widget.restaurantId,
+                                                              ),
+                                                            );
+
+                                                            if (success) {
+                                                              _fetchReservations();
+                                                            } else {
+                                                              ScaffoldMessenger.of(
                                                                 context,
-                                                                MaterialPageRoute(
-                                                                  builder:
-                                                                      (
-                                                                        _,
-                                                                      ) => CreateReservationScreen(
-                                                                        pin:
-                                                                            widget.pin,
-                                                                        token:
-                                                                            widget.token,
-                                                                        restaurantId:
-                                                                            widget.restaurantId,
-                                                                        restaurantName:
-                                                                            widget.restaurantName,
-                                                                        isEditMode:
-                                                                            true,
-                                                                        reservationData: {
-                                                                          'reservation_id':
-                                                                              data['reservation_id'],
-                                                                          'people':
-                                                                              data['people_count']?.toString(),
-                                                                          'name':
-                                                                              data['customer_name'],
-                                                                          'phone':
-                                                                              data['customer_phone'],
-                                                                          'date':
-                                                                              data['reservation_date'],
-                                                                          'time':
-                                                                              data['reservation_time'],
-                                                                          'table':
-                                                                              data['table_no'],
-                                                                          'priority':
-                                                                              data['priority_category'],
-                                                                          'area':
-                                                                              data['zone_name'],
-                                                                        },
-                                                                      ),
+                                                              ).showSnackBar(
+                                                                const SnackBar(
+                                                                  content: Text(
+                                                                    'Failed to cancel reservation.',
+                                                                  ),
+                                                                  duration: Duration(
+                                                                    seconds:
+                                                                    1,
+                                                                  ),
+                                                                  backgroundColor:
+                                                                  Colors.red,
                                                                 ),
                                                               );
-                                                            },
-                                                            child: const Icon(
-                                                              Icons.edit,
-                                                              size: 18,
-                                                              color:
-                                                                  Colors.blue,
-                                                            ),
-                                                          )
-                                                        else
-                                                          Icon(
-                                                            Icons.edit,
-                                                            size: 18,
-                                                            color:
-                                                                Colors
-                                                                    .grey
-                                                                    .shade400,
-                                                          ),
-                                                        const SizedBox(
-                                                          width: 30,
+                                                            }
+                                                          },
                                                         ),
-                                                        if (!isRowDisabled)
-                                                          InkWell(
-                                                            onTap: () {
-                                                              showDialog(
-                                                                context:
-                                                                    context,
-                                                                barrierDismissible:
-                                                                    false,
-                                                                builder:
-                                                                    (
-                                                                      _,
-                                                                    ) => DeleteReservationDialog(
-                                                                      onDelete: () async {
-                                                                        final success = await _reservationRepository.cancelReservation(
-                                                                          context:
-                                                                              context,
-                                                                          token:
-                                                                              widget.token,
-                                                                          reservationId:
-                                                                              data['reservation_id'],
-                                                                          restaurantId: int.parse(
-                                                                            widget.restaurantId,
-                                                                          ),
-                                                                        );
-
-                                                                        if (success) {
-                                                                          _fetchReservations();
-                                                                        } else {
-                                                                          ScaffoldMessenger.of(
-                                                                            context,
-                                                                          ).showSnackBar(
-                                                                            const SnackBar(
-                                                                              content: Text(
-                                                                                'Failed to cancel reservation.',
-                                                                              ),
-                                                                              duration: Duration(
-                                                                                seconds:
-                                                                                    1,
-                                                                              ),
-                                                                              backgroundColor:
-                                                                                  Colors.red,
-                                                                            ),
-                                                                          );
-                                                                        }
-                                                                      },
-                                                                    ),
-                                                              );
-                                                            },
-                                                            child: const Icon(
-                                                              Icons.delete,
-                                                              size: 18,
-                                                              color: Colors.red,
-                                                            ),
-                                                          )
-                                                        else
-                                                          Icon(
-                                                            Icons.delete,
-                                                            size: 18,
-                                                            color:
-                                                                Colors
-                                                                    .grey
-                                                                    .shade400,
-                                                          ),
-                                                      ],
+                                                      );
+                                                    },
+                                                    child: const Icon(
+                                                      Icons.delete,
+                                                      size: 18,
+                                                      color: Colors.red,
                                                     ),
+                                                  )
+                                                else
+                                                  Icon(
+                                                    Icons.delete,
+                                                    size: 18,
+                                                    color:
+                                                    Colors
+                                                        .grey
+                                                        .shade400,
                                                   ),
-                                                ),
                                               ],
                                             ),
-                                          );
-                                        },
-                                      ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
 
                             const SizedBox(height: 5),
@@ -1383,34 +1451,34 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                               ),
                               child: Row(
                                 mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     filteredReservations.length ==
-                                            _reservations.length
+                                        _reservations.length
                                         ? "Total Reservations: ${_reservations.length}"
                                         : "Showing ${filteredReservations.length} of ${_reservations.length} Reservations",
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color:
-                                          isDark
-                                              ? Colors.white
-                                              : Colors.black87,
+                                      isDark
+                                          ? Colors.white
+                                          : Colors.black87,
                                     ),
                                   ),
 
                                   Container(
                                     decoration: BoxDecoration(
                                       color:
-                                          isDark
-                                              ? const Color(0xFF374151)
-                                              : Colors.white,
+                                      isDark
+                                          ? const Color(0xFF374151)
+                                          : Colors.white,
                                       border: Border.all(
                                         color:
-                                            isDark
-                                                ? Colors.grey.shade300
-                                                : const Color(0xFFEFEFEF),
+                                        isDark
+                                            ? Colors.grey.shade300
+                                            : const Color(0xFFEFEFEF),
                                       ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
@@ -1419,11 +1487,11 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                       children: [
                                         GestureDetector(
                                           onTap:
-                                              currentPage > 1
-                                                  ? () => setState(
-                                                    () => currentPage--,
-                                                  )
-                                                  : null,
+                                          currentPage > 1
+                                              ? () => setState(
+                                                () => currentPage--,
+                                          )
+                                              : null,
                                           child: _paginationTextButton(
                                             "Previous",
                                             isDark,
@@ -1434,7 +1502,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                           onTap:
                                               () => setState(
                                                 () => currentPage = 1,
-                                              ),
+                                          ),
                                           child: _pageButton(
                                             1,
                                             selected: currentPage == 1,
@@ -1447,7 +1515,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                             onTap:
                                                 () => setState(
                                                   () => currentPage = 2,
-                                                ),
+                                            ),
                                             child: _pageButton(
                                               2,
                                               selected: currentPage == 2,
@@ -1460,7 +1528,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                             onTap:
                                                 () => setState(
                                                   () => currentPage = 3,
-                                                ),
+                                            ),
                                             child: _pageButton(
                                               3,
                                               selected: currentPage == 3,
@@ -1476,23 +1544,23 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                             onTap:
                                                 () => setState(
                                                   () =>
-                                                      currentPage = totalPages,
-                                                ),
+                                              currentPage = totalPages,
+                                            ),
                                             child: _pageButton(
                                               totalPages,
                                               selected:
-                                                  currentPage == totalPages,
+                                              currentPage == totalPages,
                                               isDark: isDark,
                                             ),
                                           ),
 
                                         GestureDetector(
                                           onTap:
-                                              currentPage < totalPages
-                                                  ? () => setState(
-                                                    () => currentPage++,
-                                                  )
-                                                  : null,
+                                          currentPage < totalPages
+                                              ? () => setState(
+                                                () => currentPage++,
+                                          )
+                                              : null,
                                           child: _paginationTextButton(
                                             "Next",
                                             isDark,
@@ -1548,9 +1616,9 @@ Widget _pageButton(int page, {bool selected = false, required bool isDark}) {
     height: 32,
     decoration: BoxDecoration(
       color:
-          selected
-              ? const Color(0xFFFF4D20)
-              : (isDark ? const Color(0xFF374151) : Colors.white),
+      selected
+          ? const Color(0xFFFF4D20)
+          : (isDark ? const Color(0xFF374151) : Colors.white),
       border: Border(
         right: BorderSide(
           color: isDark ? Colors.grey.shade700 : const Color(0xFFEFEFEF),
@@ -1562,9 +1630,9 @@ Widget _pageButton(int page, {bool selected = false, required bool isDark}) {
       '$page',
       style: TextStyle(
         color:
-            selected
-                ? Colors.white
-                : (isDark ? Colors.white70 : const Color(0xFF727272)),
+        selected
+            ? Colors.white
+            : (isDark ? Colors.white70 : const Color(0xFF727272)),
         fontSize: 11,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
       ),
@@ -1657,12 +1725,12 @@ class _TableCell extends StatelessWidget {
   final bool isDark;
 
   const _TableCell(
-    this.content, {
-    Key? key,
-    this.flex = 1,
-    this.child,
-    required this.isDark,
-  }) : super(key: key);
+      this.content, {
+        Key? key,
+        this.flex = 1,
+        this.child,
+        required this.isDark,
+      }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1670,7 +1738,7 @@ class _TableCell extends StatelessWidget {
       flex: flex,
       child: Center(
         child:
-            child ??
+        child ??
             Text(
               content,
               style: TextStyle(

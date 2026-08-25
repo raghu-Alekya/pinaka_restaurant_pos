@@ -90,11 +90,12 @@ class _TipsScreenState extends State<TipsScreen>
   DateTime? selectedDate;
   static const int rowsPerPage = 10;
   String _currency = "₹";
-
+  bool _isRefreshing = false; // Sync/data refresh only
+  bool _isResetting = false;  // Reset button only
+  bool _hasNewTips = false;
   String _currentDate = '';
   bool _isInitialLoad = true;
-  bool _isRefreshing = false;
-  bool _hasNewTips = false;
+
   // Prevent stale responses
   int _fetchSequence = 0;
 
@@ -168,7 +169,43 @@ class _TipsScreenState extends State<TipsScreen>
       });
     }
   }
+  Future<void> _refreshTipsData() async {
+    if (_currentDate.isEmpty || _isRefreshing) return;
 
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      final response = await TipssummaryRepository().getTips(
+        token: widget.token,
+        tipDate: _currentDate,
+      );
+
+      if (!mounted || response == null) return;
+
+      _TipsCache.set(_currentDate, response);
+
+      _OrderIdTracker.set(
+        _currentDate,
+        response.orders.map((o) => o.orderId).toSet(),
+      );
+
+      setState(() {
+        tipsData = response;
+        currentPage = 1;
+        _updatePagination();
+      });
+    } catch (e) {
+      debugPrint('❌ Error refreshing tips data: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
+  }
   Future<void> _loadPermissions() async {
     final savedPermissions = await SessionManager.loadPermissions();
     if (savedPermissions != null) {
@@ -180,9 +217,9 @@ class _TipsScreenState extends State<TipsScreen>
 
   // ✅ Cache + sequence + _currentDate always in sync
   Future<void> _loadTipsWithCache(
-    String date, {
-    bool forceRefresh = false,
-  }) async {
+      String date, {
+        bool forceRefresh = false,
+      }) async {
     final int mySequence = ++_fetchSequence;
     _currentDate = date;
 
@@ -287,9 +324,9 @@ class _TipsScreenState extends State<TipsScreen>
       final existingIds = existingData.orders.map((o) => o.orderId).toSet();
 
       final newOrders =
-          response.orders
-              .where((o) => !existingIds.contains(o.orderId))
-              .toList();
+      response.orders
+          .where((o) => !existingIds.contains(o.orderId))
+          .toList();
 
       if (newOrders.isEmpty) return;
 
@@ -298,7 +335,7 @@ class _TipsScreenState extends State<TipsScreen>
 
       final newTotalTip = updatedOrders.fold<double>(
         0.0,
-        (sum, order) => sum + order.orderTipAmt,
+            (sum, order) => sum + order.orderTipAmt,
       );
 
       final updatedData = TipsScreenModel(
@@ -371,14 +408,14 @@ class _TipsScreenState extends State<TipsScreen>
 
     final existingIds = existingData.orders.map((o) => o.orderId).toSet();
     final filteredNew =
-        newOrders.where((o) => !existingIds.contains(o.orderId)).toList();
+    newOrders.where((o) => !existingIds.contains(o.orderId)).toList();
 
     if (filteredNew.isEmpty) return;
 
     final updatedOrders = [...filteredNew, ...existingData.orders];
     final newTotalTip = updatedOrders.fold<double>(
       0.0,
-      (sum, order) => sum + order.orderTipAmt,
+          (sum, order) => sum + order.orderTipAmt,
     );
 
     final updatedData = TipsScreenModel(
@@ -424,7 +461,7 @@ class _TipsScreenState extends State<TipsScreen>
 
     return Scaffold(
       backgroundColor:
-          isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
+      isDark ? const Color(0xFF161A26) : const Color(0xFFF6F6F6),
       appBar: TopBar(
         token: widget.token,
         pin: widget.pin,
@@ -456,9 +493,9 @@ class _TipsScreenState extends State<TipsScreen>
             shadows: [
               BoxShadow(
                 color:
-                    isDark
-                        ? Colors.black.withOpacity(0.35)
-                        : const Color(0x3F474747),
+                isDark
+                    ? Colors.black.withOpacity(0.35)
+                    : const Color(0x3F474747),
                 blurRadius: 10,
                 offset: const Offset(0, 1),
               ),
@@ -489,31 +526,31 @@ class _TipsScreenState extends State<TipsScreen>
                       child: Container(
                         decoration: BoxDecoration(
                           color:
-                              isDark ? const Color(0xFF12171E) : Colors.white,
+                          isDark ? const Color(0xFF12171E) : Colors.white,
                           border: Border.all(
                             color:
-                                isDark
-                                    ? const Color(0xFF374151)
-                                    : Colors.grey.shade300,
+                            isDark
+                                ? const Color(0xFF374151)
+                                : Colors.grey.shade300,
                             width: 1,
                           ),
                           borderRadius: BorderRadius.circular(10),
                           boxShadow:
-                              isDark
-                                  ? [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.35),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                  : const [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 4,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
+                          isDark
+                              ? [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                              : const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: TextField(
                           controller: _datetipController,
@@ -523,7 +560,7 @@ class _TipsScreenState extends State<TipsScreen>
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color:
-                                isDark ? Colors.white : const Color(0xFF111827),
+                            isDark ? Colors.white : const Color(0xFF111827),
                           ),
                           onTap: () async {
                             final picked = await showDatePicker(
@@ -535,19 +572,19 @@ class _TipsScreenState extends State<TipsScreen>
                                 return Theme(
                                   data: Theme.of(context).copyWith(
                                     colorScheme:
-                                        isDark
-                                            ? const ColorScheme.dark(
-                                              primary: Color(0xFFFFFFFF),
-                                              onPrimary: Colors.black,
-                                              surface: Color(0xFF1F2937),
-                                              onSurface: Colors.white,
-                                            )
-                                            : Theme.of(context).colorScheme,
+                                    isDark
+                                        ? const ColorScheme.dark(
+                                      primary: Color(0xFFFFFFFF),
+                                      onPrimary: Colors.black,
+                                      surface: Color(0xFF1F2937),
+                                      onSurface: Colors.white,
+                                    )
+                                        : Theme.of(context).colorScheme,
                                     dialogTheme: DialogThemeData(
                                       backgroundColor:
-                                          isDark
-                                              ? const Color(0xFF1F2937)
-                                              : Colors.white,
+                                      isDark
+                                          ? const Color(0xFF1F2937)
+                                          : Colors.white,
                                     ),
                                   ),
                                   child: child!,
@@ -583,9 +620,9 @@ class _TipsScreenState extends State<TipsScreen>
                               Icons.calendar_today,
                               size: 18,
                               color:
-                                  isDark
-                                      ? Colors.white70
-                                      : const Color(0xFF6B7280),
+                              isDark
+                                  ? Colors.white70
+                                  : const Color(0xFF6B7280),
                             ),
                           ),
                         ),
@@ -594,16 +631,19 @@ class _TipsScreenState extends State<TipsScreen>
                     const SizedBox(width: 16),
 
                     /// Refresh Button
+                    /// RESET Button
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
-                            _hasNewTips
-                                ? Colors.red
-                                : (isDark
-                                    ? const Color(0xFF374151)
-                                    : const Color(0xFFFDF8F8)),
+                        _hasNewTips
+                            ? Colors.red
+                            : (isDark
+                            ? const Color(0xFF374151)
+                            : const Color(0xFFFDF8F8)),
                         foregroundColor:
-                            isDark ? Colors.white70 : Colors.grey[700],
+                        _hasNewTips
+                            ? Colors.white
+                            : (isDark ? Colors.white70 : Colors.grey[700]),
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -613,65 +653,147 @@ class _TipsScreenState extends State<TipsScreen>
                           borderRadius: BorderRadius.circular(10),
                           side: BorderSide(
                             color:
-                                isDark
-                                    ? Colors.grey.shade600
-                                    : Colors.grey.shade300,
+                            isDark
+                                ? Colors.grey.shade600
+                                : Colors.grey.shade300,
                           ),
                         ),
                       ),
-                      onPressed:
-                          _isRefreshing
-                              ? null
-                              : () {
-                                setState(() {
-                                  _hasNewTips = false;
-                                });
-                                refreshTips();
-                              },
+
+                      // IMPORTANT: Reset uses _isResetting
+                      onPressed: _isResetting
+                          ? null
+                          : () async {
+                        setState(() {
+                          _isResetting = true;
+
+                          // Reset new-tip indicator
+                          _hasNewTips = false;
+
+                          // Reset date to today
+                          final today = DateTime.now();
+
+                          selectedDate = today;
+                          _currentDate = _formatDate(today);
+                          _datetipController.text =
+                              _formatDateForDisplay(today);
+
+                          // Reset pagination
+                          currentPage = 1;
+                        });
+
+                        try {
+                          await _loadTipsWithCache(
+                            _currentDate,
+                            forceRefresh: true,
+                          );
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isResetting = false;
+                            });
+                          }
+                        }
+                      },
+
                       icon:
-                          _isRefreshing
-                              ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                              : Icon(
-                                Icons.refresh,
-                                size: 16,
-                                color:
-                                    _hasNewTips
-                                        ? Colors.white
-                                        : (isDark
-                                            ? Colors.white70
-                                            : Colors.grey[700]),
-                              ),
+                      _isResetting
+                          ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                          : Icon(
+                        Icons.refresh,
+                        size: 16,
+                        color:
+                        _hasNewTips
+                            ? Colors.white
+                            : (isDark
+                            ? Colors.white70
+                            : Colors.grey[700]),
+                      ),
+
                       label: Text(
                         "Reset",
                         style: TextStyle(
                           fontSize: 14,
                           color:
-                              _hasNewTips
-                                  ? Colors.white
-                                  : (isDark
-                                      ? Colors.white70
-                                      : Colors.grey[700]),
+                          _hasNewTips
+                              ? Colors.white
+                              : (isDark
+                              ? Colors.white70
+                              : Colors.grey[700]),
                         ),
                       ),
                     ),
                     const SizedBox(width: 16),
+                    /// REFRESH DATA Button
+                    Container(
+                      width: 40,
+                      height: 40,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
+                        color: isDark
+                            ? const Color(0xFF202433)
+                            : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(
+                            width: 1,
+                            color: isDark
+                                ? const Color(0xFF4B5563)
+                                : const Color(0xFF152148),
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(10),
 
+                          // Only _isRefreshing controls this button
+                          onTap: _isRefreshing
+                              ? null
+                              : _refreshTipsData,
+
+                          child: Center(
+                            child:
+                            _isRefreshing
+                                ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF152148),
+                              ),
+                            )
+                                : Icon(
+                              Icons.sync,
+                              size: 22,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF152148),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     /// Total Tip
                     Container(
                       height: 40,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: ShapeDecoration(
                         color:
-                            isDark
-                                ? const Color(0xFF2B3042)
-                                : const Color(0xFFF6F8FF),
+                        isDark
+                            ? const Color(0xFF2B3042)
+                            : const Color(0xFFF6F8FF),
                         shape: RoundedRectangleBorder(
                           side: const BorderSide(
                             width: 1,
@@ -694,9 +816,9 @@ class _TipsScreenState extends State<TipsScreen>
                             style: TextStyle(
                               fontSize: 12,
                               color:
-                                  isDark
-                                      ? Colors.white70
-                                      : const Color(0xFF383838),
+                              isDark
+                                  ? Colors.white70
+                                  : const Color(0xFF383838),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -706,9 +828,9 @@ class _TipsScreenState extends State<TipsScreen>
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                               color:
-                                  isDark
-                                      ? const Color(0xFF498FFF)
-                                      : const Color(0xFF022A7E),
+                              isDark
+                                  ? const Color(0xFF498FFF)
+                                  : const Color(0xFF022A7E),
                             ),
                           ),
                         ],
@@ -729,9 +851,9 @@ class _TipsScreenState extends State<TipsScreen>
                     margin: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color:
-                          isDark
-                              ? const Color(0xFF202433)
-                              : const Color(0xFFF2F2F2),
+                      isDark
+                          ? const Color(0xFF202433)
+                          : const Color(0xFFF2F2F2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -741,9 +863,9 @@ class _TipsScreenState extends State<TipsScreen>
                           height: 45,
                           decoration: BoxDecoration(
                             color:
-                                isDark
-                                    ? const Color(0xFF2B4267)
-                                    : const Color(0xFF2A3558),
+                            isDark
+                                ? const Color(0xFF2B4267)
+                                : const Color(0xFF2A3558),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(8),
                               topRight: Radius.circular(8),
@@ -831,18 +953,18 @@ class _TipsScreenState extends State<TipsScreen>
                                       size: 20,
                                     ),
                                     color:
-                                        isDark
-                                            ? Colors.white70
-                                            : Colors.grey[700],
+                                    isDark
+                                        ? Colors.white70
+                                        : Colors.grey[700],
                                     onPressed:
-                                        currentPage > 1
-                                            ? () {
-                                              setState(() {
-                                                currentPage = 1;
-                                                _scrollController.jumpTo(0);
-                                              });
-                                            }
-                                            : null,
+                                    currentPage > 1
+                                        ? () {
+                                      setState(() {
+                                        currentPage = 1;
+                                        _scrollController.jumpTo(0);
+                                      });
+                                    }
+                                        : null,
                                   ),
                                   IconButton(
                                     icon: const Icon(
@@ -850,18 +972,18 @@ class _TipsScreenState extends State<TipsScreen>
                                       size: 24,
                                     ),
                                     color:
-                                        isDark
-                                            ? Colors.white70
-                                            : Colors.grey[700],
+                                    isDark
+                                        ? Colors.white70
+                                        : Colors.grey[700],
                                     onPressed:
-                                        currentPage > 1
-                                            ? () {
-                                              setState(() {
-                                                currentPage--;
-                                                _scrollController.jumpTo(0);
-                                              });
-                                            }
-                                            : null,
+                                    currentPage > 1
+                                        ? () {
+                                      setState(() {
+                                        currentPage--;
+                                        _scrollController.jumpTo(0);
+                                      });
+                                    }
+                                        : null,
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
@@ -871,9 +993,9 @@ class _TipsScreenState extends State<TipsScreen>
                                       '$currentPage of $totalPages',
                                       style: TextStyle(
                                         color:
-                                            isDark
-                                                ? Colors.white70
-                                                : Colors.grey[700],
+                                        isDark
+                                            ? Colors.white70
+                                            : Colors.grey[700],
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -884,34 +1006,34 @@ class _TipsScreenState extends State<TipsScreen>
                                       size: 24,
                                     ),
                                     color:
-                                        isDark
-                                            ? Colors.white70
-                                            : Colors.grey[700],
+                                    isDark
+                                        ? Colors.white70
+                                        : Colors.grey[700],
                                     onPressed:
-                                        currentPage < totalPages
-                                            ? () {
-                                              setState(() {
-                                                currentPage++;
-                                                _scrollController.jumpTo(0);
-                                              });
-                                            }
-                                            : null,
+                                    currentPage < totalPages
+                                        ? () {
+                                      setState(() {
+                                        currentPage++;
+                                        _scrollController.jumpTo(0);
+                                      });
+                                    }
+                                        : null,
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.last_page, size: 20),
                                     color:
-                                        isDark
-                                            ? Colors.white70
-                                            : Colors.grey[700],
+                                    isDark
+                                        ? Colors.white70
+                                        : Colors.grey[700],
                                     onPressed:
-                                        currentPage < totalPages
-                                            ? () {
-                                              setState(() {
-                                                currentPage = totalPages;
-                                                _scrollController.jumpTo(0);
-                                              });
-                                            }
-                                            : null,
+                                    currentPage < totalPages
+                                        ? () {
+                                      setState(() {
+                                        currentPage = totalPages;
+                                        _scrollController.jumpTo(0);
+                                      });
+                                    }
+                                        : null,
                                   ),
                                 ],
                               ),
@@ -932,12 +1054,13 @@ class _TipsScreenState extends State<TipsScreen>
 
   Widget _buildContent(bool isDark) {
     // Same clean loading style as OrdersListTable
-    if ((_isInitialLoad || isLoading) && tipsData == null) {
+    if (_isRefreshing || ((_isInitialLoad || isLoading) && tipsData == null)) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFFF4D20)),
+        child: CircularProgressIndicator(
+          color: Color(0xFF918E8C),
+        ),
       );
     }
-
     if (tipsData == null || tipsData!.orders.isEmpty) {
       return Center(
         child: Text(
@@ -958,9 +1081,9 @@ class _TipsScreenState extends State<TipsScreen>
 
     final startIndex = (currentPage - 1) * rowsPerPage;
     final endIndex =
-        (startIndex + rowsPerPage) > tipsData!.orders.length
-            ? tipsData!.orders.length
-            : (startIndex + rowsPerPage);
+    (startIndex + rowsPerPage) > tipsData!.orders.length
+        ? tipsData!.orders.length
+        : (startIndex + rowsPerPage);
 
     if (startIndex >= tipsData!.orders.length) {
       return const SizedBox.shrink();
@@ -989,12 +1112,12 @@ class _TipsScreenState extends State<TipsScreen>
                 ),
               ),
               borderRadius:
-                  index == currentPageOrders.length - 1
-                      ? const BorderRadius.only(
-                        bottomLeft: Radius.circular(8),
-                        bottomRight: Radius.circular(8),
-                      )
-                      : BorderRadius.zero,
+              index == currentPageOrders.length - 1
+                  ? const BorderRadius.only(
+                bottomLeft: Radius.circular(8),
+                bottomRight: Radius.circular(8),
+              )
+                  : BorderRadius.zero,
             ),
             child: Row(
               children: [

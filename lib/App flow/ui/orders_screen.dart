@@ -3113,13 +3113,22 @@ class _OrderPanelState extends State<OrderPanel> {
                                             kot: mqttKot,
                                             tableName: tableName,
                                           );
-
-                                          debugPrint(
-                                              '========== KOT SENT TO KDS =========='
+                                          unawaited(
+                                            KdsMqttPublisher.notifyKotPrinted(
+                                              restaurantId: restaurantId,
+                                              orderId: state.orderId > 0 ? state.orderId : widget.orderId,
+                                              orderType: widget.isTakeAway ? "Take Away" : "Dine In",
+                                              zoneId: zoneId,
+                                              zoneName: zoneName,
+                                              tableName: tableName,
+                                              tableId: widget.tableId.toString(),
+                                              kotNumber: kot.kotNumber,
+                                              kotId: kot.kotId,
+                                            ),
                                           );
                                         } catch (e, stack) {
                                           debugPrint(
-                                            '❌ Failed to send KOT to KDS: $e',
+                                            ' Failed to send KOT to KDS: $e',
                                           );
 
                                           debugPrint(

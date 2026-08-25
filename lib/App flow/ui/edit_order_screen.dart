@@ -11,6 +11,7 @@ import '../../models/order_list/order_list_model.dart';
 import '../../repositories/edit_order_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../utils/SessionManager.dart';
+import '../../utils/logger.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -238,12 +239,26 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
     return '$hour:$minute $period';
   }
   double _calculateRefundDue(OrderlistModel order) {
-    final previous = order.orderPrevTotal?.toDouble() ?? 0;
-    final current = order.netPayable?.toDouble() ?? 0;
+    final previousTotal =
+    (order.orderPrevTotal ?? 0).toDouble();
 
-    final refund = previous - current;
+    final updatedTotal =
+        _dynamicNetPayable;
 
-    return refund > 0 ? refund : 0;
+    final difference = previousTotal - updatedTotal;
+
+    final refundDue = difference > 0 ? difference : 0.0;
+
+    AppLogger.info(
+      '[REFUND CALC] '
+          'Order ID: ${order.orderId} | '
+          'Previous Total: $previousTotal | '
+          'Updated Total: $updatedTotal | '
+          'Difference: $difference | '
+          'Refund Due: $refundDue',
+    );
+
+    return refundDue;
   }
   void _onItemTapped(int index) {
     // NavigationHelper.handleNavigation(

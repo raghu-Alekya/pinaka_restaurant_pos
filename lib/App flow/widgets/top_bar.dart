@@ -1846,18 +1846,18 @@ class _TopBarState extends State<TopBar> {
                   color: Colors.white,
                   size: 22,
                 ),
-                Positioned(
-                  top: 1,
-                  right: -1,
-                  child: Container(
-                    width: 5,
-                    height: 5,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF0303),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
+                // Positioned(
+                //   top: 1,
+                //   right: -1,
+                //   child: Container(
+                //     width: 5,
+                //     height: 5,
+                //     decoration: const BoxDecoration(
+                //       color: Color(0xFFFF0303),
+                //       shape: BoxShape.circle,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
             const SizedBox(height: 3),

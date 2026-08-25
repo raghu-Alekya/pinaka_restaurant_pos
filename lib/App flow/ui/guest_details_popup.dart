@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
@@ -6,6 +8,7 @@ import '../../models/UserPermissions.dart';
 import '../../models/order/guest_details.dart';
 import '../../models/order/order_model.dart';
 import '../../repositories/order_repository.dart';
+import '../../services/kds_seivices.dart';
 import 'dashboard screen.dart';
 
 class GuestDetailsPopup extends StatefulWidget {
@@ -240,6 +243,19 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                               restaurantId: widget.restaurantId,
                               guestDetails: guestDetails,
                               orderDateTime: orderDateTime,
+                            ),
+                          );
+
+                          unawaited(
+                            KdsMqttPublisher.notifyOrderCreated(
+                              restaurantId: widget.restaurantId,
+                              orderId: orderData.orderId,
+                              orderType: "Dine In",
+                              zoneId: zoneId,
+                              zoneName: zoneName,
+                              tableName: tableName,
+                              tableId: tableId.toString(),
+                              guestCount: selectedGuests.length,
                             ),
                           );
 

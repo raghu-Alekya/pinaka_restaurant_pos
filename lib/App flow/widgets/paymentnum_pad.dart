@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/paymentsucess.dart';
@@ -22,6 +24,7 @@ import '../../repositories/create_payment_repository.dart';
 import '../../repositories/discount_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../repositories/service_charge_repository.dart';
+import '../../services/kds_seivices.dart';
 import '../../utils/SessionManager.dart';
 import '../ui/dashboard screen.dart';
 import 'coupon_widget.dart';
@@ -1083,6 +1086,24 @@ class _paymentsummaryState extends State<paymentsummary> {
                 }
                 return; // don't fall through to the full receipt flow below
               }
+
+              unawaited(
+                KdsMqttPublisher.notifyPaymentCompleted(
+                  restaurantId: widget.restaurantId,
+                  orderId: state.response.orderId,
+                  orderType: widget.isTakeAway ? "Take Away" : "Dine In",
+                  zoneId: widget.zoneId,
+                  tables: widget.loadedTables,
+                  tableName: widget.loadedTables.isNotEmpty
+                      ? widget.loadedTables.first['table_name']?.toString()
+                      : null,
+                  tableId: widget.loadedTables.isNotEmpty
+                      ? widget.loadedTables.first['table_id']?.toString()
+                      : null,
+                  paidAmount: paidThisTxn,
+                  paymentMethod: selectedPaymentMode,
+                ),
+              );
 
               final rawSummary = paymentBlocState.summary;
               final summary = rawSummary.copyWith(
