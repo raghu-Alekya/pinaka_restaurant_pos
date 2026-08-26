@@ -825,7 +825,7 @@ class _StockScreenState extends State<StockScreen> {
               'STOCK',
 
               style:
-              GoogleFonts.montserrat(
+              GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight:
                 FontWeight.w800,
@@ -913,7 +913,7 @@ class _StockScreenState extends State<StockScreen> {
         children: [
           Text(
             'CATEGORIES',
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w700,
               color: const Color(0xff344054),
@@ -1015,7 +1015,7 @@ class _StockScreenState extends State<StockScreen> {
                           TextOverflow.ellipsis,
 
                           style:
-                          GoogleFonts.montserrat(
+                          GoogleFonts.inter(
                             fontSize: 14,
                             fontWeight:
                             FontWeight.w600,
@@ -1159,7 +1159,7 @@ class _StockScreenState extends State<StockScreen> {
               'Failed to load products',
 
               style:
-              GoogleFonts.montserrat(
+              GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight:
                 FontWeight.w600,
@@ -1176,7 +1176,7 @@ class _StockScreenState extends State<StockScreen> {
               TextAlign.center,
 
               style:
-              GoogleFonts.montserrat(
+              GoogleFonts.inter(
                 fontSize: 14,
                 color:
                 const Color(
@@ -1228,7 +1228,7 @@ class _StockScreenState extends State<StockScreen> {
                 decoration: InputDecoration(
                   hintText: 'Search by category or item name',
 
-                  hintStyle: GoogleFonts.montserrat(
+                  hintStyle: GoogleFonts.inter(
                     fontSize: 14,
                     color: const Color(0xff98A2B3),
                   ),
@@ -1288,7 +1288,7 @@ class _StockScreenState extends State<StockScreen> {
                 ),
                 child: Text(
                   'Reset',
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xff667085),
@@ -1314,7 +1314,7 @@ class _StockScreenState extends State<StockScreen> {
               'No items found',
 
               style:
-              GoogleFonts.montserrat(
+              GoogleFonts.inter(
                 fontSize: 14,
                 color:
                 const Color(
@@ -1420,7 +1420,7 @@ class _StockScreenState extends State<StockScreen> {
           category.name,
 
           style:
-          GoogleFonts.montserrat(
+          GoogleFonts.inter(
             fontSize: 16,
             fontWeight:
             FontWeight.w600,
@@ -1439,7 +1439,7 @@ class _StockScreenState extends State<StockScreen> {
           '${_currentSelectedCount}/${category.items.length} Selected',
 
           style:
-          GoogleFonts.montserrat(
+          GoogleFonts.inter(
             fontSize: 14,
             fontWeight:
             FontWeight.w500,
@@ -1481,7 +1481,7 @@ class _StockScreenState extends State<StockScreen> {
           'Select All',
 
           style:
-          GoogleFonts.montserrat(
+          GoogleFonts.inter(
             fontSize: 14,
             fontWeight:
             FontWeight.w600,
@@ -1608,7 +1608,7 @@ class _StockScreenState extends State<StockScreen> {
 
                 overflow: TextOverflow.ellipsis,
 
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.inter(
                   fontSize: 14,
                   height: 1.15,
                   fontWeight: FontWeight.w500,
@@ -1922,7 +1922,7 @@ class _StockScreenState extends State<StockScreen> {
                 title,
 
                 style:
-                GoogleFonts.montserrat(
+                GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight:
                   FontWeight.w600,
@@ -2273,7 +2273,7 @@ class _StockScreenState extends State<StockScreen> {
               'Save & Update',
 
               style:
-              GoogleFonts.montserrat(
+              GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight:
                 FontWeight.w700,
@@ -2357,7 +2357,7 @@ class _StockScreenState extends State<StockScreen> {
             title,
 
             style:
-            GoogleFonts.montserrat(
+            GoogleFonts.inter(
               fontSize: 14,
               fontWeight:
               FontWeight.w600,
@@ -2376,7 +2376,7 @@ class _StockScreenState extends State<StockScreen> {
             value,
 
             style:
-            GoogleFonts.montserrat(
+            GoogleFonts.inter(
               fontSize: 14,
               fontWeight:
               FontWeight.w800,

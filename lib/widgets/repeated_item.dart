@@ -122,7 +122,7 @@ class _RepeatedItemsScreenState extends State<RepeatedItemsScreen> {
               children: [
                 Text(
                   "SUMMARY",
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.inter(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: const Color(0xff1E293B),

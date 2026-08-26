@@ -1389,7 +1389,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
           Text(
             'ITEM QUEUE',
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: const Color(0xff172033),
@@ -1404,7 +1404,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
           Text(
             '$totalItems items pending across all KOTs',
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.inter(
               fontSize: 9,
               fontWeight: FontWeight.w500,
               color: const Color(0xff667085),
@@ -1425,7 +1425,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     KdsConnectionState.connected
                     ? 'No pending items'
                     : 'Connecting to POS...',
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.inter(
                   fontSize: 10,
                   color: const Color(0xff98A2B3),
                 ),
@@ -1587,7 +1587,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   category.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: categoryColor,
@@ -1613,7 +1613,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                   child: Text(
                     '$categoryTotal',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: categoryColor,
@@ -1680,7 +1680,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         itemName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.montserrat(
+                        style: GoogleFonts.inter(
                           fontSize: 14,
                           height: 1.0,
                           fontWeight: FontWeight.w500,
@@ -1700,7 +1700,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       child: Text(
                         '$quantity',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.montserrat(
+                        style: GoogleFonts.inter(
                           fontSize: 12,
                           height: 1.0,
                           fontWeight: FontWeight.w800,
@@ -2683,7 +2683,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               children: [
                 Text(
                   "ACTIVE KOT'S",
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: const Color(0xff172033),
@@ -2692,7 +2692,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 const SizedBox(height: 1),
                 Text(
                   "Currently active KOT's",
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.inter(
                     fontSize: 9,
                     fontWeight: FontWeight.w500,
                     color: const Color(0xff667085),
@@ -2819,7 +2819,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           children: [
             Text(
               title,
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: selected
                     ? FontWeight.w700
@@ -2846,7 +2846,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
               ),
               child: Text(
                 '$count',
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                   color: selected
@@ -3109,7 +3109,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           SizedBox(
             height: 48,
             child: Container(
-              color: headerColor,
+              color: headerColor, // Keep header background color
               padding: const EdgeInsets.symmetric(
                 horizontal: 9,
               ),
@@ -3134,8 +3134,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         table,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: headerColor,
+                        style: const TextStyle(
+                          color: Color(0xffFF6E47),
                           fontSize: 14,
                           height: 1.0,
                           fontWeight: FontWeight.w900,
@@ -3147,7 +3147,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     const SizedBox(width: 5),
 
                   // ==========================================================
-                  // LIVE COUNT-UP TIMER (AFTER TABLE NAME)
+                  // LIVE COUNT-UP TIMER
                   // ==========================================================
                   Container(
                     height: 28,
@@ -3163,18 +3163,18 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.timer_outlined,
                           size: 16,
-                          color: headerColor,
+                          color: Color(0xff344054),
                         ),
                         const SizedBox(width: 3),
                         Text(
-                          _formatCountUpTimer(timerStartTime),
+                          _formatCountUpTimer(kotTime),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: headerColor,
+                          style: const TextStyle(
+                            color: Color(0xffFF6E47),
                             fontSize: 13,
                             height: 1.0,
                             fontWeight: FontWeight.w900,
@@ -3206,48 +3206,14 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       orderType.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: headerColor,
+                      style: const TextStyle(
+                        color: Color(0xffFF6E47),
                         fontSize: 13,
                         height: 1.0,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
-
-                  // ==========================================================
-                  // ZOOM IN / ZOOM OUT ICON (CROSS FORM ARROWS <->)
-                  // ==========================================================
-                  // const SizedBox(width: 4),
-                  // InkWell(
-                  //   onTap: () {
-                  //     setState(() {
-                  //       if (isExpanded) {
-                  //         expandedKotIds.remove(switchKey);
-                  //       } else {
-                  //         expandedKotIds.add(switchKey);
-                  //       }
-                  //     });
-                  //   },
-                  //   child: Container(
-                  //     height: 28,
-                  //     width: 28,
-                  //     alignment: Alignment.center,
-                  //     decoration: BoxDecoration(
-                  //       color: Colors.white,
-                  //       borderRadius: BorderRadius.circular(4),
-                  //     ),
-                  //     child: Icon(
-                  //       isExpanded
-                  //           ? Icons.close_fullscreen
-                  //           : Icons.open_in_full,
-                  //       size: 16,
-                  //       color: headerColor,
-                  //     ),
-                  //   ),
-                  // ),
-
-
                 ],
               ),
             ),
@@ -3283,7 +3249,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         'KOT #$kotNo',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.montserrat(
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           height: 1.0,
                           fontWeight: FontWeight.w800,
@@ -3298,7 +3264,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       children: [
                         Text(
                           'Items Ready',
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.inter(
                             fontSize: 11,
                             height: 1.0,
                             fontWeight: FontWeight.w500,
@@ -3308,7 +3274,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         const SizedBox(width: 4),
                         Text(
                           '$readyCount/${items.length}',
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.inter(
                             fontSize: 14,
                             height: 1.0,
                             fontWeight: FontWeight.w800,
@@ -3338,7 +3304,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       'Order: #$parentOrderId',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.montserrat(
+                      style: GoogleFonts.inter(
                         fontSize: 10,
                         height: 1.0,
                         fontWeight: FontWeight.w500,
@@ -3360,7 +3326,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     Text(
                       date,
                       maxLines: 1,
-                      style: GoogleFonts.montserrat(
+                      style: GoogleFonts.inter(
                         fontSize: 11,
                         height: 1.0,
                         fontWeight: FontWeight.w500,
@@ -3381,7 +3347,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
-                        style: GoogleFonts.montserrat(
+                        style: GoogleFonts.inter(
                           fontSize: 11,
                           height: 1.0,
                           fontWeight: FontWeight.w500,
@@ -3437,7 +3403,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       'Note: $kotNote',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.montserrat(
+                      style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: const Color(0xff667085),
@@ -3856,7 +3822,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                               overflow:
                                               TextOverflow.ellipsis,
                                               style:
-                                              GoogleFonts.montserrat(
+                                              GoogleFonts.inter(
                                                 fontSize: 14,
                                                 height: 1.0,
                                                 fontWeight:
@@ -3895,7 +3861,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                                 textAlign:
                                                 TextAlign.center,
                                                 style:
-                                                GoogleFonts.montserrat(
+                                                GoogleFonts.inter(
                                                   fontSize: 11,
                                                   height: 1.0,
                                                   fontWeight:
@@ -3932,7 +3898,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                             overflow:
                                             TextOverflow.ellipsis,
                                             style:
-                                            GoogleFonts.montserrat(
+                                            GoogleFonts.inter(
                                               fontSize: 10,
                                               height: 1.2,
                                               fontWeight:
@@ -3966,7 +3932,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                             overflow:
                                             TextOverflow.ellipsis,
                                             style:
-                                            GoogleFonts.montserrat(
+                                            GoogleFonts.inter(
                                               fontSize: 10,
                                               height: 1.2,
                                               fontWeight:
@@ -4307,7 +4273,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 Expanded(
                   flex: 1,
                   child: SizedBox(
-                    height: 28,
+                    height: 36,
                     child: OutlinedButton.icon(
                       onPressed: () {
                         setState(() {
@@ -4334,12 +4300,12 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         isCancelMode
                             ? Icons.undo
                             : Icons.cancel_outlined,
-                        size: 14,
+                        size: 16,
                       ),
                       label: Text(
                         isCancelMode ? 'Undo' : 'Cancel',
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -4364,9 +4330,9 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                 const SizedBox(width: 10),
 
                 Expanded(
-                  flex: 1,
+                  flex: 2,
                   child: SizedBox(
-                    height: 48,
+                    height: 38,
                     child: ElevatedButton(
                       onPressed: () async {
                         if (kotId.isEmpty) return;
@@ -4404,50 +4370,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 selectedItemsMap.remove(switchKey);
                               });
                             }
-                          }
-
-                          return;
-                        }
-
-                        // ==========================================================
-                        // ONLINE ACCEPT
-                        // ==========================================================
-
-                        if (buttonText == 'Accept') {
-                          onlineAcceptedTimeMap[switchKey] = DateTime.now();
-                          await provider.updateOrderStatus(
-                            kotId,
-                            'Preparing',
-                          );
-
-                          if (mounted) {
-                            setState(() {});
-                          }
-
-                          return;
-                        }
-
-                        // ==========================================================
-                        // ONLINE READY TO SERVE
-                        // ==========================================================
-
-                        if (buttonText == 'Ready to serve') {
-                          // Turn ON all item toggles immediately
-                          setState(() {
-                            selectedItemsMap[switchKey] =
-                                List<bool>.filled(
-                              items.length,
-                              true,
-                            );
-                          });
-
-                          await provider.updateOrderStatus(
-                            kotId,
-                            'Served',
-                          );
-
-                          if (mounted) {
-                            setState(() {});
                           }
 
                           return;
@@ -4539,7 +4461,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 ? 'Cancel KOT'
                                 : buttonText,
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -4760,7 +4682,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           const SizedBox(height: 8),
           Text(
             'No active KOTs',
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w500,
               color: const Color(0xff98A2B3),

@@ -205,7 +205,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                   children: [
                     Text(
                       "Active KOTs",
-                      style: GoogleFonts.montserrat(
+                      style: GoogleFonts.inter(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: const Color(0xff1E293B),
