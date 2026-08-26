@@ -65,6 +65,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   String? _selectedKot;
   List<Map<String, dynamic>> _kotItems = [];
   int? _expandedKotIndex;
+  bool _isRefreshing = false;
   Map<String, dynamic>? _selectedUser;
   List<String> _orderTypes = [];
   late KitchenRepository kitchenRepo;
@@ -120,7 +121,32 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       _isDialogOpen = false;
     }
   }
+  Future<void> _refreshKitchenStatus() async {
+    if (_isRefreshing) return;
 
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    try {
+      // Clear selected KOT/table while refreshing
+      _selectedTableIndex = null;
+      _selectedTable = null;
+      _selectedKot = null;
+      _kotItems.clear();
+      _isKotLoadingForSelected = false;
+
+      await _fetchOrders();
+    } catch (e) {
+      debugPrint("Error refreshing kitchen status: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRefreshing = false;
+        });
+      }
+    }
+  }
   Future<void> _refreshSelectedTable() async {
     if (_selectedTable == null) return;
 
@@ -1308,8 +1334,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color:
-                isDark
+                color: isDark
                     ? Colors.black.withOpacity(0.45)
                     : const Color(0x26000000),
                 blurRadius: 10,
@@ -1321,49 +1346,49 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
+
               Expanded(
-                child: Container(
-                  margin: const EdgeInsets.only(left: 5, right: 5, bottom: 12),
+                child: _isRefreshing
+                    ? const Center(
+                  child: CircularProgressIndicator(),
+                )
+                    : Container(
+                  margin: const EdgeInsets.only(
+                    left: 5,
+                    right: 5,
+                    bottom: 12,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
                         flex: 4,
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                          ),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
                             children: [
                               const SizedBox(height: 2),
+
                               _buildKotListHeader(),
+
                               Expanded(
                                 child: Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color:
-                                    filteredTables.isNotEmpty
+                                    color: filteredTables.isNotEmpty
                                         ? (isDark
                                         ? const Color(0xFF202433)
                                         : Colors.white)
                                         : (isDark
                                         ? const Color(0xFF2B3042)
                                         : const Color(0xFFF3F3F3)),
-                                    borderRadius: const BorderRadius.only(
+                                    borderRadius:
+                                    const BorderRadius.only(
                                       bottomLeft: Radius.circular(8),
                                       bottomRight: Radius.circular(8),
-                                    ),
-                                    border: Border(
-                                      bottom: BorderSide(
-                                        color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
-                                        width: 0.5,
-                                      ),
-                                      left: BorderSide(
-                                        color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
-                                        width: 0.5,
-                                      ),
-                                      right: BorderSide(
-                                        color: isDark ? Colors.white24 : const Color(0xFFFAFAFA),
-                                        width: 0.5,
-                                      ),
                                     ),
                                   ),
                                   child: _buildTableList(),
@@ -1373,12 +1398,10 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                           ),
                         ),
                       ),
+
                       Expanded(
                         flex: 4,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 0, bottom: 0),
-                          child: _buildOrderDetails(),
-                        ),
+                        child: _buildOrderDetails(),
                       ),
                     ],
                   ),
@@ -1640,6 +1663,52 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
               /// Reset Button
               _buildResetButton(),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 40,
+                width: 42,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: _isRefreshing ? null : _refreshKitchenStatus,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF34384F)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white24
+                              : const Color(0xFF1E2A5A),
+                        ),
+                      ),
+                      child: Center(
+                        child: _isRefreshing
+                            ? SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF374151),
+                          ),
+                        )
+                            : Icon(
+                          Icons.sync,
+                          size: 19,
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF374151),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
             ],
           ),
         ],

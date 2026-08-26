@@ -204,7 +204,60 @@ class _OrdersDetailsScreenState extends State<OrdersDetailsScreen> {
 
     return kots.first;
   }
+  String formatDateTime(String date) {
+    final parsedDate = DateTime.parse(date);
 
+    final day = parsedDate.day;
+    final month = _monthName(parsedDate.month);
+    final year = parsedDate.year;
+
+    final hour = parsedDate.hour % 12 == 0
+        ? 12
+        : parsedDate.hour % 12;
+
+    final minute = parsedDate.minute.toString().padLeft(2, '0');
+
+    final period = parsedDate.hour >= 12 ? 'PM' : 'AM';
+
+    return '${day}${_getDaySuffix(day)} $month, $year $hour:$minute$period';
+  }
+
+  String _monthName(int month) {
+    const months = [
+      '',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    return months[month];
+  }
+
+  String _getDaySuffix(int day) {
+    if (day >= 11 && day <= 13) {
+      return 'th';
+    }
+
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
+  }
   List<VoidedItem> _voidedItemsForKot(int? kotOrderId) {
     if (kotOrderId == null) return const [];
 
@@ -1337,12 +1390,11 @@ amount: ${item.amount}
               ),
 
               Text(
-                date,
+                formatDateTime(date),
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  color:
-                  isDark
+                  color: isDark
                       ? Colors.white54
                       : const Color(0xFF64748B),
                 ),

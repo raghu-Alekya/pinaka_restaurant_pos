@@ -1011,42 +1011,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
 
-// Refresh button
-                        SizedBox(
-                          height: 40,
-                          width: 42,
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor:
-                              isDark ? const Color(0xFF374151) : Colors.white,
-                              foregroundColor:
-                              isDark ? Colors.white : const Color(0xFF374151),
-                              padding: EdgeInsets.zero,
-                              side: BorderSide(
-                                color:
-                                isDark
-                                    ? Colors.grey.shade700
-                                    : Colors.grey.shade300,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            onPressed:
-                            _isRefreshing
-                                ? null
-                                : () => _fetchReservations(isRefresh: true),
-                            child: Icon(
-                              Icons.sync,
-                              size: 19,
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF374151),
-                            ),
-                          ),
-                        ),
                         const SizedBox(width: 12),
                         Container(
                           height: 40,
@@ -1122,6 +1087,44 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+// Refresh button
+                        SizedBox(
+                          height: 40,
+                          width: 42,
+                          child: OutlinedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isDark
+                                  ? const Color(0xFF34384F)
+                                  : Colors.white,
+                              foregroundColor: const Color(0xFF1E2A5A),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 0,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: isDark
+                                      ? Colors.white24
+                                      : const Color(0xFF1E2A5A),
+                                ),
+                              ),
+                            ),
+                            onPressed:
+                            _isRefreshing
+                                ? null
+                                : () => _fetchReservations(isRefresh: true),
+                            child: Icon(
+                              Icons.sync,
+                              size: 19,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF374151),
                             ),
                           ),
                         ),

@@ -922,6 +922,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 // =========================
                                 SizedBox(
                                   height: 40,
+                                  width: 42,
                                   child: ElevatedButton.icon(
                                     onPressed: _isRefreshing ? null : _refreshOrders,
                                     style: ElevatedButton.styleFrom(

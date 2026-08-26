@@ -297,7 +297,7 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                         ),
                                         foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
                                         padding: WidgetStateProperty.all<EdgeInsets>(
-                                          const EdgeInsets.symmetric(vertical: 13),
+                                          const EdgeInsets.symmetric(vertical: 18),
                                         ),
                                         shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                                           RoundedRectangleBorder(

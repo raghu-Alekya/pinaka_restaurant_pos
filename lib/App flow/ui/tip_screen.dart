@@ -731,6 +731,58 @@ class _TipsScreenState extends State<TipsScreen>
                       ),
                     ),
                     const SizedBox(width: 16),
+                    /// Total Tip
+                    Container(
+                      height: 40,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: ShapeDecoration(
+                        color:
+                        isDark
+                            ? const Color(0xFF2B3042)
+                            : const Color(0xFFF6F8FF),
+                        shape: RoundedRectangleBorder(
+                          side: const BorderSide(
+                            width: 1,
+                            color: Color(0xFF415F9F),
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        shadows: const [
+                          BoxShadow(
+                            color: Color(0x19000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            "Total tip:",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                              isDark
+                                  ? Colors.white70
+                                  : const Color(0xFF383838),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "$_currency ${tipsData?.totalTipAmt.toStringAsFixed(2) ?? '0.00'}",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color:
+                              isDark
+                                  ? const Color(0xFF498FFF)
+                                  : const Color(0xFF022A7E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     /// REFRESH DATA Button
                     Container(
                       width: 40,
@@ -784,58 +836,6 @@ class _TipsScreenState extends State<TipsScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    /// Total Tip
-                    Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: ShapeDecoration(
-                        color:
-                        isDark
-                            ? const Color(0xFF2B3042)
-                            : const Color(0xFFF6F8FF),
-                        shape: RoundedRectangleBorder(
-                          side: const BorderSide(
-                            width: 1,
-                            color: Color(0xFF415F9F),
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        shadows: const [
-                          BoxShadow(
-                            color: Color(0x19000000),
-                            blurRadius: 4,
-                            offset: Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            "Total tip:",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color:
-                              isDark
-                                  ? Colors.white70
-                                  : const Color(0xFF383838),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            "$_currency ${tipsData?.totalTipAmt.toStringAsFixed(2) ?? '0.00'}",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color:
-                              isDark
-                                  ? const Color(0xFF498FFF)
-                                  : const Color(0xFF022A7E),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -844,7 +844,7 @@ class _TipsScreenState extends State<TipsScreen>
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
+                    horizontal: 14,
                     vertical: 0,
                   ),
                   child: Container(

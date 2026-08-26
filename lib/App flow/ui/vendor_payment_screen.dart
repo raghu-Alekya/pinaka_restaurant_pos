@@ -726,63 +726,6 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 16),
-
-                            /// Refresh button
-                            InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: isLoading ? null : _refreshVendorPayments,
-                              child: Container(
-                                width: 50,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color:
-                                  isDark
-                                      ? const Color(0xFF2B3042)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color:
-                                    isDark
-                                        ? Colors.white24
-                                        : const Color(0xFFE0E0E0),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                      isDark
-                                          ? Colors.black.withOpacity(.25)
-                                          : Colors.black12,
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child:
-                                  isLoading
-                                      ? SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color:
-                                      isDark
-                                          ? Colors.white
-                                          : const Color(0xFF2A3558),
-                                    ),
-                                  )
-                                      : Icon(
-                                    Icons.sync,
-                                    size: 22,
-                                    color:
-                                    isDark
-                                        ? Colors.white
-                                        : const Color(0xFF2A3558),
-                                  ),
-                                ),
-                              ),
-                            ),
 
 
                             const SizedBox(width: 16),
@@ -837,6 +780,54 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                       ),
                                     ),
                                   ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+
+                            /// Refresh button
+                            InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: isLoading ? null : _refreshVendorPayments,
+                              child: Container(
+                                width: 42,
+                                height: 40,
+                                decoration: ShapeDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF202433)
+                                      : Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    side: BorderSide(
+                                      width: 1,
+                                      color: isDark
+                                          ? const Color(0xFF4B5563)
+                                          : const Color(0xFF152148),
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: Center(
+                                  child:
+                                  isLoading
+                                      ? SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF2A3558),
+                                    ),
+                                  )
+                                      : Icon(
+                                    Icons.sync,
+                                    size: 22,
+                                    color:
+                                    isDark
+                                        ? Colors.white
+                                        : const Color(0xFF2A3558),
+                                  ),
                                 ),
                               ),
                             ),
