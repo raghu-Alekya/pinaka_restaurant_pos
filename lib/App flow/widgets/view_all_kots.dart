@@ -70,6 +70,7 @@ class ViewAllKOTDropdown extends StatefulWidget {
 
 class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   bool _expanded = true;
+  bool _isVoiding = false;
   final Map<String, bool> _kotExpanded = {};
   int _previousOrderItemCount = 0;
   UserPermissions? _permissions;
@@ -945,257 +946,209 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
 
                                                         /// Void Button
                                                         InkWell(
-                                                          onTap: () async {
+                                                          onTap: _isVoiding
+                                                              ? null
+                                                              : () async {
+                                                            if (_isVoiding) return;
+
                                                             // -----------------------------------------
                                                             // 1. CHECK KOT ID
                                                             // -----------------------------------------
-                                                            if (kot.kotId ==
-                                                                null) {
-                                                              debugPrint(
-                                                                "❌ kotId is null",
-                                                              );
+                                                            if (kot.kotId == null) {
+                                                              debugPrint("❌ kotId is null");
                                                               return;
                                                             }
 
-                                                            // -----------------------------------------
-                                                            // 2. FETCH KOT LINE ITEMS
-                                                            // -----------------------------------------
-                                                            final bloc =
-                                                                context
-                                                                    .read<
-                                                                      KotLineItemsBloc
-                                                                    >();
+                                                            // Disable Void immediately.
+                                                            if (mounted) {
+                                                              setState(() {
+                                                                _isVoiding = true;
+                                                              });
+                                                            }
 
-                                                            bloc.add(
-                                                              FetchKotLineItems(
-                                                                kotId:
-                                                                    kot.kotId!,
-                                                                restaurantId:
-                                                                    widget
-                                                                        .restaurantId,
-                                                                zoneId:
-                                                                    widget
-                                                                        .zoneId,
-                                                                token:
-                                                                    widget
-                                                                        .token,
-                                                              ),
-                                                            );
+                                                            try {
+                                                              // -----------------------------------------
+                                                              // 2. FETCH KOT LINE ITEMS
+                                                              // -----------------------------------------
+                                                              final bloc = context.read<KotLineItemsBloc>();
 
-                                                            final state = await bloc
-                                                                .stream
-                                                                .firstWhere(
-                                                                  (state) =>
-                                                                      state
-                                                                          is KotLineItemsLoaded ||
-                                                                      state
-                                                                          is KotLineItemsError,
-                                                                );
-
-                                                            if (!context
-                                                                .mounted)
-                                                              return;
-
-                                                            // -----------------------------------------
-                                                            // 3. HANDLE FETCH ERROR
-                                                            // -----------------------------------------
-                                                            if (state
-                                                                is KotLineItemsError) {
-                                                              ScaffoldMessenger.of(
-                                                                context,
-                                                              ).showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text(
-                                                                    state
-                                                                        .message,
-                                                                  ),
-                                                                  duration:
-                                                                      const Duration(
-                                                                        seconds:
-                                                                            1,
-                                                                      ),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .red,
+                                                              bloc.add(
+                                                                FetchKotLineItems(
+                                                                  kotId: kot.kotId!,
+                                                                  restaurantId: widget.restaurantId,
+                                                                  zoneId: widget.zoneId,
+                                                                  token: widget.token,
                                                                 ),
                                                               );
 
-                                                              return;
-                                                            }
-
-                                                            // -----------------------------------------
-                                                            // 4. KOT ITEMS LOADED
-                                                            // -----------------------------------------
-                                                            if (state
-                                                                is KotLineItemsLoaded) {
-                                                              final response =
-                                                                  state
-                                                                      .response;
-
-                                                              // -----------------------------------------
-                                                              // 5. SHOW PIN CONFIRMATION POPUP
-                                                              // -----------------------------------------
-                                                              final bool
-                                                              pinMatched = await PinConfirmationPopup.show(
-                                                                context:
-                                                                    context,
-                                                                expectedPin:
-                                                                    widget.pin,
-
-                                                                // Dynamic text for VOID action
-                                                                title:
-                                                                    'Confirm Void',
-                                                                message:
-                                                                    'Please enter your PIN to void items from this KOT.',
-                                                                cancelText:
-                                                                    'Cancel',
-                                                                proceedText:
-                                                                    'Proceed',
-
-                                                                // Optional callbacks
-                                                                onCancel: () {
-                                                                  debugPrint(
-                                                                    '❌ Void cancelled',
-                                                                  );
-                                                                },
-
-                                                                onProceed: () {
-                                                                  debugPrint(
-                                                                    '✅ PIN verified for void action',
-                                                                  );
-                                                                },
+                                                              final state = await bloc.stream.firstWhere(
+                                                                    (state) =>
+                                                                state is KotLineItemsLoaded ||
+                                                                    state is KotLineItemsError,
                                                               );
 
-                                                              if (!context
-                                                                  .mounted)
-                                                                return;
+                                                              if (!context.mounted) return;
 
                                                               // -----------------------------------------
-                                                              // 6. CANCEL / PIN FAILED
+                                                              // 3. HANDLE FETCH ERROR
                                                               // -----------------------------------------
-                                                              if (!pinMatched) {
-                                                                debugPrint(
-                                                                  '❌ Void cancelled or PIN verification failed',
+                                                              if (state is KotLineItemsError) {
+                                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                                  SnackBar(
+                                                                    content: Text(state.message),
+                                                                    duration: const Duration(seconds: 1),
+                                                                    backgroundColor: Colors.red,
+                                                                  ),
                                                                 );
                                                                 return;
                                                               }
 
                                                               // -----------------------------------------
-                                                              // 7. PIN VERIFIED
-                                                              // OPEN VOID ITEMS DIALOG
+                                                              // 4. KOT ITEMS LOADED
                                                               // -----------------------------------------
-                                                              await showDialog(
-                                                                context:
-                                                                    context,
-                                                                barrierDismissible:
-                                                                    false,
-                                                                builder: (_) {
-                                                                  return MultiBlocProvider(
-                                                                    providers: [
-                                                                      BlocProvider.value(
-                                                                        value:
-                                                                            context
-                                                                                .read<
-                                                                                  UpdatekotBloc
-                                                                                >(),
-                                                                      ),
-                                                                      BlocProvider.value(
-                                                                        value:
-                                                                            context
-                                                                                .read<
-                                                                                  KotBloc
-                                                                                >(),
-                                                                      ),
-                                                                    ],
-                                                                    child: VoidItemsDialog(
-                                                                      items:
-                                                                          response
-                                                                              .items,
+                                                              if (state is KotLineItemsLoaded) {
+                                                                final response = state.response;
 
-                                                                      tableNo:
-                                                                          widget
-                                                                              .tableNo,
+                                                                // -----------------------------------------
+                                                                // 5. SHOW PIN CONFIRMATION POPUP
+                                                                // -----------------------------------------
+                                                                final bool pinMatched =
+                                                                await PinConfirmationPopup.show(
+                                                                  context: context,
+                                                                  expectedPin: widget.pin,
+                                                                  title: 'Confirm Void',
+                                                                  message:
+                                                                  'Please enter your PIN to void items from this KOT.',
+                                                                  cancelText: 'Cancel',
+                                                                  proceedText: 'Proceed',
+                                                                  onCancel: () {
+                                                                    debugPrint('❌ Void cancelled');
+                                                                  },
+                                                                  onProceed: () {
+                                                                    debugPrint(
+                                                                      '✅ PIN verified for void action',
+                                                                    );
+                                                                  },
+                                                                );
 
-                                                                      kotNo:
-                                                                          response
-                                                                              .kotNumber,
+                                                                if (!context.mounted) return;
 
-                                                                      kotId:
-                                                                          response
-                                                                              .kotId,
-
-                                                                      restaurantId:
-                                                                          response
-                                                                              .restaurantId,
-
-                                                                      zoneId:
-                                                                          response
-                                                                              .zoneId,
-
-                                                                      token:
-                                                                          widget
-                                                                              .token,
-                                                                      storedPinNumber: widget.pin,
-                                                                      role: _permissions?.role ?? '', // ✅
-                                                                      parentOrderId:
-                                                                          context
-                                                                              .read<
-                                                                                KotBloc
-                                                                              >()
-                                                                              .currentParentOrderId,
-
-                                                                      item: kot,
-
-                                                                      onRemark: (
-                                                                        value,
-                                                                      ) {
-                                                                        debugPrint(
-                                                                          "Void remark: $value",
-                                                                        );
-                                                                      },
-                                                                    ),
+                                                                // -----------------------------------------
+                                                                // 6. CANCEL / PIN FAILED
+                                                                // -----------------------------------------
+                                                                if (!pinMatched) {
+                                                                  debugPrint(
+                                                                    '❌ Void cancelled or PIN verification failed',
                                                                   );
-                                                                },
-                                                              );
+                                                                  return;
+                                                                }
 
-                                                              // -----------------------------------------
-                                                              // 8. REFRESH KOTS AFTER VOID DIALOG CLOSES
-                                                              // -----------------------------------------
-                                                              if (context
-                                                                  .mounted) {
-                                                                _fetchKots();
+                                                                // -----------------------------------------
+                                                                // 7. PIN VERIFIED
+                                                                // OPEN VOID ITEMS DIALOG
+                                                                // -----------------------------------------
+                                                                await showDialog(
+                                                                  context: context,
+                                                                  barrierDismissible: false,
+                                                                  builder: (_) {
+                                                                    return MultiBlocProvider(
+                                                                      providers: [
+                                                                        BlocProvider.value(
+                                                                          value: context.read<UpdatekotBloc>(),
+                                                                        ),
+                                                                        BlocProvider.value(
+                                                                          value: context.read<KotBloc>(),
+                                                                        ),
+                                                                      ],
+                                                                      child: VoidItemsDialog(
+                                                                        items: response.items,
+                                                                        tableNo: widget.tableNo,
+                                                                        kotNo: response.kotNumber,
+                                                                        kotId: response.kotId,
+                                                                        restaurantId: response.restaurantId,
+                                                                        zoneId: response.zoneId,
+                                                                        token: widget.token,
+                                                                        storedPinNumber: widget.pin,
+                                                                        role: _permissions?.role ?? '',
+                                                                        parentOrderId: context
+                                                                            .read<KotBloc>()
+                                                                            .currentParentOrderId,
+                                                                        item: kot,
+                                                                        onRemark: (value) {
+                                                                          debugPrint("Void remark: $value");
+                                                                        },
+                                                                      ),
+                                                                    );
+                                                                  },
+                                                                );
+
+                                                                // -----------------------------------------
+                                                                // 8. REFRESH KOTS AFTER VOID DIALOG CLOSES
+                                                                // -----------------------------------------
+                                                                if (context.mounted) {
+                                                                  _fetchKots();
+                                                                }
+                                                              }
+                                                            } catch (e, stackTrace) {
+                                                              debugPrint("❌ Void error: $e");
+                                                              debugPrint("$stackTrace");
+
+                                                              if (context.mounted) {
+                                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                                  const SnackBar(
+                                                                    content: Text('Unable to process Void action.'),
+                                                                    duration: Duration(seconds: 1),
+                                                                    backgroundColor: Colors.red,
+                                                                  ),
+                                                                );
+                                                              }
+                                                            } finally {
+                                                              // Always enable Void again after the complete flow.
+                                                              if (mounted) {
+                                                                setState(() {
+                                                                  _isVoiding = false;
+                                                                });
                                                               }
                                                             }
                                                           },
 
                                                           borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
 
                                                           child: Container(
                                                             height: 28,
                                                             width: 28,
 
                                                             decoration:
-                                                                BoxDecoration(
-                                                                  color:
-                                                                      Colors
-                                                                          .red,
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                        8,
-                                                                      ),
-                                                                ),
+                                                            BoxDecoration(
+                                                              color:
+                                                              Colors
+                                                                  .red,
+                                                              borderRadius:
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
+                                                            ),
 
                                                             child: Center(
-                                                              child: Image.asset(
+                                                              child: _isVoiding
+                                                                  ? const SizedBox(
+                                                                height: 16,
+                                                                width: 16,
+                                                                child: CircularProgressIndicator(
+                                                                  strokeWidth: 2,
+                                                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                                                    Colors.white,
+                                                                  ),
+                                                                ),
+                                                              )
+                                                                  : Image.asset(
                                                                 "assets/icon/Void.png",
                                                                 height: 18,
                                                                 width: 18,
-                                                                color:
-                                                                    Colors
-                                                                        .white,
+                                                                color: Colors.white,
                                                               ),
                                                             ),
                                                           ),
