@@ -68,7 +68,16 @@ class OrderPanelList extends StatelessWidget {
       );
     }
   }
+  String _formatAllModifiers(List<String> modifiers) {
+    final rows = <String>[];
 
+    for (int i = 0; i < modifiers.length; i += 3) {
+      final row = modifiers.skip(i).take(3).join('    ');
+      rows.add(row);
+    }
+
+    return rows.join('\n');
+  }
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -152,34 +161,42 @@ class OrderPanelList extends StatelessWidget {
                         if (item.modifiers.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              _formatModifierList(
-                                item.modifiers.cast<String>(),
+                            child: Tooltip(
+                              message: _formatAllModifiers(item.modifiers),
+                              waitDuration: const Duration(milliseconds: 300),
+                              showDuration: const Duration(seconds: 5),
+                              child: Text(
+                                _formatModifierList(item.modifiers),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.red,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
 
                         if (item.addOns.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              _formatAddOnsList(item.addOns),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w500,
-                                decoration: TextDecoration.underline,
+                            child: Tooltip(
+                              message: _formatAllAddOns(item.addOns),
+                              waitDuration: const Duration(milliseconds: 300),
+                              showDuration: const Duration(seconds: 5),
+                              child: Text(
+                                _formatAddOnsList(item.addOns),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.w500,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
 
@@ -363,7 +380,33 @@ class OrderPanelList extends StatelessWidget {
     final visible = modifiers.take(limit).join(', ');
     return '$visible +${modifiers.length - limit} More';
   }
+  String _formatAllAddOns(
+      Map<String, Map<String, dynamic>> addOns,
+      ) {
+    final entries = addOns.entries.toList();
+    final rows = <String>[];
 
+    for (int i = 0; i < entries.length; i += 3) {
+      final rowEntries = entries.skip(i).take(3);
+
+      final row = rowEntries.map((entry) {
+        final qty =
+            (entry.value['quantity'] as num?)?.toInt() ?? 1;
+
+        final price =
+            (entry.value['price'] as num?)?.toDouble() ?? 0.0;
+
+        final total = qty * price;
+
+        return '${entry.key} x$qty '
+            '($currency${total.toStringAsFixed(2)})';
+      }).join('    ');
+
+      rows.add(row);
+    }
+
+    return rows.join('\n');
+  }
   String _formatAddOnsList(Map<String, Map<String, dynamic>> addOns) {
     const limit = 2;
     final entries = addOns.entries.toList();

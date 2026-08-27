@@ -1240,10 +1240,12 @@ class _TopBarState extends State<TopBar> {
                   _buildProfileSection(),
                 ] else ...[
                   if (widget.isHomeScreen) ...[
-                    if (widget.userPermissions?.canCreateShiftAttendance ?? false) ...[
-                      _buildAttendanceIconButton(context),
-                      const SizedBox(width: 10),
-                    ],
+                    // if (widget.userPermissions?.canCreateShiftAttendance ?? false) ...[
+                    //   _buildAttendanceIconButton(context),
+                    //   const SizedBox(width: 10),
+                    // ],
+                    _buildAttendanceIconButton(context),
+                    const SizedBox(width: 10),
                     _buildNotificationIconButton(),
                     const SizedBox(width: 10),
                     _buildThemeButton(),

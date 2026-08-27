@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../repositories/table_merge_repository.dart';
+import '../../services/kds_seivices.dart';
 
 class UnmergeTablePopup extends StatelessWidget {
   final int index;
@@ -21,6 +24,16 @@ class UnmergeTablePopup extends StatelessWidget {
     final parentTableId = tableData['table_id'] ?? 0;
     final zoneId = tableData['zone_id'] ?? 0;
     final restaurantId = tableData['restaurant_id'] ?? 0;
+    final parentTableName =
+        tableData['table_name']?.toString() ??
+            tableData['tableName']?.toString() ??
+            '';
+    final mergedTables =
+        tableData['merged_tables']?.toString() ?? parentTableName;
+    final zoneName =
+        tableData['areaName']?.toString() ??
+            tableData['zone_name']?.toString() ??
+            '';
 
     try {
       final resData = await repository.deleteMergeTable(
@@ -31,6 +44,20 @@ class UnmergeTablePopup extends StatelessWidget {
       );
 
       if (resData['success'] == true) {
+        // Notify Captain – tables unmerged / free
+        unawaited(
+          KdsMqttPublisher.notifyTablesUnmerged(
+            restaurantId: restaurantId.toString(),
+            parentTableId: parentTableId is int
+                ? parentTableId
+                : int.tryParse(parentTableId.toString()) ?? 0,
+            parentTableName: parentTableName,
+            zoneId: zoneId is int ? zoneId : int.tryParse(zoneId.toString()),
+            zoneName: zoneName,
+            mergedTables: mergedTables,
+          ),
+        );
+
         Navigator.of(context).pop();
         onUnmerge(index, tableData);
       }

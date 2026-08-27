@@ -219,6 +219,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
   Future<void> _fetchOrders() async {
     final cacheKey = "$selectedOrderType|${selectedArea ?? 'All'}";
+    debugPrint("🔥 SELECTED ORDER TYPE = $selectedOrderType");
+    debugPrint("🔥 SELECTED AREA = $selectedArea");
+    debugPrint("🔥 CACHE KEY = $cacheKey");
 
     if (!mounted) return;
 
@@ -263,6 +266,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         forceRefresh: true,
       );
     } else {
+      debugPrint(
+        "🔥 FETCHING SPECIFIC ORDER TYPE = '$selectedOrderType'",
+      );
       orders = await kitchenRepo.fetchOrders(
         selectedOrderType: selectedOrderType,
         restaurantId: widget.restaurantId,
@@ -270,6 +276,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         zones: _zones,
         selectedUser: _selectedUser,
       );
+
+      debugPrint(
+        "🔥 SPECIFIC TYPE '$selectedOrderType' RESULT COUNT = ${orders.length}",
+      );
+
+      for (final order in orders) {
+        debugPrint(
+          "🔥 ORDER ID = ${order['order_id'] ?? order['id']} "
+              "ORDER TYPE = '${order['order_type']}'",
+        );
+      }
     }
 
     if (!mounted) return;
@@ -538,7 +555,26 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
 
   String _normalizeOrderType(String type) {
-    return normalizeOrderType(type);
+    final normalized = type
+        .toLowerCase()
+        .trim()
+        .replaceAll(RegExp(r'[\s_-]+'), '');
+
+    switch (normalized) {
+      case 'online':
+      case 'onlineorders':
+        return 'onlineorders';
+
+      case 'takeaway':
+      case 'takeaways':
+        return 'takeaways';
+
+      case 'dinein':
+        return 'dinein';
+
+      default:
+        return normalized;
+    }
   }
 
   DateTime _parseOrderDateTime(Map<String, dynamic> order) {
@@ -588,12 +624,17 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           : normalizeOrderType(order['order_type'] ?? '') ==
           normalizeOrderType(selectedOrderType);
 
+      final orderType =
+      (order['order_type'] ?? '').toString();
+
+      final isNonZone =
+      _isNonZoneOrderType(orderType);
+
       final matchesArea =
-      selectedOrderType == "Takeaways"
-          ? true
-          : (selectedArea == null ||
-          selectedArea == "All" ||
-          order['zone_name'] == selectedArea);
+          isNonZone ||
+              selectedArea == null ||
+              selectedArea == "All" ||
+              order['zone_name'] == selectedArea;
 
       final tableName =
       (order['table_name'] ?? '').toString().toLowerCase();
@@ -1288,7 +1329,31 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
   }
 
   String normalizeOrderType(String type) {
-    return type.toLowerCase().replaceAll("-", "").replaceAll(" ", "");
+    final value = type.trim().toLowerCase();
+
+    switch (value) {
+      case 'dine in':
+      case 'dine-in':
+      case 'dinein':
+        return 'dinein';
+
+      case 'takeaway':
+      case 'takeaways':
+      case 'take away':
+      case 'take-away':
+        return 'takeaways';
+
+      case 'online':
+      case 'online order':
+      case 'online orders':
+        return 'onlineorders';
+
+      case 'all':
+        return 'all';
+
+      default:
+        return value.replaceAll(' ', '');
+    }
   }
 
   @override

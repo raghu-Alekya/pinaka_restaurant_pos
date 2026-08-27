@@ -302,7 +302,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                         backgroundColor: const Color(0xFFFF4D20),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 26,
-                          vertical: 10,
+                          vertical: 18,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),

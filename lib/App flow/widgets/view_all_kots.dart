@@ -77,7 +77,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
   // latest state so cancel/void status updates show up automatically,
   // without waiting for the parent to pass a new `widget.kots`.
   late List<KotModel> _kots;
-
+  bool _isVoidPopupOpen = false;
   // 🔴 FIX: lightweight auto-refresh timer so KOT statuses (e.g. an item
   // getting voided/cancelled from elsewhere) stay "live" without the
   // user needing to tap/expand anything.
@@ -947,223 +947,161 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                         InkWell(
                                                           onTap: () async {
                                                             // -----------------------------------------
-                                                            // 1. CHECK KOT ID
+                                                            // 0. PREVENT MULTIPLE VOID POPUPS
                                                             // -----------------------------------------
-                                                            if (kot.kotId ==
-                                                                null) {
-                                                              debugPrint(
-                                                                "❌ kotId is null",
-                                                              );
+                                                            if (_isVoidPopupOpen) {
+                                                              debugPrint("⚠️ Void popup is already open");
                                                               return;
                                                             }
 
-                                                            // -----------------------------------------
-                                                            // 2. FETCH KOT LINE ITEMS
-                                                            // -----------------------------------------
-                                                            final bloc =
-                                                                context
-                                                                    .read<
-                                                                      KotLineItemsBloc
-                                                                    >();
+                                                            // Lock immediately BEFORE any async operation
+                                                            _isVoidPopupOpen = true;
 
-                                                            bloc.add(
-                                                              FetchKotLineItems(
-                                                                kotId:
-                                                                    kot.kotId!,
-                                                                restaurantId:
-                                                                    widget
-                                                                        .restaurantId,
-                                                                zoneId:
-                                                                    widget
-                                                                        .zoneId,
-                                                                token:
-                                                                    widget
-                                                                        .token,
-                                                              ),
-                                                            );
-
-                                                            final state = await bloc
-                                                                .stream
-                                                                .firstWhere(
-                                                                  (state) =>
-                                                                      state
-                                                                          is KotLineItemsLoaded ||
-                                                                      state
-                                                                          is KotLineItemsError,
-                                                                );
-
-                                                            if (!context
-                                                                .mounted)
-                                                              return;
-
-                                                            // -----------------------------------------
-                                                            // 3. HANDLE FETCH ERROR
-                                                            // -----------------------------------------
-                                                            if (state
-                                                                is KotLineItemsError) {
-                                                              ScaffoldMessenger.of(
-                                                                context,
-                                                              ).showSnackBar(
-                                                                SnackBar(
-                                                                  content: Text(
-                                                                    state
-                                                                        .message,
-                                                                  ),
-                                                                  duration:
-                                                                      const Duration(
-                                                                        seconds:
-                                                                            1,
-                                                                      ),
-                                                                  backgroundColor:
-                                                                      Colors
-                                                                          .red,
-                                                                ),
-                                                              );
-
-                                                              return;
-                                                            }
-
-                                                            // -----------------------------------------
-                                                            // 4. KOT ITEMS LOADED
-                                                            // -----------------------------------------
-                                                            if (state
-                                                                is KotLineItemsLoaded) {
-                                                              final response =
-                                                                  state
-                                                                      .response;
-
+                                                            try {
                                                               // -----------------------------------------
-                                                              // 5. SHOW PIN CONFIRMATION POPUP
+                                                              // 1. CHECK KOT ID
                                                               // -----------------------------------------
-                                                              final bool
-                                                              pinMatched = await PinConfirmationPopup.show(
-                                                                context:
-                                                                    context,
-                                                                expectedPin:
-                                                                    widget.pin,
-
-                                                                // Dynamic text for VOID action
-                                                                title:
-                                                                    'Confirm Void',
-                                                                message:
-                                                                    'Please enter your PIN to void items from this KOT.',
-                                                                cancelText:
-                                                                    'Cancel',
-                                                                proceedText:
-                                                                    'Proceed',
-
-                                                                // Optional callbacks
-                                                                onCancel: () {
-                                                                  debugPrint(
-                                                                    '❌ Void cancelled',
-                                                                  );
-                                                                },
-
-                                                                onProceed: () {
-                                                                  debugPrint(
-                                                                    '✅ PIN verified for void action',
-                                                                  );
-                                                                },
-                                                              );
-
-                                                              if (!context
-                                                                  .mounted)
-                                                                return;
-
-                                                              // -----------------------------------------
-                                                              // 6. CANCEL / PIN FAILED
-                                                              // -----------------------------------------
-                                                              if (!pinMatched) {
-                                                                debugPrint(
-                                                                  '❌ Void cancelled or PIN verification failed',
-                                                                );
+                                                              if (kot.kotId == null) {
+                                                                debugPrint("❌ kotId is null");
                                                                 return;
                                                               }
 
                                                               // -----------------------------------------
-                                                              // 7. PIN VERIFIED
-                                                              // OPEN VOID ITEMS DIALOG
+                                                              // 2. FETCH KOT LINE ITEMS
                                                               // -----------------------------------------
-                                                              await showDialog(
-                                                                context:
-                                                                    context,
-                                                                barrierDismissible:
-                                                                    false,
-                                                                builder: (_) {
-                                                                  return MultiBlocProvider(
-                                                                    providers: [
-                                                                      BlocProvider.value(
-                                                                        value:
-                                                                            context
-                                                                                .read<
-                                                                                  UpdatekotBloc
-                                                                                >(),
-                                                                      ),
-                                                                      BlocProvider.value(
-                                                                        value:
-                                                                            context
-                                                                                .read<
-                                                                                  KotBloc
-                                                                                >(),
-                                                                      ),
-                                                                    ],
-                                                                    child: VoidItemsDialog(
-                                                                      items:
-                                                                          response
-                                                                              .items,
+                                                              final bloc = context.read<KotLineItemsBloc>();
 
-                                                                      tableNo:
-                                                                          widget
-                                                                              .tableNo,
-
-                                                                      kotNo:
-                                                                          response
-                                                                              .kotNumber,
-
-                                                                      kotId:
-                                                                          response
-                                                                              .kotId,
-
-                                                                      restaurantId:
-                                                                          response
-                                                                              .restaurantId,
-
-                                                                      zoneId:
-                                                                          response
-                                                                              .zoneId,
-
-                                                                      token:
-                                                                          widget
-                                                                              .token,
-                                                                      storedPinNumber: widget.pin,
-                                                                      role: _permissions?.role ?? '', // ✅
-                                                                      parentOrderId:
-                                                                          context
-                                                                              .read<
-                                                                                KotBloc
-                                                                              >()
-                                                                              .currentParentOrderId,
-
-                                                                      item: kot,
-
-                                                                      onRemark: (
-                                                                        value,
-                                                                      ) {
-                                                                        debugPrint(
-                                                                          "Void remark: $value",
-                                                                        );
-                                                                      },
-                                                                    ),
-                                                                  );
-                                                                },
+                                                              bloc.add(
+                                                                FetchKotLineItems(
+                                                                  kotId: kot.kotId!,
+                                                                  restaurantId: widget.restaurantId,
+                                                                  zoneId: widget.zoneId,
+                                                                  token: widget.token,
+                                                                ),
                                                               );
 
+                                                              final state = await bloc.stream.firstWhere(
+                                                                    (state) =>
+                                                                state is KotLineItemsLoaded ||
+                                                                    state is KotLineItemsError,
+                                                              );
+
+                                                              if (!context.mounted) return;
+
                                                               // -----------------------------------------
-                                                              // 8. REFRESH KOTS AFTER VOID DIALOG CLOSES
+                                                              // 3. HANDLE FETCH ERROR
                                                               // -----------------------------------------
-                                                              if (context
-                                                                  .mounted) {
-                                                                _fetchKots();
+                                                              if (state is KotLineItemsError) {
+                                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                                  SnackBar(
+                                                                    content: Text(state.message),
+                                                                    duration: const Duration(seconds: 1),
+                                                                    backgroundColor: Colors.red,
+                                                                  ),
+                                                                );
+
+                                                                return;
+                                                              }
+
+                                                              // -----------------------------------------
+                                                              // 4. KOT ITEMS LOADED
+                                                              // -----------------------------------------
+                                                              if (state is KotLineItemsLoaded) {
+                                                                final response = state.response;
+
+                                                                // -----------------------------------------
+                                                                // 5. SHOW PIN CONFIRMATION POPUP
+                                                                // -----------------------------------------
+                                                                final bool pinMatched =
+                                                                await PinConfirmationPopup.show(
+                                                                  context: context,
+                                                                  expectedPin: widget.pin,
+
+                                                                  title: 'Confirm Void',
+                                                                  message:
+                                                                  'Please enter your PIN to void items from this KOT.',
+                                                                  cancelText: 'Cancel',
+                                                                  proceedText: 'Proceed',
+
+                                                                  onCancel: () {
+                                                                    debugPrint('❌ Void cancelled');
+                                                                  },
+
+                                                                  onProceed: () {
+                                                                    debugPrint(
+                                                                      '✅ PIN verified for void action',
+                                                                    );
+                                                                  },
+                                                                );
+
+                                                                if (!context.mounted) return;
+
+                                                                // -----------------------------------------
+                                                                // 6. CANCEL / PIN FAILED
+                                                                // -----------------------------------------
+                                                                if (!pinMatched) {
+                                                                  debugPrint(
+                                                                    '❌ Void cancelled or PIN verification failed',
+                                                                  );
+                                                                  return;
+                                                                }
+
+                                                                // -----------------------------------------
+                                                                // 7. PIN VERIFIED
+                                                                // OPEN VOID ITEMS DIALOG
+                                                                // -----------------------------------------
+                                                                await showDialog(
+                                                                  context: context,
+                                                                  barrierDismissible: false,
+                                                                  builder: (_) {
+                                                                    return MultiBlocProvider(
+                                                                      providers: [
+                                                                        BlocProvider.value(
+                                                                          value: context.read<UpdatekotBloc>(),
+                                                                        ),
+                                                                        BlocProvider.value(
+                                                                          value: context.read<KotBloc>(),
+                                                                        ),
+                                                                      ],
+                                                                      child: VoidItemsDialog(
+                                                                        items: response.items,
+                                                                        tableNo: widget.tableNo,
+                                                                        kotNo: response.kotNumber,
+                                                                        kotId: response.kotId,
+                                                                        restaurantId: response.restaurantId,
+                                                                        zoneId: response.zoneId,
+                                                                        token: widget.token,
+                                                                        storedPinNumber: widget.pin,
+                                                                        role: _permissions?.role ?? '',
+                                                                        parentOrderId: context
+                                                                            .read<KotBloc>()
+                                                                            .currentParentOrderId,
+                                                                        item: kot,
+                                                                        onRemark: (value) {
+                                                                          debugPrint(
+                                                                            "Void remark: $value",
+                                                                          );
+                                                                        },
+                                                                      ),
+                                                                    );
+                                                                  },
+                                                                );
+
+                                                                // -----------------------------------------
+                                                                // 8. REFRESH KOTS
+                                                                // -----------------------------------------
+                                                                if (context.mounted) {
+                                                                  _fetchKots();
+                                                                }
+                                                              }
+                                                            } finally {
+                                                              // -----------------------------------------
+                                                              // 9. UNLOCK AFTER COMPLETE FLOW
+                                                              // -----------------------------------------
+                                                              if (mounted) {
+                                                                setState(() {
+                                                                  _isVoidPopupOpen = false;
+                                                                });
                                                               }
                                                             }
                                                           },
@@ -1558,7 +1496,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                               ),
 
                                                               Text(
-                                                                "$_currency${kot.items.fold<double>(0, (sum, e) => sum + (e.totalWithAddons ?? 0)).toStringAsFixed(2)}",
+                                                                "$_currency${kot.items.fold<double>(0, (sum, e) => sum + (e.amount ?? 0)).toStringAsFixed(2)}",
                                                                 style: TextStyle(
                                                                   color:
                                                                       isDark
@@ -1734,48 +1672,44 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                                 ),
 
                                                                                 // Modifiers
-                                                                                if ((item.modifiers ??
-                                                                                        [])
-                                                                                    .isNotEmpty)
+                                                                                // Modifiers
+                                                                                if (item.modifiers.isNotEmpty)
                                                                                   Padding(
                                                                                     padding: const EdgeInsets.only(
-                                                                                      top:
-                                                                                          2,
+                                                                                      top: 3,
+                                                                                      right: 4,
                                                                                     ),
-                                                                                    child: Wrap(
-                                                                                      spacing:
-                                                                                          4,
-                                                                                      runSpacing:
-                                                                                          2,
-                                                                                      children:
-                                                                                          item.modifiers!
-                                                                                              .map(
-                                                                                                (
-                                                                                                  modifier,
-                                                                                                ) => Text(
-                                                                                                  modifier,
-                                                                                                  style: TextStyle(
-                                                                                                    fontSize:
-                                                                                                        11,
-                                                                                                    color:
-                                                                                                        isCancelled
-                                                                                                            ? Colors.red.shade400
-                                                                                                            : (isDark
-                                                                                                                ? Colors.white70
-                                                                                                                : Colors.blueGrey),
-                                                                                                    fontStyle:
-                                                                                                        FontStyle.italic,
-                                                                                                    decoration:
-                                                                                                        isCancelled
-                                                                                                            ? TextDecoration.lineThrough
-                                                                                                            : null,
-                                                                                                  ),
-                                                                                                ),
-                                                                                              )
-                                                                                              .toList(),
+                                                                                    child: RichText(
+                                                                                      text: TextSpan(
+                                                                                        children: List.generate(
+                                                                                          item.modifiers.length,
+                                                                                              (index) {
+                                                                                            final modifier =
+                                                                                            item.modifiers[index].trim();
+
+                                                                                            return TextSpan(
+                                                                                              text: index == item.modifiers.length - 1
+                                                                                                  ? modifier
+                                                                                                  : '$modifier, ',
+                                                                                              style: TextStyle(
+                                                                                                fontSize: 11,
+                                                                                                height: 1.45,
+                                                                                                color: isCancelled
+                                                                                                    ? Colors.red.shade400
+                                                                                                    : (isDark
+                                                                                                    ? Colors.white70
+                                                                                                    : Colors.blueGrey),
+                                                                                                fontStyle: FontStyle.italic,
+                                                                                                decoration: isCancelled
+                                                                                                    ? TextDecoration.lineThrough
+                                                                                                    : null,
+                                                                                              ),
+                                                                                            );
+                                                                                          },
+                                                                                        ),
+                                                                                      ),
                                                                                     ),
                                                                                   ),
-
                                                                                 // Add-ons
                                                                                 if (item.addOns !=
                                                                                         null &&
@@ -1875,7 +1809,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                               children: [
                                                                                 Text(
                                                                                   // (item.totalWithAddons ?? 0).toStringAsFixed(2),
-                                                                                  "$_currency${(item.totalWithAddons ?? 0).toStringAsFixed(2)}",
+                                                                                  "$_currency${(item.amount ?? 0).toStringAsFixed(2)}",
                                                                                   style: TextStyle(
                                                                                     fontWeight:
                                                                                         isCancelled
@@ -1894,7 +1828,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                                                                                   ),
                                                                                 ),
                                                                                 Text(
-                                                                                  "$_currency${(item.amount ?? 0).toStringAsFixed(2)}",
+                                                                                  "$_currency${(item.price ?? 0).toStringAsFixed(2)}",
                                                                                   // (item.amount ?? 0).toStringAsFixed(2),
                                                                                   style: TextStyle(
                                                                                     fontSize:

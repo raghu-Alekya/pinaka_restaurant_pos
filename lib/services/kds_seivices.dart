@@ -57,11 +57,11 @@ class KdsMqttPublisher {
       ..keepAlivePeriod = 60
       ..autoReconnect = true
       ..onConnected = () {
-        print('✅ MQTT connected ($clientId)');
+        print(' MQTT connected ($clientId)');
         _connected = true;
       }
       ..onDisconnected = () {
-        print('⚠️ MQTT disconnected');
+        print(' MQTT disconnected');
         _connected = false;
       };
 
@@ -71,12 +71,12 @@ class KdsMqttPublisher {
           _client!.connectionStatus?.state == MqttConnectionState.connected;
 
       if (_connected) {
-        print('✅ MQTT connected successfully to $_brokerHost:$_brokerPort');
+        print(' MQTT connected successfully to $_brokerHost:$_brokerPort');
       } else {
-        print('❌ MQTT connection failed: ${_client!.connectionStatus}');
+        print('MQTT connection failed: ${_client!.connectionStatus}');
       }
     } catch (e) {
-      print('❌ MQTT connection exception: $e');
+      print(' MQTT connection exception: $e');
       _connected = false;
     }
   }
@@ -91,7 +91,7 @@ class KdsMqttPublisher {
 
       final topic = _statusTopic(restaurantId);
       _client!.subscribe(topic, MqttQos.atLeastOnce);
-      print('📡 Subscribed to KDS status → $topic');
+      print('Subscribed to KDS status → $topic');
 
       await _statusSubscription?.cancel();
       if (_client!.updates == null) return;
@@ -115,16 +115,16 @@ class KdsMqttPublisher {
             if (map['event'] != 'kot_status_updated') continue;
 
             print(
-              '📥 KDS status update: kot=${map['kot_number']} status=${map['status']}',
+              ' KDS status update: kot=${map['kot_number']} status=${map['status']}',
             );
             _statusController.add(map);
           } catch (e) {
-            print('❌ KDS status parse error: $e');
+            print(' KDS status parse error: $e');
           }
         }
       });
     } catch (e) {
-      print('❌ KDS status subscribe failed: $e');
+      print(' KDS status subscribe failed: $e');
     }
   }
 
@@ -163,9 +163,9 @@ class KdsMqttPublisher {
         MqttQos.atLeastOnce,
         builder.payload!,
       );
-      print('📤 KOT created published: ${kot.kotNumber}');
+      print(' KOT created published: ${kot.kotNumber}');
     } catch (e) {
-      print('❌ MQTT publish failed: $e');
+      print('MQTT publish failed: $e');
     }
   }
 
@@ -213,9 +213,9 @@ class KdsMqttPublisher {
         builder.payload!,
       );
 
-      print('✅ Takeaway completed event published successfully');
+      print('Takeaway completed event published successfully');
     } catch (e, stack) {
-      print('❌ Takeaway MQTT publish failed: $e');
+      print('Takeaway MQTT publish failed: $e');
       print(stack);
     }
   }
@@ -262,9 +262,9 @@ class KdsMqttPublisher {
         builder.payload!,
       );
 
-      print('✅ KOT quantity update published successfully');
+      print('KOT quantity update published successfully');
     } catch (e, stack) {
-      print('❌ Quantity MQTT publish failed: $e');
+      print('Quantity MQTT publish failed: $e');
       print(stack);
     }
   }
@@ -293,7 +293,7 @@ class KdsMqttPublisher {
         'timestamp': DateTime.now().toIso8601String(),
       };
 
-      print('📤 Publishing KOT Status: ${jsonEncode(payload)}');
+      print('Publishing KOT Status: ${jsonEncode(payload)}');
 
       final builder = MqttClientPayloadBuilder()
         ..addString(jsonEncode(payload));
@@ -304,7 +304,7 @@ class KdsMqttPublisher {
         builder.payload!,
       );
     } catch (e) {
-      print('❌ Status publish failed: $e');
+      print(' Status publish failed: $e');
     }
   }
 
@@ -325,7 +325,7 @@ class KdsMqttPublisher {
       await _ensureConnected();
 
       if (!_connected || _client == null) {
-        print('⚠️ MQTT not connected - cannot notify Captain');
+        print('MQTT not connected - cannot notify Captain');
         return;
       }
 
@@ -382,7 +382,7 @@ class KdsMqttPublisher {
       await _ensureConnected();
 
       if (!_connected || _client == null) {
-        print('⚠️ MQTT not connected - cannot notify Captain (order created)');
+        print('MQTT not connected - cannot notify Captain (order created)');
         return;
       }
 
@@ -415,7 +415,7 @@ class KdsMqttPublisher {
         builder.payload!,
       );
 
-      print('✅ Order created event sent to Captain successfully');
+      print('Order created event sent to Captain successfully');
     } catch (e, stack) {
       print(' Captain MQTT publish (order created) failed: $e');
       print(stack);
@@ -439,7 +439,7 @@ class KdsMqttPublisher {
       await _ensureConnected();
 
       if (!_connected || _client == null) {
-        print('⚠️ MQTT not connected - cannot notify Captain (KOT printed)');
+        print('MQTT not connected - cannot notify Captain (KOT printed)');
         return;
       }
 
@@ -475,8 +475,177 @@ class KdsMqttPublisher {
 
       print('✅ KOT printed event sent to Captain successfully');
     } catch (e, stack) {
-      print('❌ Captain MQTT publish (KOT printed) failed: $e');
+      print('Captain MQTT publish (KOT printed) failed: $e');
       print(stack);
     }
   }
+
+  // ─── NEW: Notify Captain – Tables Merged ────────────────────────
+  static Future<void> notifyTablesMerged({
+    required String restaurantId,
+    required int parentTableId,
+    required String parentTableName,
+    required List<int> childTableIds,
+    List<String>? childTableNames,
+    int? zoneId,
+    String? zoneName,
+    bool isUpdate = false,
+  }) async {
+    try {
+      await _ensureConnected();
+
+      if (!_connected || _client == null) {
+        print('MQTT not connected - cannot notify Captain (tables merged)');
+        return;
+      }
+
+      final payload = {
+        'event': isUpdate ? 'tables_merge_updated' : 'tables_merged',
+        'restaurant_id': restaurantId,
+        'parent_table_id': parentTableId,
+        'parent_table_name': parentTableName,
+        'child_table_ids': childTableIds,
+        'child_table_names': childTableNames ?? [],
+        'zone_id': zoneId,
+        'zone_name': zoneName ?? '',
+        'status': 'merged',
+        'table_status': 'Occupied', // or keep as-is; Captain can refresh
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('========== PUBLISH TABLES MERGED → CAPTAIN ==========');
+      print('Topic  : ${_captainOrdersTopic(restaurantId)}');
+      print('Payload: ${jsonEncode(payload)}');
+      print('====================================================');
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _captainOrdersTopic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print('✅ Tables merged event sent to Captain successfully');
+    } catch (e, stack) {
+      print(' Captain MQTT publish (tables merged) failed: $e');
+      print(stack);
+    }
+  }
+
+  // ─── NEW: Notify Captain – Tables Unmerged ──────────────────────
+  static Future<void> notifyTablesUnmerged({
+    required String restaurantId,
+    required int parentTableId,
+    String? parentTableName,
+    int? zoneId,
+    String? zoneName,
+    String? mergedTables, // e.g. "T1-T2-T3"
+  }) async {
+    try {
+      await _ensureConnected();
+
+      if (!_connected || _client == null) {
+        print('MQTT not connected - cannot notify Captain (tables unmerged)');
+        return;
+      }
+
+      final payload = {
+        'event': 'tables_unmerged',
+        'restaurant_id': restaurantId,
+        'parent_table_id': parentTableId,
+        'parent_table_name': parentTableName ?? '',
+        'merged_tables': mergedTables ?? '',
+        'zone_id': zoneId,
+        'zone_name': zoneName ?? '',
+        'status': 'unmerged',
+        'table_status': 'Available', // tables become free again
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('========== PUBLISH TABLES UNMERGED → CAPTAIN ==========');
+      print('Topic  : ${_captainOrdersTopic(restaurantId)}');
+      print('Payload: ${jsonEncode(payload)}');
+      print('======================================================');
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _captainOrdersTopic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print('Tables unmerged event sent to Captain successfully');
+    } catch (e, stack) {
+      print('Captain MQTT publish (tables unmerged) failed: $e');
+      print(stack);
+    }
+  }
+
+  // ─── Captain → POS stream ───────────────────────────────────────
+
+  static StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>?
+  _captainSubscription;
+  static final _captainController =
+  StreamController<Map<String, dynamic>>.broadcast();
+
+  static Stream<Map<String, dynamic>> get captainUpdates =>
+      _captainController.stream;
+
+  static String _captainStatusTopic(String restaurantId) =>
+      'store/$restaurantId/captain/status';
+
+  /// Call once when TablesScreen / app starts
+  static Future<void> listenForCaptainUpdates({
+    required String restaurantId,
+  }) async {
+    try {
+      await _ensureConnected();
+      if (!_connected || _client == null) return;
+
+      final topic = _captainStatusTopic(restaurantId);
+      _client!.subscribe(topic, MqttQos.atLeastOnce);
+      print('📡 POS subscribed to Captain status → $topic');
+
+      await _captainSubscription?.cancel();
+      if (_client!.updates == null) return;
+
+      _captainSubscription = _client!.updates!.listen((messages) {
+        for (final message in messages) {
+          if (message.topic != topic) continue;
+
+          final payload = message.payload;
+          if (payload is! MqttPublishMessage) continue;
+
+          final body = MqttPublishPayload.bytesToStringAsString(
+            payload.payload.message,
+          );
+
+          try {
+            final decoded = jsonDecode(body);
+            if (decoded is! Map) continue;
+
+            final map = Map<String, dynamic>.from(decoded);
+            final event = map['event']?.toString() ?? '';
+
+            print('========== POS RECEIVED FROM CAPTAIN ==========');
+            print('Event      : $event');
+            print('Table      : ${map['table_name']} (${map['table_id']})');
+            print('Status     : ${map['table_status']}');
+            print('================================================');
+
+            _captainController.add(map);
+          } catch (e) {
+            print(' POS Captain parse error: $e');
+          }
+        }
+      });
+    } catch (e) {
+      print('POS listenForCaptainUpdates failed: $e');
+    }
+  }
+
 }

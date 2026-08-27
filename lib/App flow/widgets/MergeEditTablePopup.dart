@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../repositories/table_merge_repository.dart';
+import '../../services/kds_seivices.dart';
 import 'area_movement_notifier.dart';
 
 class MergeEditTablePopup extends StatefulWidget {
@@ -356,6 +359,18 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
                     );
 
                     if (result['success'] == true) {
+                      unawaited(
+                        KdsMqttPublisher.notifyTablesMerged(
+                          restaurantId: widget.tableData['restaurant_id'].toString(),
+                          parentTableId: parentTableId,
+                          parentTableName: parentTable['table_name']?.toString() ?? '',
+                          childTableIds: childTableIds,
+                          childTableNames: selectedChildren.toList(),
+                          zoneId: widget.tableData['zone_id'] as int?,
+                          zoneName: widget.tableData['areaName']?.toString(),
+                          isUpdate: widget.tableData['is_merged'] == true,
+                        ),
+                      );
                       Navigator.of(context).pop();
                       AreaMovementNotifier.showPopup(
                         context: context,

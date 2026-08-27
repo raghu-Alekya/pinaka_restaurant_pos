@@ -1438,7 +1438,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _restaurantOverview() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [const SizedBox(height: 30), _topSellingItems()],
+      children: [const SizedBox(height: 20), _topSellingItems()],
     );
   }
 
@@ -1446,7 +1446,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      height: 593,
+      height: 503,
       padding: const EdgeInsets.only(left: 16, top: 16, right: 20, bottom: 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF202433) : Colors.white,
@@ -1529,14 +1529,14 @@ class _HomeScreenState extends State<HomeScreen> {
             isDark,
           ),
 
-          _overviewRow(
-            Icons.check_circle_outline,
-            const Color(0xFFEAF2FF),
-            Colors.blue,
-            "Ready to Serve Kot's",
-            "${statusCount?.served ?? 0}",
-            isDark,
-          ),
+          // _overviewRow(
+          //   Icons.check_circle_outline,
+          //   const Color(0xFFEAF2FF),
+          //   Colors.blue,
+          //   "Ready to Serve Kot's",
+          //   "${statusCount?.served ?? 0}",
+          //   isDark,
+          // ),
 
           _overviewRow(
             Icons.cancel_outlined,

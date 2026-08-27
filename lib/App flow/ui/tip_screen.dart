@@ -647,7 +647,7 @@ class _TipsScreenState extends State<TipsScreen>
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
-                          vertical: 10,
+                          vertical: 18,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -930,112 +930,108 @@ class _TipsScreenState extends State<TipsScreen>
 
                         /// Pagination
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 "Total Orders: $totalOrders",
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : Colors.black87,
+                                  color: Colors.black87,
                                 ),
                               ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.first_page,
-                                      size: 20,
-                                    ),
-                                    color:
-                                    isDark
-                                        ? Colors.white70
-                                        : Colors.grey[700],
-                                    onPressed:
-                                    currentPage > 1
-                                        ? () {
-                                      setState(() {
-                                        currentPage = 1;
-                                        _scrollController.jumpTo(0);
-                                      });
-                                    }
-                                        : null,
+
+                              Container(
+                                margin: const EdgeInsets.only(right: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border.all(
+                                    color: const Color(0xFFEFEFEF),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.chevron_left,
-                                      size: 24,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: currentPage > 1
+                                          ? () {
+                                        setState(() {
+                                          currentPage--;
+                                        });
+                                      }
+                                          : null,
+                                      child: _paginationTextButton("Previous"),
                                     ),
-                                    color:
-                                    isDark
-                                        ? Colors.white70
-                                        : Colors.grey[700],
-                                    onPressed:
-                                    currentPage > 1
-                                        ? () {
-                                      setState(() {
-                                        currentPage--;
-                                        _scrollController.jumpTo(0);
-                                      });
-                                    }
-                                        : null,
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                    ),
-                                    child: Text(
-                                      '$currentPage of $totalPages',
-                                      style: TextStyle(
-                                        color:
-                                        isDark
-                                            ? Colors.white70
-                                            : Colors.grey[700],
-                                        fontWeight: FontWeight.w500,
+
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          currentPage = 1;
+                                        });
+                                      },
+                                      child: _pageButton(
+                                        1,
+                                        selected: currentPage == 1,
                                       ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.chevron_right,
-                                      size: 24,
+
+                                    if (totalPages >= 2)
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            currentPage = 2;
+                                          });
+                                        },
+                                        child: _pageButton(
+                                          2,
+                                          selected: currentPage == 2,
+                                        ),
+                                      ),
+
+                                    if (totalPages >= 3)
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            currentPage = 3;
+                                          });
+                                        },
+                                        child: _pageButton(
+                                          3,
+                                          selected: currentPage == 3,
+                                        ),
+                                      ),
+
+                                    if (totalPages > 4)
+                                      _paginationTextButton("..."),
+
+                                    if (totalPages > 4)
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            currentPage = totalPages;
+                                          });
+                                        },
+                                        child: _pageButton(
+                                          totalPages,
+                                          selected: currentPage == totalPages,
+                                        ),
+                                      ),
+
+                                    GestureDetector(
+                                      onTap: currentPage < totalPages
+                                          ? () {
+                                        setState(() {
+                                          currentPage++;
+                                        });
+                                      }
+                                          : null,
+                                      child: _paginationTextButton("Next"),
                                     ),
-                                    color:
-                                    isDark
-                                        ? Colors.white70
-                                        : Colors.grey[700],
-                                    onPressed:
-                                    currentPage < totalPages
-                                        ? () {
-                                      setState(() {
-                                        currentPage++;
-                                        _scrollController.jumpTo(0);
-                                      });
-                                    }
-                                        : null,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.last_page, size: 20),
-                                    color:
-                                    isDark
-                                        ? Colors.white70
-                                        : Colors.grey[700],
-                                    onPressed:
-                                    currentPage < totalPages
-                                        ? () {
-                                      setState(() {
-                                        currentPage = totalPages;
-                                        _scrollController.jumpTo(0);
-                                      });
-                                    }
-                                        : null,
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -1174,6 +1170,58 @@ class _TipsScreenState extends State<TipsScreen>
           ),
         );
       },
+    );
+  }
+  Widget _paginationTextButton(String text) {
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: Color(0xFFEFEFEF),
+          ),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Color(0xFF727272),
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+  Widget _pageButton(
+      int page, {
+        bool selected = false,
+      }) {
+    return Container(
+      width: 28,
+      height: 32,
+      decoration: BoxDecoration(
+        color: selected
+            ? const Color(0xFFFF4D20)
+            : Colors.white,
+        border: const Border(
+          right: BorderSide(
+            color: Color(0xFFEFEFEF),
+          ),
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        '$page',
+        style: TextStyle(
+          color: selected
+              ? Colors.white
+              : const Color(0xFF727272),
+          fontSize: 11,
+          fontWeight:
+          selected ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
     );
   }
 }

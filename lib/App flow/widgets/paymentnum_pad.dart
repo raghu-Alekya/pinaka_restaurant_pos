@@ -1758,15 +1758,15 @@ class _paymentsummaryState extends State<paymentsummary> {
             color: color,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color:
-                isSelected
-                    ? Colors.white
-                    : (isDark
-                    ? const Color(0xFF5A5A5A)
-                    : Colors.transparent),
-                width: isSelected ? 2 : 1,
-              ),
+              // side: BorderSide(
+              //   color:
+              //   isSelected
+              //       ? Colors.white
+              //       : (isDark
+              //       ? const Color(0xFF5A5A5A)
+              //       : Colors.transparent),
+              //   width: isSelected ? 2 : 1,
+              // ),
             ),
             shadows: [
               BoxShadow(
