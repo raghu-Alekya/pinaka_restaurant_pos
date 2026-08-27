@@ -19,6 +19,7 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
   }) : super(CategoryInitial()) {
     on<LoadCategories>(_onLoadCategories);
     on<SelectCategory>(_onSelectCategory);
+    on<UpdateProductsStock>(_onUpdateProductsStock); // ← NEW
   }
 
   List<CategoryEntity> _allCategories = [];
@@ -139,5 +140,78 @@ class CategoryBloc extends Bloc<CategoryEvent, CategoryState> {
     );
     _cache[categoryId] = loaded;
     emit(loaded);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // NEW: patch in-memory stock status (no network, no CategoryLoading)
+  // so Order Menu + Menu Management update instantly after edit.
+  // ─────────────────────────────────────────────────────────────────
+  Future<void> _onUpdateProductsStock(
+      UpdateProductsStock event,
+      Emitter<CategoryState> emit,
+      ) async {
+    if (event.stockById.isEmpty) return;
+
+    ProductEntity patchProduct(ProductEntity p) {
+      final newInStock = event.stockById[p.id];
+      if (newInStock == null || newInStock == p.inStock) return p;
+      return ProductEntity(
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        inStock: newInStock,
+        isVeg: p.isVeg,
+      );
+    }
+
+    List<ProductEntity> patchList(List<ProductEntity> list) =>
+        list.map(patchProduct).toList();
+
+    // Patch every cached category so tab switches stay correct
+    final updatedCache = <int, CategoryLoaded>{};
+    for (final entry in _cache.entries) {
+      final loaded = entry.value;
+
+      final newDirect = patchList(loaded.directProducts);
+
+      final newSubProducts = <int, List<ProductEntity>>{};
+      loaded.subcategoryProducts.forEach((id, list) {
+        newSubProducts[id] = patchList(list);
+      });
+
+      final newMiniMap = <int, List<MiniSubcategoryEntity>>{};
+      loaded.miniSubcategoriesMap.forEach((subId, miniList) {
+        newMiniMap[subId] = miniList.map((mini) {
+          return MiniSubcategoryEntity(
+            id: mini.id,
+            name: mini.name,
+            products: patchList(mini.products),
+            // add any other required fields from your MiniSubcategoryEntity
+          );
+        }).toList();
+      });
+
+      updatedCache[entry.key] = CategoryLoaded(
+        categories: loaded.categories,
+        selectedCategoryId: loaded.selectedCategoryId,
+        subcategories: loaded.subcategories,
+        directProducts: newDirect,
+        subcategoryProducts: newSubProducts,
+        miniSubcategoriesMap: newMiniMap,
+      );
+    }
+
+    _cache
+      ..clear()
+      ..addAll(updatedCache);
+
+    // Emit the currently selected category so UI rebuilds immediately
+    final current = state;
+    if (current is CategoryLoaded) {
+      final patched = _cache[current.selectedCategoryId];
+      if (patched != null) {
+        emit(patched);
+      }
+    }
   }
 }

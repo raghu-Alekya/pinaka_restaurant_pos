@@ -856,6 +856,7 @@ import '../kots_list/kots_list_bloc/kots_list_event.dart';
 import '../kots_list/kots_list_bloc/kots_list_state.dart';
 import '../kots_list/kots_list_domin/kots_list_entity.dart';
 import '../kots_list/kots_list_widget.dart';
+import '../mqtt_servers/captain_mqtt_publisher.dart';
 import '../printer/printer_service.dart';
 import '../kots_list/kots_list_bloc/kds_seivices.dart';
 import 'order_menu/entities/product_entity.dart';
@@ -923,18 +924,12 @@ class _CartScreenState extends State<CartScreen> {
   //
   //   final kotsBloc = context.read<KotsListBloc>();
   //
-  //   if (kotsBloc.state is KotsListLoaded && (kotsBloc.state as KotsListLoaded).kots.isNotEmpty) {
-  //     _hasAnyKots = true;
-  //     if (cartItems.isEmpty) {
-  //       _showAllKots = true;
-  //       _initialAutoExpandDone = true;
-  //     }
-  //   }
-  //
+  //   // Listen for state changes (including after the fetch)
   //   _kotsSubscription = kotsBloc.stream.listen((state) {
   //     if (state is KotsListLoaded && mounted) {
   //       setState(() {
   //         _hasAnyKots = state.kots.isNotEmpty;
+  //         // Auto‑expand if cart is empty and we have KOTs
   //         if (_hasAnyKots && cartItems.isEmpty && !_initialAutoExpandDone) {
   //           _showAllKots = true;
   //           _initialAutoExpandDone = true;
@@ -953,6 +948,7 @@ class _CartScreenState extends State<CartScreen> {
   //     );
   //   });
   // }
+
   @override
   void initState() {
     super.initState();
@@ -960,43 +956,44 @@ class _CartScreenState extends State<CartScreen> {
     _loadCurrencySymbol();
 
     final kotsBloc = context.read<KotsListBloc>();
+    final currentState = kotsBloc.state;
 
-    if (kotsBloc.state is KotsListLoaded && (kotsBloc.state as KotsListLoaded).kots.isNotEmpty) {
-      _hasAnyKots = true;
-      if (cartItems.isEmpty) {
+    // ✅ INSTANT DISPLAY: if we already have data for THIS order, use it now
+    if (currentState is KotsListLoaded &&
+        currentState.parentOrderId == widget.orderId) {
+      _hasAnyKots = currentState.kots.isNotEmpty;
+      if (_hasAnyKots && cartItems.isEmpty) {
         _showAllKots = true;
         _initialAutoExpandDone = true;
       }
     }
 
+    // Listen for future updates (after background refresh)
     _kotsSubscription = kotsBloc.stream.listen((state) {
       if (state is KotsListLoaded && mounted) {
-        setState(() {
-          _hasAnyKots = state.kots.isNotEmpty;
-          if (_hasAnyKots && cartItems.isEmpty && !_initialAutoExpandDone) {
-            _showAllKots = true;
-            _initialAutoExpandDone = true;
-          }
-        });
+        // Only react if the loaded data belongs to this order
+        if (state.parentOrderId == widget.orderId) {
+          setState(() {
+            _hasAnyKots = state.kots.isNotEmpty;
+            if (_hasAnyKots && cartItems.isEmpty && !_initialAutoExpandDone) {
+              _showAllKots = true;
+              _initialAutoExpandDone = true;
+            }
+          });
+        }
       }
     });
 
-    //  NEW: only fetch if the bloc isn't already loaded. OrderMenuScreen
-    // (previous screen, same KotsListBloc instance) already fetched the
-    // KOTs for this order — re-fetching here on every navigation to Cart
-    // was forcing a fresh network round-trip and a brief loading state,
-    // which is what made the KOT list feel delayed when opening Cart.
-    if (kotsBloc.state is! KotsListLoaded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        kotsBloc.add(
-          FetchKotsList(
-            parentOrderId: widget.orderId,
-            restaurantId: widget.restaurantId,
-            zoneId: widget.zoneId,
-          ),
-        );
-      });
-    }
+    // 🔄 Always refresh in the background (fast because the cached data is already shown)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      kotsBloc.add(
+        FetchKotsList(
+          parentOrderId: widget.orderId,
+          restaurantId: widget.restaurantId,
+          zoneId: widget.zoneId,
+        ),
+      );
+    });
   }
 
   Future<void> _loadCurrencySymbol() async {
@@ -1345,7 +1342,24 @@ class _CartScreenState extends State<CartScreen> {
       } catch (mqttError) {
         print('MQTT notify failed (non-blocking): $mqttError');
       }
-
+// 🔥 Notify POS – table becomes Running
+      try {
+        unawaited(
+          CaptainMqttPublisher.notifyKotPrinted(
+            restaurantId: widget.restaurantId.toString(),
+            orderId: widget.orderId,
+            orderType: widget.orderType,
+            zoneId: widget.zoneId,
+            zoneName: zoneName,
+            tableName: widget.tableName,
+            tableId: widget.tableName, // or real table_id if you have it
+            kotNumber: kotNumber,
+            kotId: kotId,
+          ),
+        );
+      } catch (e) {
+        print('POS kot_printed notify failed (non-blocking): $e');
+      }
       // ─── Print KOT ──────────────────────────────────────────────────────
       final printItems = cartItems.map((item) {
         final addOnNames = item.addOns.map((a) => a['name'].toString()).toList();
@@ -1634,8 +1648,10 @@ class _CartScreenState extends State<CartScreen> {
     if (_isRepeatingKot || !_hasAnyKots) return;
 
     // ✅ Block repeat if it was already used for this same KOT set
+    // final currentKotCount = _currentKotCount();
+    // if (_lastRepeatedKotIndex == currentKotCount) {
     final currentKotCount = _currentKotCount();
-    if (_lastRepeatedKotIndex == currentKotCount) {
+    if (_lastRepeatedKotIndex == currentKotCount && cartItems.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Repeat order can be applied only once for this KOT'),
@@ -1790,7 +1806,7 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
         // toolbarHeight: 28,
         backgroundColor: Colors.white,
@@ -2202,7 +2218,7 @@ class _CartScreenState extends State<CartScreen> {
   Widget _itemRow(CartItem item, String currencySymbol) {
     final subtitle = item.addOns.isNotEmpty
         ? item.addOns.map((a) => a['name'].toString()).join(', ')
-        : 'Customize';
+        : ''; // empty string, not 'Customize'
 
     final bool hasAddOns = item.addOns.isNotEmpty;
 
@@ -2229,27 +2245,52 @@ class _CartScreenState extends State<CartScreen> {
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                              subtitle,
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                            ),
-                            const SizedBox(width: 4),
-                            if (hasAddOns)
-                              GestureDetector(
-                                onTap: () => _showEditAddOnsSheet(item),
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.orange,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.edit, size: 8, color: Colors.white),
-                                ),
+                        // Row(
+                        //   children: [
+                        //     Text(
+                        //       subtitle,
+                        //       style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        //     ),
+                        //     const SizedBox(width: 4),
+                        //     if (hasAddOns)
+                        //       GestureDetector(
+                        //         onTap: () => _showEditAddOnsSheet(item),
+                        //         child: Container(
+                        //           padding: const EdgeInsets.all(2),
+                        //           decoration: const BoxDecoration(
+                        //             color: Colors.orange,
+                        //             shape: BoxShape.circle,
+                        //           ),
+                        //           child: const Icon(Icons.edit, size: 8, color: Colors.white),
+                        //         ),
+                        //       ),
+                        //   ],
+                        // ),
+
+                        if (subtitle.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Text(
+                                subtitle,
+                                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                               ),
-                          ],
-                        ),
+                              const SizedBox(width: 4),
+                              if (hasAddOns)
+                                GestureDetector(
+                                  onTap: () => _showEditAddOnsSheet(item),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.orange,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.edit, size: 8, color: Colors.white),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -2319,6 +2360,51 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // ─── Bottom Bar with Repeat KOT ──────────────────────────────────────────
+  // Widget _bottomKotBar(String currencySymbol) {
+  //   return Container(
+  //     padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, -2))],
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         Expanded(
+  //           child: OutlinedButton(
+  //             onPressed: (!_hasAnyKots || _isRepeatingKot) ? null : _showRepeatKotDialog,
+  //             style: OutlinedButton.styleFrom(
+  //               foregroundColor: ColorConstants.primaryColor,
+  //               side: BorderSide(color: ColorConstants.primaryColor),
+  //               padding: const EdgeInsets.symmetric(vertical: 14),
+  //               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  //             ),
+  //             child: _isRepeatingKot
+  //                 ? const SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(radius: 14))
+  //                 : const Text('Repeat KOT', style: TextStyle(fontWeight: FontWeight.w600)),
+  //           ),
+  //         ),
+  //         const SizedBox(width: 12),
+  //         Expanded(
+  //           child: ElevatedButton(
+  //             onPressed: (cartItems.isEmpty || _showAllKots || _isPrintingKot) ? null : _printKot,
+  //             style: ElevatedButton.styleFrom(
+  //               backgroundColor: ColorConstants.primaryColor,
+  //               foregroundColor: Colors.white,
+  //               disabledBackgroundColor: Colors.grey.shade300,
+  //               disabledForegroundColor: Colors.grey.shade600,
+  //               padding: const EdgeInsets.symmetric(vertical: 14),
+  //               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+  //             ),
+  //             child: _isPrintingKot
+  //                 ? const SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(radius: 14))
+  //                 : const Text('KOT Print', style: TextStyle(fontWeight: FontWeight.w600)),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
   Widget _bottomKotBar(String currencySymbol) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -2336,6 +2422,19 @@ class _CartScreenState extends State<CartScreen> {
                 side: BorderSide(color: ColorConstants.primaryColor),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ).copyWith(
+                side: MaterialStateProperty.resolveWith<BorderSide>((states) {
+                  if (states.contains(MaterialState.disabled)) {
+                    return BorderSide(color: Colors.grey.shade400);
+                  }
+                  return BorderSide(color: ColorConstants.primaryColor);
+                }),
+                foregroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+                  if (states.contains(MaterialState.disabled)) {
+                    return Colors.grey.shade600;
+                  }
+                  return ColorConstants.primaryColor;
+                }),
               ),
               child: _isRepeatingKot
                   ? const SizedBox(width: 18, height: 18, child: CupertinoActivityIndicator(radius: 14))
@@ -2378,10 +2477,23 @@ class _CartScreenState extends State<CartScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('$totalItems Items', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+              // Items count – increased from 11 to 16
+              Text(
+                '$totalItems Items',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              // Total price – increased from 13 to 18
               Text(
                 '$currencySymbol${totalPrice.toStringAsFixed(2)}',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey.shade700),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade800,
+                ),
               ),
             ],
           ),
@@ -2394,7 +2506,7 @@ class _CartScreenState extends State<CartScreen> {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Check Out', style: TextStyle(fontWeight: FontWeight.w600,fontSize:18)),
+                Text('Check Out', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18)),
                 SizedBox(width: 4),
                 Icon(Icons.arrow_forward, size: 16),
               ],

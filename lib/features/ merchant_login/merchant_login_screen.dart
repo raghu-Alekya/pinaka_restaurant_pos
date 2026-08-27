@@ -55,9 +55,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
     final size = MediaQuery.of(context).size;
     final horizontalPadding = size.width * 0.07;
 
-    // FIX: detect keyboard height so we can shrink the top/bottom gaps
-    // when it's open, instead of letting the Scaffold resize the body
-    // (which was the actual cause of the 104px overflow).
+
     final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     final topContentOffset =
@@ -123,221 +121,221 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
               ),
 
               // ---------- Foreground form (no SafeArea / ScrollView) ----------
-              // Padding(
-              //   padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     children: [
-              //       SizedBox(height: topContentOffset),
-              //       Center(
-              //         child: Text(
-              //           'Sign In',
-              //           style: TextStyle(
-              //             fontSize: size.width * 0.075,
-              //             fontWeight: FontWeight.bold,
-              //             color: Colors.black87,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(height: size.height * 0.008),
-              //       Center(
-              //         child: Text(
-              //           'Login into your Account',
-              //           style: TextStyle(
-              //             fontSize: size.width * 0.038,
-              //             color: Colors.black54,
-              //           ),
-              //         ),
-              //       ),
-              //       SizedBox(height: size.height * 0.035),
-              //       Form(
-              //         key: _formKey,
-              //         child: Column(
-              //           crossAxisAlignment: CrossAxisAlignment.start,
-              //           children: [
-              //             _fieldLabel('Email Address:', size),
-              //             _buildStyledField(
-              //               controller: _usernameController,
-              //               hint: 'Email',
-              //               validator: Validators.validateUsername,
-              //               size: size,
-              //             ),
-              //             SizedBox(height: size.height * 0.02),
-              //             _fieldLabel('Password:', size),
-              //             _buildStyledField(
-              //               controller: _passwordController,
-              //               hint: 'Password',
-              //               obscureText: _obscurePassword,
-              //               validator: Validators.validatePassword,
-              //               size: size,
-              //               suffixIcon: IconButton(
-              //                 icon: Icon(
-              //                   _obscurePassword
-              //                       ? Icons.visibility_off
-              //                       : Icons.visibility,
-              //                   color: Colors.black45,
-              //                   size: size.width * 0.05,
-              //                 ),
-              //                 onPressed: () {
-              //                   setState(() {
-              //                     _obscurePassword = !_obscurePassword;
-              //                   });
-              //                 },
-              //               ),
-              //             ),
-              //             SizedBox(height: size.height * 0.02),
-              //             _fieldLabel('Store ID (optional):', size),
-              //             _buildStyledField(
-              //               controller: _storeIdController,
-              //               hint: 'Store ID',
-              //               validator: null,
-              //               size: size,
-              //             ),
-              //             SizedBox(height: size.height * 0.02),
-              //             Align(
-              //               alignment: Alignment.centerRight,
-              //               child: Padding(
-              //                 padding: EdgeInsets.only(
-              //                   top: size.height * 0.012,
-              //                 ),
-              //                 child: GestureDetector(
-              //                   onTap: () {
-              //                     // TODO: forgot password flow
-              //                   },
-              //                   child: Text(
-              //                     'Forgot Password?',
-              //                     style: TextStyle(
-              //                       color: ColorConstants.errorColor,
-              //                       fontSize: size.width * 0.035,
-              //                       fontWeight: FontWeight.w500,
-              //                     ),
-              //                   ),
-              //                 ),
-              //               ),
-              //             ),
-              //             SizedBox(height: size.height * 0.03),
-              //             _buildSignInButton(size, isLoading),
-              //             SizedBox(height: bottomContentGap),
-              //           ],
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
-
-
-              // ---------- Foreground form ----------
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: SingleChildScrollView(
-                  // Optional: smoother feel
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: topContentOffset),
-                      Center(
-                        child: Text(
-                          'Sign In',
-                          style: TextStyle(
-                            fontSize: size.width * 0.075,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: size.height * 0.150),
+                    Center(
+                      child: Text(
+                        'Sign In',
+                        style: TextStyle(
+                          fontSize: size.width * 0.075,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
-                      SizedBox(height: size.height * 0.008),
-                      Center(
-                        child: Text(
-                          'Login into your Account',
-                          style: TextStyle(
-                            fontSize: size.width * 0.038,
-                            color: Colors.black54,
-                          ),
+                    ),
+                    SizedBox(height: size.height * 0.008),
+                    Center(
+                      child: Text(
+                        'Login into your Account',
+                        style: TextStyle(
+                          fontSize: size.width * 0.038,
+                          color: Colors.black54,
                         ),
                       ),
-                      SizedBox(height: size.height * 0.035),
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _fieldLabel('Email Address:', size),
-                            _buildStyledField(
-                              controller: _usernameController,
-                              hint: 'Email',
-                              validator: Validators.validateUsername,
-                              size: size,
-                            ),
-                            SizedBox(height: size.height * 0.02),
-                            _fieldLabel('Password:', size),
-                            _buildStyledField(
-                              controller: _passwordController,
-                              hint: 'Password',
-                              obscureText: _obscurePassword,
-                              validator: Validators.validatePassword,
-                              size: size,
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_off
-                                      : Icons.visibility,
-                                  color: Colors.black45,
-                                  size: size.width * 0.05,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _obscurePassword = !_obscurePassword;
-                                  });
-                                },
+                    ),
+                    SizedBox(height: size.height * 0.035),
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _fieldLabel('Email Address:', size),
+                          _buildStyledField(
+                            controller: _usernameController,
+                            hint: 'Email',
+                            validator: Validators.validateUsername,
+                            size: size,
+                          ),
+                          SizedBox(height: size.height * 0.02),
+                          _fieldLabel('Password:', size),
+                          _buildStyledField(
+                            controller: _passwordController,
+                            hint: 'Password',
+                            obscureText: _obscurePassword,
+                            validator: Validators.validatePassword,
+                            size: size,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.black45,
+                                size: size.width * 0.05,
                               ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
                             ),
-                            SizedBox(height: size.height * 0.02),
-                            _fieldLabel('Store ID:', size),
-                            _buildStyledField(
-                              controller: _storeIdController,
-                              hint: 'Store ID',
-                              validator: null,
-                              size: size,
-                            ),
-                            SizedBox(height: size.height * 0.02),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  top: size.height * 0.012,
-                                ),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    // TODO: forgot password flow
-                                  },
-                                  child: Text(
-                                    'Forgot Password?',
-                                    style: TextStyle(
-                                      color: ColorConstants.errorColor,
-                                      fontSize: size.width * 0.035,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                          ),
+                          SizedBox(height: size.height * 0.02),
+                          _fieldLabel('Store ID (optional):', size),
+                          _buildStyledField(
+                            controller: _storeIdController,
+                            hint: 'Store ID',
+                            validator: null,
+                            size: size,
+                          ),
+                          SizedBox(height: size.height * 0.02),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                top: size.height * 0.012,
+                              ),
+                              child: GestureDetector(
+                                onTap: () {
+                                  // TODO: forgot password flow
+                                },
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: TextStyle(
+                                    color: ColorConstants.errorColor,
+                                    fontSize: size.width * 0.035,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
                             ),
-                            SizedBox(height: size.height * 0.03),
-                            _buildSignInButton(size, isLoading),
-
-                            // Extra space so last field is not covered by keyboard
-                            SizedBox(
-                              height: keyboardOpen
-                                  ? MediaQuery.of(context).viewInsets.bottom + 24
-                                  : bottomContentGap,
-                            ),
-                          ],
-                        ),
+                          ),
+                          SizedBox(height: size.height * 0.03),
+                          _buildSignInButton(size, isLoading),
+                          SizedBox(height: bottomContentGap),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
+
+
+              // ---------- Foreground form ----------
+              // Padding(
+              //   padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              //   child: SingleChildScrollView(
+              //     // Optional: smoother feel
+              //     physics: const BouncingScrollPhysics(),
+              //     child: Column(
+              //       crossAxisAlignment: CrossAxisAlignment.start,
+              //       children: [
+              //         SizedBox(height: topContentOffset),
+              //         Center(
+              //           child: Text(
+              //             'Sign In',
+              //             style: TextStyle(
+              //               fontSize: size.width * 0.075,
+              //               fontWeight: FontWeight.bold,
+              //               color: Colors.black87,
+              //             ),
+              //           ),
+              //         ),
+              //         SizedBox(height: size.height * 0.008),
+              //         Center(
+              //           child: Text(
+              //             'Login into your Account',
+              //             style: TextStyle(
+              //               fontSize: size.width * 0.038,
+              //               color: Colors.black54,
+              //             ),
+              //           ),
+              //         ),
+              //         SizedBox(height: size.height * 0.035),
+              //         Form(
+              //           key: _formKey,
+              //           child: Column(
+              //             crossAxisAlignment: CrossAxisAlignment.start,
+              //             children: [
+              //               _fieldLabel('Email Address:', size),
+              //               _buildStyledField(
+              //                 controller: _usernameController,
+              //                 hint: 'Email',
+              //                 validator: Validators.validateUsername,
+              //                 size: size,
+              //               ),
+              //               SizedBox(height: size.height * 0.02),
+              //               _fieldLabel('Password:', size),
+              //               _buildStyledField(
+              //                 controller: _passwordController,
+              //                 hint: 'Password',
+              //                 obscureText: _obscurePassword,
+              //                 validator: Validators.validatePassword,
+              //                 size: size,
+              //                 suffixIcon: IconButton(
+              //                   icon: Icon(
+              //                     _obscurePassword
+              //                         ? Icons.visibility_off
+              //                         : Icons.visibility,
+              //                     color: Colors.black45,
+              //                     size: size.width * 0.05,
+              //                   ),
+              //                   onPressed: () {
+              //                     setState(() {
+              //                       _obscurePassword = !_obscurePassword;
+              //                     });
+              //                   },
+              //                 ),
+              //               ),
+              //               SizedBox(height: size.height * 0.02),
+              //               _fieldLabel('Store ID:', size),
+              //               _buildStyledField(
+              //                 controller: _storeIdController,
+              //                 hint: 'Store ID',
+              //                 validator: null,
+              //                 size: size,
+              //               ),
+              //               SizedBox(height: size.height * 0.02),
+              //               Align(
+              //                 alignment: Alignment.centerRight,
+              //                 child: Padding(
+              //                   padding: EdgeInsets.only(
+              //                     top: size.height * 0.012,
+              //                   ),
+              //                   child: GestureDetector(
+              //                     onTap: () {
+              //                       // TODO: forgot password flow
+              //                     },
+              //                     child: Text(
+              //                       'Forgot Password?',
+              //                       style: TextStyle(
+              //                         color: ColorConstants.errorColor,
+              //                         fontSize: size.width * 0.035,
+              //                         fontWeight: FontWeight.w500,
+              //                       ),
+              //                     ),
+              //                   ),
+              //                 ),
+              //               ),
+              //               SizedBox(height: size.height * 0.03),
+              //               _buildSignInButton(size, isLoading),
+              //
+              //               // Extra space so last field is not covered by keyboard
+              //               SizedBox(
+              //                 height: keyboardOpen
+              //                     ? MediaQuery.of(context).viewInsets.bottom + 24
+              //                     : bottomContentGap,
+              //               ),
+              //             ],
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+              // ),
 
             ],
           );
@@ -526,7 +524,7 @@ class _BottomCurveBand extends StatelessWidget {
 }
 
 class _TopArchClipper extends CustomClipper<Path> {
-  static const double _leftFraction = 0.25;
+  static const double _leftFraction = 0.17;
   static const double _rightFraction = 0.10;
   static const double _archFraction = 0.045;
 
@@ -553,7 +551,7 @@ class _TopArchClipper extends CustomClipper<Path> {
 /// can reuse the exact same bottom curve shape.
 class BottomArchClipper extends CustomClipper<Path> {
   static const double _leftFraction = 0.10;
-  static const double _rightFraction = 0.25;
+  static const double _rightFraction = 0.15; // 👈 was 0.25 — lower value = shorter band on the right
   static const double _archFraction = 0.045;
 
   @override

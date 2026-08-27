@@ -7,6 +7,7 @@ import '../ captain_pin_login/captain_login_data_layer/captain_local_storage.dar
 import '../ captain_pin_login/captain_login_screen.dart';
 import '../ merchant_login/merchant_login_data_layer/merchant_local_storage.dart';
 import '../../constants/color_constants.dart';
+import '../mqtt_servers/mqtt_table_listener.dart';
 import '../printer/SettingsScreen.dart';
 import 'All_tables_list/All_tables_list_bloc/all_tables_list_bloc.dart';
 import 'All_tables_list/All_tables_list_bloc/all_tables_list_event.dart';
@@ -19,6 +20,7 @@ import 'Zones/Zones_bloc/zones_bloc.dart';
 import 'Zones/Zones_widget.dart';
 import 'order_menu/bloc/category_bloc/category_bloc.dart';
 import 'order_menu/bloc/category_bloc/category_event.dart';
+import 'dart:async';
 
 class TableManagementScreen extends StatefulWidget {
   final String? captainName;
@@ -55,20 +57,75 @@ class _TableManagementScreenState extends State<TableManagementScreen>
 
   final GlobalKey _filterIconKey = GlobalKey();
   bool _hasLoadedOnce = false;
+  CaptainMqttService? _mqttService;
+  StreamSubscription? _mqttSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadStoreDetails();
     _loadCaptainDetails();
+    _initMqtt();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Always fetch data on screen load (captain login)
       context.read<ZoneBloc>().add(FetchZones());
       context.read<AllTablesBloc>().add(FetchAllTables());
       context.read<CategoryBloc>().add(LoadCategories());
     });
   }
+  Future<void> _initMqtt() async {
+    try {
+      // 1. Try from Captain login first
+      final captainStorage = context.read<CaptainLocalStorage>();
+      final captainData = await captainStorage.getCaptainData();
 
+      // 2. Fallback to Merchant storeId
+      final merchantStorage = context.read<MerchantLocalStorage>();
+      final merchantData = await merchantStorage.getMerchantData();
+
+      // Adjust the field name according to your Captain model
+      // Common names: restaurantId, restaurant_id, storeId, store_id
+      final restaurantId = captainData?.data?.restaurantId?.toString() ??
+          captainData?.data?.restaurantId?.toString() ??
+          merchantData?.storeId?.toString() ??
+          '1';
+
+      print('📡 Starting Captain MQTT with restaurantId: $restaurantId');
+      print('   Captain data: $captainData');
+      print('   Merchant storeId: ${merchantData?.storeId}');
+
+      _mqttService = CaptainMqttService(
+        brokerHost: '178.16.140.169',
+        brokerPort: 1883,
+        restaurantId: restaurantId,
+      );
+
+      _mqttSubscription = _mqttService!.messages.listen((map) {
+        final event = map['event']?.toString();
+        print('🔔 MQTT message received in UI: $event');
+
+        if (event == 'payment_completed' ||
+            event == 'order_created' ||
+            event == 'kot_printed' ||
+            event == 'tables_merged' ||
+            event == 'tables_merge_updated' ||
+            event == 'tables_unmerged') {
+          print(' Handling $event → refreshing tables');
+          print('   Table: ${map['table_name']} (${map['table_id']})');
+          print('   Status: ${map['table_status']}');
+
+          if (mounted) {
+            context.read<AllTablesBloc>().add(FetchAllTables());
+          }
+        }
+      });
+
+      await _mqttService!.connect();
+    } catch (e, stack) {
+      print(' Failed to init Captain MQTT: $e');
+      print(stack);
+    }
+  }
   Future<void> _loadStoreDetails() async {
     try {
       final merchantStorage = context.read<MerchantLocalStorage>();
@@ -234,8 +291,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
       return;
     }
 
-    // ── attempt >= 1: seed already happened, ctx still not found ──
-    // nudge forward a bit to force nearby sections to lay out.
+
     final target = (position.pixels + position.viewportDimension * 0.9)
         .clamp(0.0, position.maxScrollExtent);
 
@@ -272,61 +328,13 @@ class _TableManagementScreenState extends State<TableManagementScreen>
   }
 
 
-
-  //
-  // Future<void> _onSyncPressed() async {
-  //   if (_isSyncing) return;
-  //   setState(() {
-  //     _isSyncing = true;
-  //     _selectedStatusFilter = 'All';   // ← add this
-  //     _selectedZoneId = null;
-  //   });
-  //
-  //   if (_tablesScrollController.hasClients) {
-  //     _tablesScrollController.jumpTo(0);
-  //   }
-  //
-  //   // Refresh zones, tables AND categories
-  //   context.read<ZoneBloc>().add(FetchZones());
-  //   context.read<AllTablesBloc>().add(FetchAllTables());
-  //   context.read<CategoryBloc>().add(LoadCategories());
-  //
-  //   await Future.delayed(const Duration(milliseconds: 600));
-  //   if (mounted) setState(() => _isSyncing = false);
-  // }
-  //
-  // Future<void> _onSyncDataFromDrawer() async {
-  //   showDialog(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (_) => const _SyncingOverlay(),
-  //   );
-  //
-  //   setState(() {
-  //     _selectedStatusFilter = 'All';   // ← add this
-  //     _selectedZoneId = null;
-  //   });
-  //
-  //   if (_tablesScrollController.hasClients) {
-  //     _tablesScrollController.jumpTo(0);
-  //   }
-  //
-  //   context.read<ZoneBloc>().add(FetchZones());
-  //   context.read<AllTablesBloc>().add(FetchAllTables());
-  //   context.read<CategoryBloc>().add(LoadCategories());
-  //
-  //   await Future.delayed(const Duration(milliseconds: 900));
-  //
-  //   if (mounted) Navigator.of(context, rootNavigator: true).pop();
-  // }
-
   Future<void> _onSyncPressed() async {
     if (_isSyncing) return;
 
     setState(() {
       _isSyncing = true;
       _selectedStatusFilter = 'All';
-      _selectedZoneId = null;          // force ZoneTabs to auto-select first zone
+      _selectedZoneId = null;
     });
 
     // Prevent visibility listener from re-selecting the old zone
@@ -402,7 +410,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
       ],
     ).then((value) {
       if (value != null) {
-        // 👇 same exact logic you already had, just moved out of the sheet's onTap
+
         setState(() => _selectedStatusFilter = value);
       }
     });
@@ -486,6 +494,8 @@ class _TableManagementScreenState extends State<TableManagementScreen>
 
   @override
   void dispose() {
+    _mqttSubscription?.cancel();
+    _mqttService?.dispose();          // ← ADD THIS
     _tablesScrollController.dispose();
     super.dispose();
   }
@@ -496,7 +506,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: const Color(0xFFFDFDFD),
       onDrawerChanged: (isOpen) {
         if (!isOpen) _suppressVisibilityBriefly();
       },
@@ -521,7 +531,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
             minWidth: 32,
             minHeight: 32,
           ),
-          icon: const Icon(Icons.menu, size: 20),
+          icon: const Icon(Icons.menu, size: 25),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
 
@@ -542,7 +552,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
               minWidth: 32,
               minHeight: 32,
             ),
-            icon: const Icon(Icons.table_bar_rounded, size: 18),
+            icon: const Icon(Icons.table_bar_rounded, size: 28),
             onPressed: () {
               _showStatusFilterMenu(context);
             },
@@ -554,7 +564,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
               minWidth: 32,
               minHeight: 32,
             ),
-            icon: const Icon(Icons.notifications_none_rounded, size: 18),
+            icon: const Icon(Icons.notifications_none_rounded, size: 28),
             onPressed: () {},
           ),
 
@@ -660,6 +670,65 @@ class _TableManagementScreenState extends State<TableManagementScreen>
               // From here on → always keep the UI (refresh happens in background)
               return Column(
                 children: [
+                  // Container(
+                  //   color: Colors.white,
+                  //   padding: EdgeInsets.symmetric(
+                  //     horizontal: size.width * 0.03,
+                  //     vertical: size.height * 0.012,
+                  //   ),
+                  //   child: Row(
+                  //     children: [
+                  //       Expanded(
+                  //         child: SizedBox(
+                  //           height: 44,
+                  //           child: Container(
+                  //             decoration: BoxDecoration(
+                  //               color: Colors.white,
+                  //               border: Border.all(
+                  //                 color: Colors.grey.shade300,
+                  //                 width: 1,
+                  //               ),
+                  //               borderRadius: BorderRadius.circular(8),
+                  //             ),
+                  //             child: ClipRRect(
+                  //               borderRadius: BorderRadius.circular(8),
+                  //               child: ZoneTabs(
+                  //                 selectedZoneId: _selectedZoneId,
+                  //                 onZoneSelected: _onZoneTabSelected,
+                  //               ),
+                  //             ),
+                  //           ),
+                  //         ),
+                  //       ),
+                  //
+                  //       const SizedBox(width: 8),
+                  //       // Sync button with white background
+                  //       Container(
+                  //         decoration: BoxDecoration(
+                  //           color: Colors.white,
+                  //           borderRadius: BorderRadius.circular(8),
+                  //           border: Border.all(color: Colors.grey.shade300),
+                  //         ),
+                  //         child: IconButton(
+                  //           tooltip: 'Sync',
+                  //           padding: EdgeInsets.zero,
+                  //           constraints: const BoxConstraints(
+                  //             minWidth: 40,
+                  //             minHeight: 40,
+                  //           ),
+                  //           icon: _isSyncing
+                  //               ? const SizedBox(
+                  //             width: 16,
+                  //             height: 16,
+                  //             child: CircularProgressIndicator(strokeWidth: 2),
+                  //           )
+                  //               : const Icon(Icons.sync, color: Colors.black54),
+                  //           onPressed: _onSyncPressed,
+                  //         ),
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
                   Container(
                     color: Colors.white,
                     padding: EdgeInsets.symmetric(
@@ -667,6 +736,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
                       vertical: size.height * 0.012,
                     ),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(
                           child: SizedBox(
@@ -692,33 +762,47 @@ class _TableManagementScreenState extends State<TableManagementScreen>
                         ),
 
                         const SizedBox(width: 8),
-                        // Sync button with white background
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: IconButton(
-                            tooltip: 'Sync',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 36,
-                              minHeight: 36,
+
+                        // Sync button - same 44px height
+                        SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.grey.shade300,
+                                width: 1,
+                              ),
                             ),
-                            icon: _isSyncing
-                                ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                                : const Icon(Icons.sync, color: Colors.black54),
-                            onPressed: _onSyncPressed,
+                            child: IconButton(
+                              tooltip: 'Sync',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 44,
+                                minHeight: 44,
+                              ),
+                              icon: _isSyncing
+                                  ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                                  : const Icon(
+                                Icons.sync,
+                                color: Colors.black54,
+                              ),
+                              onPressed: _onSyncPressed,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
+
                   Expanded(
                     child: Stack(
                       children: [
@@ -1063,14 +1147,7 @@ class _AppDrawer extends StatelessWidget {
                             color: Colors.black87,
                           ),
                         ),
-                        const SizedBox(height: 1),
-                        Text(
-                          'Table Management',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
+
                       ],
                     ),
                   ),
@@ -1091,7 +1168,7 @@ class _AppDrawer extends StatelessWidget {
               _DrawerItem(
                 icon: Icons.receipt_long_outlined,
                 label: 'Table Management',
-                highlighted: true,
+                // highlighted: false,  // removed – default is false
                 onTap: () {
                   Navigator.of(context).pop();
                 },
@@ -1186,7 +1263,6 @@ class _AppDrawer extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: Colors.white, size: 18),
                   ],
                 ),
               ),
@@ -1225,7 +1301,7 @@ class _DrawerItem extends StatelessWidget {
         style: TextStyle(
           color: color,
           fontWeight: highlighted ? FontWeight.w600 : FontWeight.w500,
-          fontSize: 14.5,
+          fontSize: 17,
         ),
       ),
       trailing: Icon(Icons.chevron_right, color: color.withOpacity(0.7)),

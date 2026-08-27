@@ -48,6 +48,8 @@ dependencies:
   dotted_border: ^2.0.0
   package_info_plus: ^4.0.0
   mqtt_client: ^10.8.0
+  socket_io_client: ^3.1.6
+  bloc_concurrency: ^0.3.0
 #  permission_handler:
 
 

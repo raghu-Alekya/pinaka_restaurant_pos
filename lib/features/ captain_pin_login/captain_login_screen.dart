@@ -204,18 +204,23 @@ class _CaptainLoginScreenState extends State<CaptainLoginScreen> {
               ),
 
               // ---------- Foreground content ----------
+// ---------- Foreground content ----------
               SafeArea(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    return SingleChildScrollView(
+                    return Padding(
                       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                        child: IntrinsicHeight(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown, // shrinks proportionally only if content is taller than the curve area — never grows/overflows
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: constraints.maxWidth - (horizontalPadding * 2),
+                          height: constraints.maxHeight, //  bounds the column so it always sits fully between the top and bottom curves
                           child: Column(
+                            mainAxisSize: MainAxisSize.max,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              SizedBox(height: size.height * 0.075),
+                              SizedBox(height: size.height * 0.065),
                               Center(
                                 child: Text(
                                   'Employee Login',
@@ -229,7 +234,7 @@ class _CaptainLoginScreenState extends State<CaptainLoginScreen> {
                               SizedBox(height: size.height * 0.01),
                               Center(
                                 child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: size.width * 0.06),
+                                  padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
                                   child: Text(
                                     'Login to manage orders operations',
                                     textAlign: TextAlign.center,
@@ -241,7 +246,7 @@ class _CaptainLoginScreenState extends State<CaptainLoginScreen> {
                                   ),
                                 ),
                               ),
-                              SizedBox(height: size.height * 0.035),
+                              SizedBox(height: size.height * 0.015),
                               Center(
                                 child: Text(
                                   'Please enter your user PIN',
@@ -257,8 +262,7 @@ class _CaptainLoginScreenState extends State<CaptainLoginScreen> {
                               _buildKeypad(size, isLoading),
                               SizedBox(height: size.height * 0.025),
                               _buildLoginButton(size, isLoading),
-
-                              const Spacer(),
+                              SizedBox(height: size.height * 0.010),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -284,7 +288,6 @@ class _CaptainLoginScreenState extends State<CaptainLoginScreen> {
                                   ),
                                 ],
                               ),
-                              SizedBox(height: size.height * 0.12),
                             ],
                           ),
                         ),
@@ -488,7 +491,7 @@ class _TopArchClipper extends CustomClipper<Path> {
 // impo ======
 
 
-
+//
 // import 'package:flutter/material.dart';
 // import 'package:flutter_bloc/flutter_bloc.dart';
 // import 'package:provider/provider.dart';

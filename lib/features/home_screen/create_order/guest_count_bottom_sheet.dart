@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../constants/color_constants.dart';
+import '../../mqtt_servers/captain_mqtt_publisher.dart';
 import '../order_menu/order_menu_screen.dart';
 import 'create_order_bloc/create_order_bloc.dart';
 import 'create_order_bloc/create_order_event.dart';
@@ -248,7 +251,19 @@ class _GuestCountBottomSheetState extends State<GuestCountBottomSheet> {
               BlocConsumer<CreateOrderBloc, CreateOrderState>(
                 listener: (context, state) {
                   if (state is CreateOrderSuccess) {
-                    // Close the sheet and tell the caller that an order was created
+
+                    unawaited(
+                      CaptainMqttPublisher.notifyOrderCreated( // or service method
+                        restaurantId: widget.restaurantId.toString(),
+                        orderId: state.response.orderId,
+                        orderType: state.response.orderType ?? 'Dine In',
+                        tableId: widget.tableId,
+                        tableName: widget.tableName,
+                        zoneId: widget.zoneId,
+                        zoneName: widget.zoneName,
+                        guestCount: _guestCount,
+                      ),
+                    );
                     Navigator.of(context).pop(true);
 
                     // Navigate to OrderMenuScreen

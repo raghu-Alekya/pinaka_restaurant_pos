@@ -11,9 +11,12 @@ class TableEntity {
   final String? dineInTime;
   final String? status;
   final bool? isMerged;
+  final String? mergeRole;           // "parent" | "child"
+  final List<String>? childTableIds; // present when merge_role == "parent"
+  final int? parentTableId;          // present when merge_role == "child"
   final String? mergedTables;
   final int? orderId;
-  final String? orderAmount; // 👈 new
+  final String? orderAmount;
 
   TableEntity({
     this.tableId,
@@ -28,6 +31,9 @@ class TableEntity {
     this.dineInTime,
     this.status,
     this.isMerged,
+    this.mergeRole,
+    this.childTableIds,
+    this.parentTableId,
     this.mergedTables,
     this.orderId,
     this.orderAmount,

@@ -450,6 +450,8 @@
 // }
 
 
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -466,6 +468,7 @@ import '../home_screen/All_tables_list/All_tables_list_bloc/all_tables_list_bloc
 import '../home_screen/All_tables_list/All_tables_list_bloc/all_tables_list_event.dart';
 import '../home_screen/Zones/Zones_bloc/zone_event.dart';
 import '../home_screen/Zones/Zones_bloc/zones_bloc.dart';
+import '../mqtt_servers/captain_mqtt_publisher.dart';
 import '../printer/printer_service.dart';
 import 'bill_summary_bloc/bill_summary_bloc.dart';
 import 'bill_summary_bloc/bill_summary_event.dart';
@@ -494,7 +497,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
   String _captainName = 'Captain';
   String _captainRole = 'Captain';
   String _currencySymbol = '\$';
-  int _captainId = 0; // 👈 new field
+  int _captainId = 0; //
   bool _isGenerating = false;
 
   @override
@@ -639,7 +642,7 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: const Color(0xFFFDFDFD),
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -665,7 +668,6 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
                 backgroundColor: Colors.red,
               ),
             );
-            // If there's an error (including no printer), still navigate back
             _goToTableManagement();
           }
         },
@@ -686,6 +688,162 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
             );
           }
           return const Center(child: Text('No data'));
+        },
+      ),
+      // 👇 NEW: sticky Generate Bill bar
+      bottomNavigationBar: BlocBuilder<BillSummaryBloc, BillSummaryState>(
+        builder: (context, state) {
+          BillSummaryEntity? data;
+          if (state is BillSummaryLoaded) data = state.data;
+          if (state is BillGenerating) data = null; // keep same as before (button disabled while generating)
+
+          if (data == null) return const SizedBox.shrink();
+
+          return SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              color: const Color(0xFFFDFDFD),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  // onPressed: _isGenerating
+                  //     ? null
+                  //     : () async {
+                  //   setState(() => _isGenerating = true);
+                  //
+                  //   try {
+                  //     // 1️⃣ Update generate‑bill status (PUT API)
+                  //     await _updateGenerateBillStatus();
+                  //
+                  //     // 2️⃣ Print the bill
+                  //     final items = data!.lineItems.map((item) {
+                  //       return {
+                  //         'name': item.name,
+                  //         'qty': item.qty,
+                  //         'price': item.price,
+                  //         'amount': item.total,
+                  //         'modifiers': item.modifiers.map((m) => m.toString()).toList(),
+                  //       };
+                  //     }).toList();
+                  //
+                  //     await Printer.printBill(
+                  //       orderId: data.orderId.toString(),
+                  //       tableName: data.tableName,
+                  //       cashierName: _captainName,
+                  //       items: items,
+                  //       grossTotal: data.grossTotal,
+                  //       couponDiscount: data.couponTotal,
+                  //       merchantDiscount: data.merchantDiscount,
+                  //       tipAmount: data.tip,
+                  //       taxAmount: data.tax,
+                  //       serviceCharge: data.serviceChargeValue,
+                  //       netPayable: data.netTotal,
+                  //       context: context,
+                  //     );
+                  //
+                  //     // 3️⃣ Navigate to TableManagementScreen (with refresh)
+                  //     _goToTableManagement();
+                  //   } catch (e) {
+                  //     ScaffoldMessenger.of(context).showSnackBar(
+                  //       SnackBar(
+                  //         content: Text('Failed to complete action: $e'),
+                  //         backgroundColor: Colors.red,
+                  //       ),
+                  //     );
+                  //     _goToTableManagement();
+                  //   } finally {
+                  //     if (mounted) setState(() => _isGenerating = false);
+                  //   }
+                  // },
+
+                  onPressed: _isGenerating
+                      ? null
+                      : () async {
+                    setState(() => _isGenerating = true);
+
+                    try {
+                      // 1️⃣ Update generate-bill status (PUT API)
+                      await _updateGenerateBillStatus();
+
+                      //  Notify POS – table becomes Ready to Pay
+                      unawaited(
+                        CaptainMqttPublisher.notifyBillGenerated(
+                          restaurantId: widget.restaurantId.toString(),
+                          orderId: widget.orderId,
+                          orderType: widget.orderType,
+                          zoneId: widget.zoneId,
+                          tableName: data!.tableName,
+                          // tableId: if you have real table_id, pass it
+                          netTotal: data.netTotal,
+                        ),
+                      );
+
+                      // 2️⃣ Print the bill
+                      final items = data.lineItems.map((item) {
+                        return {
+                          'name': item.name,
+                          'qty': item.qty,
+                          'price': item.price,
+                          'amount': item.total,
+                          'modifiers': item.modifiers.map((m) => m.toString()).toList(),
+                        };
+                      }).toList();
+
+                      await Printer.printBill(
+                        orderId: data.orderId.toString(),
+                        tableName: data.tableName,
+                        cashierName: _captainName,
+                        items: items,
+                        grossTotal: data.grossTotal,
+                        couponDiscount: data.couponTotal,
+                        merchantDiscount: data.merchantDiscount,
+                        tipAmount: data.tip,
+                        taxAmount: data.tax,
+                        serviceCharge: data.serviceChargeValue,
+                        netPayable: data.netTotal,
+                        context: context,
+                      );
+
+                      // 3️⃣ Navigate to TableManagementScreen
+                      _goToTableManagement();
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to complete action: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      _goToTableManagement();
+                    } finally {
+                      if (mounted) setState(() => _isGenerating = false);
+                    }
+                  },
+
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ColorConstants.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _isGenerating
+                      ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CupertinoActivityIndicator(radius: 14)
+                  )
+                      : const Text(
+                    'Generate Bill',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ),
+          );
         },
       ),
     );
@@ -810,95 +968,16 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
 
-          // ---- Generate Bill Button (updated) ----
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isGenerating
-                  ? null
-                  : () async {
-                setState(() => _isGenerating = true);
-
-                try {
-                  // 1️⃣ Update generate‑bill status (PUT API)
-                  await _updateGenerateBillStatus();
-
-                  // 2️⃣ Print the bill
-                  final items = data.lineItems.map((item) {
-                    return {
-                      'name': item.name,
-                      'qty': item.qty,
-                      'price': item.price,
-                      'amount': item.total,
-                      'modifiers': item.modifiers.map((m) => m.toString()).toList(),
-                    };
-                  }).toList();
-
-                  await Printer.printBill(
-                    orderId: data.orderId.toString(),
-                    tableName: data.tableName,
-                    cashierName: _captainName,
-                    items: items,
-                    grossTotal: data.grossTotal,
-                    couponDiscount: data.couponTotal,
-                    merchantDiscount: data.merchantDiscount,
-                    tipAmount: data.tip,
-                    taxAmount: data.tax,
-                    serviceCharge: data.serviceChargeValue,
-                    netPayable: data.netTotal,
-                    context: context,
-                  );
-
-                  // 3️⃣ Navigate to TableManagementScreen (with refresh)
-                  _goToTableManagement();
-                } catch (e) {
-                  // Show error and still navigate (but without refresh? we refresh anyway)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to complete action: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                  // Still navigate to table management (refresh will happen inside _goToTableManagement)
-                  _goToTableManagement();
-                } finally {
-                  if (mounted) setState(() => _isGenerating = false);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ColorConstants.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: _isGenerating
-                  ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CupertinoActivityIndicator(radius: 14)
-              )
-                  : const Text(
-                'Generate Bill',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  // ---- Info row for the top order-details card ----
+// ---- Info row for the top order-details card ----
   Widget _buildInfoRow(String label, String value, {bool valueBold = false, bool isLast = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         border: isLast
             ? null

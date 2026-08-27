@@ -6,12 +6,14 @@
 //   return product.isVeg == false;
 // }
 //
-// class ProductCard extends StatelessWidget {
+// const String kVariantIndicatorAsset = 'assets/images/variants_image.png';
+//
+// class ProductCard extends StatefulWidget {
 //   final ProductEntity product;
 //   final int quantity;
 //   final VoidCallback onAdd;
 //   final VoidCallback onRemove;
-//   final String currencySymbol; // 👈 new parameter
+//   final String currencySymbol;
 //
 //   /// Non-null only for variant products (is_variant == "Yes").
 //   final VoidCallback? onVariantTap;
@@ -22,14 +24,51 @@
 //     required this.quantity,
 //     required this.onAdd,
 //     required this.onRemove,
-//     required this.currencySymbol, // 👈 required
+//     required this.currencySymbol,
 //     this.onVariantTap,
 //   }) : super(key: key);
 //
 //   @override
-//   Widget build(BuildContext context) {
-//     final media = MediaQuery.of(context);
+//   State<ProductCard> createState() => _ProductCardState();
+// }
 //
+// class _ProductCardState extends State<ProductCard> {
+//   DateTime? _lastCardTapTime;
+//   bool _cardTapLocked = false;
+//
+//   static const Duration _tapCooldown = Duration(milliseconds: 500);
+//
+//   void _handleCardTap() {
+//     final now = DateTime.now();
+//     if (_cardTapLocked) return;
+//     if (_lastCardTapTime != null &&
+//         now.difference(_lastCardTapTime!) < _tapCooldown) {
+//       return;
+//     }
+//     _lastCardTapTime = now;
+//     _cardTapLocked = true;
+//
+//     if (widget.onVariantTap != null) {
+//       widget.onVariantTap!();
+//     } else {
+//       widget.onAdd();
+//     }
+//
+//     Future.delayed(_tapCooldown, () {
+//       if (mounted) _cardTapLocked = false;
+//     });
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final product = widget.product;
+//     final quantity = widget.quantity;
+//     final onAdd = widget.onAdd;
+//     final onRemove = widget.onRemove;
+//     final currencySymbol = widget.currencySymbol;
+//     final onVariantTap = widget.onVariantTap;
+//
+//     final media = MediaQuery.of(context);
 //     final screenWidth = media.size.width;
 //     final screenHeight = media.size.height;
 //
@@ -40,186 +79,225 @@
 //     final heightScale = screenHeight / referenceHeight;
 //     final scale = widthScale < heightScale ? widthScale : heightScale;
 //
-//     double w(double value) => value * widthScale;
-//     double h(double value) => value * heightScale;
 //     double s(double value) => value * scale;
 //
 //     final nonVeg = isNonVegProduct(product);
 //     final isVariant = onVariantTap != null;
 //     final outOfStock = !product.inStock;
 //
-//     return GestureDetector(
-//       behavior: HitTestBehavior.opaque,
-//       onTap: outOfStock
-//           ? null
-//           : () {
-//         if (isVariant) {
-//           onVariantTap!();
-//         } else {
-//           onAdd();
-//         }
-//       },
-//       child: Container(
-//         width: double.infinity,
-//         decoration: BoxDecoration(
-//           color: Colors.white,
-//           borderRadius: BorderRadius.circular(s(10)),
-//           border: Border.all(
-//             color: Colors.grey.shade200,
-//             width: s(1),
-//           ),
-//           boxShadow: [
-//             BoxShadow(
-//               color: Colors.black.withOpacity(0.04),
-//               blurRadius: s(4),
-//               offset: Offset(0, s(2)),
+//     final Color vegDotColor = outOfStock
+//         ? Colors.grey.shade400
+//         : (nonVeg ? Colors.red : const Color(0xFF2E7D32));
+//     final Color cardBackgroundColor =
+//     outOfStock ? const Color(0xFFEDEDED) : Colors.white;
+//     final Color titleColor =
+//     outOfStock ? Colors.grey.shade400 : Colors.black87;
+//
+//     return RepaintBoundary(
+//       child: GestureDetector(
+//         behavior: HitTestBehavior.opaque,
+//         onTap: outOfStock ? null : _handleCardTap,
+//         child: Container(
+//           width: double.infinity,
+//           // 👈 taller, roomier card — no left color strip, matches the Figma card
+//           padding: EdgeInsets.all(s(16)),
+//           decoration: BoxDecoration(
+//             color: cardBackgroundColor,
+//             borderRadius: BorderRadius.circular(s(14)),
+//             border: Border.all(
+//               color: Colors.grey.shade200,
+//               width: s(1),
 //             ),
-//           ],
-//         ),
-//         clipBehavior: Clip.antiAlias,
-//         child: IntrinsicHeight(
-//           child: Row(
-//             crossAxisAlignment: CrossAxisAlignment.stretch,
+//             boxShadow: [
+//               BoxShadow(
+//                 color: Colors.black.withOpacity(0.04),
+//                 blurRadius: s(6),
+//                 offset: Offset(0, s(2)),
+//               ),
+//             ],
+//           ),
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
 //             children: [
-//               Container(
-//                 width: w(4),
-//                 decoration: BoxDecoration(
-//                   color: nonVeg ? Colors.red : Colors.green,
-//                 ),
-//               ),
-//               Expanded(
-//                 child: Padding(
-//                   padding: EdgeInsets.all(s(12)),
-//                   child: Column(
-//                     crossAxisAlignment: CrossAxisAlignment.start,
-//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                     children: [
-//                       Row(
-//                         crossAxisAlignment: CrossAxisAlignment.start,
-//                         children: [
-//                           Container(
-//                             width: s(14),
-//                             height: s(14),
-//                             margin: EdgeInsets.only(top: s(2)),
-//                             padding: EdgeInsets.all(s(2)),
-//                             decoration: BoxDecoration(
-//                               border: Border.all(
-//                                 color: nonVeg ? Colors.red : Colors.green,
-//                                 width: s(1.2),
-//                               ),
-//                               borderRadius: BorderRadius.circular(s(3)),
-//                             ),
-//                             child: Container(
-//                               decoration: BoxDecoration(
-//                                 color: nonVeg ? Colors.red : Colors.green,
-//                                 shape: BoxShape.circle,
-//                               ),
-//                             ),
-//                           ),
-//                           SizedBox(width: s(6)),
-//                           Expanded(
-//                             child: Text(
-//                               product.name,
-//                               maxLines: 2,
-//                               overflow: TextOverflow.ellipsis,
-//                               style: TextStyle(
-//                                 fontWeight: FontWeight.w600,
-//                                 fontSize: s(14),
-//                               ),
-//                             ),
-//                           ),
-//                         ],
+//               // ── Veg/Non-veg icon + title ──
+//               Row(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Container(
+//                     width: s(18),
+//                     height: s(15),
+//                     margin: EdgeInsets.only(top: s(3)),
+//                     padding: EdgeInsets.all(s(2.5)),
+//                     decoration: BoxDecoration(
+//                       border: Border.all(
+//                         color: vegDotColor,
+//                         width: s(1.4),
 //                       ),
-//                       SizedBox(height: s(8)),
-//                       Row(
-//                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                         crossAxisAlignment: CrossAxisAlignment.center,
-//                         children: [
-//                           Flexible(
-//                             child: Text(
-//                               '$currencySymbol${product.price ?? '0.00'}',
-//                               maxLines: 1,
-//                               overflow: TextOverflow.ellipsis,
-//                               style: TextStyle(
-//                                 color: ColorConstants.primaryColor,
-//                                 fontWeight: FontWeight.bold,
-//                                 fontSize: s(15),
-//                               ),
-//                             ),
-//                           ),
-//                           SizedBox(width: s(8)),
-//                           if (outOfStock)
-//                             Chip(
-//                               label: Text(
-//                                 'Out of Stock',
-//                                 style: TextStyle(
-//                                   color: Colors.white,
-//                                   fontSize: s(9),
-//                                 ),
-//                               ),
-//                               backgroundColor: Colors.red,
-//                               visualDensity: VisualDensity.compact,
-//                               materialTapTargetSize:
-//                               MaterialTapTargetSize.shrinkWrap,
-//                               padding: EdgeInsets.symmetric(
-//                                 horizontal: s(4),
-//                                 vertical: s(2),
-//                               ),
-//                             )
-//                           else if (isVariant)
-//                             quantity == 0
-//                                 ? Icon(
-//                               Icons.add_circle,
-//                               color: ColorConstants.primaryColor,
-//                               size: s(24),
-//                             )
-//                                 : Container(
-//                               padding: EdgeInsets.symmetric(
-//                                 horizontal: s(8),
-//                                 vertical: s(3),
-//                               ),
-//                               decoration: BoxDecoration(
-//                                 color: ColorConstants.primaryColor,
-//                                 borderRadius: BorderRadius.circular(s(6)),
-//                               ),
-//                               child: Text(
-//                                 '$quantity',
-//                                 style: TextStyle(
-//                                   color: Colors.white,
-//                                   fontWeight: FontWeight.bold,
-//                                   fontSize: s(12),
-//                                 ),
-//                               ),
-//                             )
-//                           else if (quantity == 0)
-//                               Icon(
-//                                 Icons.add_circle,
-//                                 color: ColorConstants.primaryColor,
-//                                 size: s(24),
-//                               )
-//                             else
-//                               _CompactStepper(
-//                                 quantity: quantity,
-//                                 onAdd: onAdd,
-//                                 onRemove: onRemove,
-//                                 scale: scale,
-//                               ),
-//                         ],
+//                       borderRadius: BorderRadius.circular(s(4)),
+//                     ),
+//                     child: Container(
+//                       decoration: BoxDecoration(
+//                         color: vegDotColor,
+//                         shape: BoxShape.circle,
 //                       ),
-//                     ],
+//                     ),
 //                   ),
-//                 ),
+//                   SizedBox(width: s(8)),
+//                   Expanded(
+//                     child: Text(
+//                       product.name,
+//                       maxLines: 2,
+//                       overflow: TextOverflow.ellipsis,
+//                       style: TextStyle(
+//                         fontWeight: FontWeight.w700,
+//                         fontSize: s(16), // 👈 bumped up to match the design
+//                         height: 1.2,
+//                         color: titleColor,
+//                       ),
+//                     ),
+//                   ),
+//                 ],
 //               ),
+//               SizedBox(height: s(14)),
+//
+//               // ── Price + action ──
+//               if (outOfStock)
+//                 _OutOfStockBlock(
+//                   currencySymbol: currencySymbol,
+//                   price: product.price,
+//                   s: s,
+//                 )
+//               else
+//                 Row(
+//                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                   crossAxisAlignment: CrossAxisAlignment.center,
+//                   children: [
+//                     Flexible(
+//                       child: Text(
+//                         '$currencySymbol${product.price ?? '0.00'}',
+//                         maxLines: 1,
+//                         overflow: TextOverflow.ellipsis,
+//                         style: TextStyle(
+//                           color: ColorConstants.primaryColor,
+//                           fontWeight: FontWeight.bold,
+//                           fontSize: s(17), // 👈 bumped up to match the design
+//                         ),
+//                       ),
+//                     ),
+//                     SizedBox(width: s(8)),
+//                     if (isVariant)
+//                       quantity == 0
+//                           ? _VariantIndicatorIcon(size: s(18))
+//                           : Container(
+//                         padding: EdgeInsets.symmetric(
+//                           horizontal: s(10),
+//                           vertical: s(4),
+//                         ),
+//                         decoration: BoxDecoration(
+//                           color: ColorConstants.primaryColor,
+//                           borderRadius: BorderRadius.circular(s(8)),
+//                         ),
+//                         child: Text(
+//                           '$quantity',
+//                           style: TextStyle(
+//                             color: Colors.white,
+//                             fontWeight: FontWeight.bold,
+//                             fontSize: s(13),
+//                           ),
+//                         ),
+//                       )
+//                     else if (quantity == 0)
+//                       GestureDetector(
+//                         behavior: HitTestBehavior.opaque,
+//                         onTap: outOfStock ? null : onAdd,
+//                         child: Icon(
+//                           Icons.add_circle,
+//                           color: ColorConstants.primaryColor,
+//                           size: s(30), // 👈 bumped up to match the design
+//                         ),
+//                       )
+//                     else
+//                       _CompactStepper(
+//                         quantity: quantity,
+//                         onAdd: onAdd,
+//                         onRemove: onRemove,
+//                         scale: scale,
+//                       ),
+//                   ],
+//                 ),
 //             ],
 //           ),
 //         ),
 //       ),
-//
 //     );
 //   }
 // }
 //
-// /// Responsive compact stepper.
+// class _VariantIndicatorIcon extends StatelessWidget {
+//   final double size;
+//   const _VariantIndicatorIcon({required this.size});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Image.asset(
+//       kVariantIndicatorAsset,
+//       width: size,
+//       height: size,
+//       fit: BoxFit.contain,
+//       color: Colors.red,
+//       colorBlendMode: BlendMode.srcIn,
+//       errorBuilder: (context, error, stackTrace) {
+//         return Icon(
+//           Icons.dynamic_feed_outlined,
+//           color: Colors.red,
+//           size: size,
+//         );
+//       },
+//     );
+//   }
+// }
+//
+// class _OutOfStockBlock extends StatelessWidget {
+//   final String currencySymbol;
+//   final String? price;
+//   final double Function(double) s;
+//
+//   const _OutOfStockBlock({
+//     required this.currencySymbol,
+//     required this.price,
+//     required this.s,
+//   });
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Text(
+//           'Out of stock',
+//           style: TextStyle(
+//             color: Colors.red,
+//             fontWeight: FontWeight.bold,
+//             fontSize: s(15), // 👈 bumped up to match the design
+//           ),
+//         ),
+//         SizedBox(height: s(3)),
+//         Text(
+//           '$currencySymbol${price ?? '0.00'}',
+//           maxLines: 1,
+//           overflow: TextOverflow.ellipsis,
+//           style: TextStyle(
+//             color: Colors.grey.shade400,
+//             fontWeight: FontWeight.bold,
+//             fontSize: s(17), // 👈 bumped up to match the design
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }
+//
+// /// Responsive compact stepper — same logic, slightly bigger to match the new card size.
 // class _CompactStepper extends StatelessWidget {
 //   final int quantity;
 //   final VoidCallback onAdd;
@@ -238,10 +316,10 @@
 //   @override
 //   Widget build(BuildContext context) {
 //     return Container(
-//       height: s(24),
+//       height: s(30), // was 24
 //       decoration: BoxDecoration(
 //         color: Colors.white,
-//         borderRadius: BorderRadius.circular(s(6)),
+//         borderRadius: BorderRadius.circular(s(8)),
 //         border: Border.all(
 //           color: ColorConstants.primaryColor,
 //           width: s(1),
@@ -254,24 +332,24 @@
 //             behavior: HitTestBehavior.opaque,
 //             onTap: onRemove,
 //             child: SizedBox(
-//               width: s(22),
-//               height: s(24),
+//               width: s(28), // was 22
+//               height: s(30),
 //               child: Center(
 //                 child: Icon(
 //                   Icons.remove,
-//                   size: s(14),
+//                   size: s(16), // was 14
 //                   color: ColorConstants.primaryColor,
 //                 ),
 //               ),
 //             ),
 //           ),
 //           SizedBox(
-//             width: s(18),
+//             width: s(22), // was 18
 //             child: Text(
 //               '$quantity',
 //               textAlign: TextAlign.center,
 //               style: TextStyle(
-//                 fontSize: s(12),
+//                 fontSize: s(14), // was 12
 //                 fontWeight: FontWeight.bold,
 //                 color: ColorConstants.primaryColor,
 //               ),
@@ -281,12 +359,12 @@
 //             behavior: HitTestBehavior.opaque,
 //             onTap: onAdd,
 //             child: SizedBox(
-//               width: s(22),
-//               height: s(24),
+//               width: s(28), // was 22
+//               height: s(30),
 //               child: Center(
 //                 child: Icon(
 //                   Icons.add,
-//                   size: s(14),
+//                   size: s(16), // was 14
 //                   color: ColorConstants.primaryColor,
 //                 ),
 //               ),
@@ -297,8 +375,6 @@
 //     );
 //   }
 // }
-//
-// ///==== above impo
 
 
 
@@ -317,7 +393,7 @@ class ProductCard extends StatefulWidget {
   final int quantity;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
-  final String currencySymbol; // 👈 new parameter
+  final String currencySymbol;
 
   /// Non-null only for variant products (is_variant == "Yes").
   final VoidCallback? onVariantTap;
@@ -328,7 +404,7 @@ class ProductCard extends StatefulWidget {
     required this.quantity,
     required this.onAdd,
     required this.onRemove,
-    required this.currencySymbol, // 👈 required
+    required this.currencySymbol,
     this.onVariantTap,
   }) : super(key: key);
 
@@ -337,10 +413,6 @@ class ProductCard extends StatefulWidget {
 }
 
 class _ProductCardState extends State<ProductCard> {
-  // ─── NEW: tap-debounce guards ────────────────────────────────
-  // Fixes: tapping the card multiple times quickly used to open
-  // several variant/add-on/modifier bottom sheets stacked on top
-  // of each other, and could also fire onAdd twice for one tap.
   DateTime? _lastCardTapTime;
   bool _cardTapLocked = false;
 
@@ -356,7 +428,6 @@ class _ProductCardState extends State<ProductCard> {
     _lastCardTapTime = now;
     _cardTapLocked = true;
 
-    // ── original tap logic, unchanged ──
     if (widget.onVariantTap != null) {
       widget.onVariantTap!();
     } else {
@@ -378,7 +449,6 @@ class _ProductCardState extends State<ProductCard> {
     final onVariantTap = widget.onVariantTap;
 
     final media = MediaQuery.of(context);
-
     final screenWidth = media.size.width;
     final screenHeight = media.size.height;
 
@@ -389,36 +459,31 @@ class _ProductCardState extends State<ProductCard> {
     final heightScale = screenHeight / referenceHeight;
     final scale = widthScale < heightScale ? widthScale : heightScale;
 
-    double w(double value) => value * widthScale;
-    double h(double value) => value * heightScale;
     double s(double value) => value * scale;
 
     final nonVeg = isNonVegProduct(product);
     final isVariant = onVariantTap != null;
     final outOfStock = !product.inStock;
 
-    // 👈 NEW: colors get muted when the item is out of stock, to
-    // match the greyed-out card look in the reference design.
     final Color vegDotColor = outOfStock
         ? Colors.grey.shade400
-        : (nonVeg ? Colors.red : Colors.green);
+        : (nonVeg ? Colors.red : const Color(0xFF2E7D32));
     final Color cardBackgroundColor =
-    outOfStock ? const Color(0xFFE7E7E7) : Colors.white;
+    outOfStock ? const Color(0xFFEDEDED) : Colors.white;
     final Color titleColor =
     outOfStock ? Colors.grey.shade400 : Colors.black87;
 
-    // Wrapped in RepaintBoundary so each card repaints independently
-    // during scrolling instead of the whole list repainting together
-    // — helps with the flicker seen while scrolling the product list.
     return RepaintBoundary(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: outOfStock ? null : _handleCardTap, // 👈 now debounced
+        onTap: outOfStock ? null : _handleCardTap,
         child: Container(
           width: double.infinity,
+          // ↓ reduced padding so more room for content
+          padding: EdgeInsets.fromLTRB(s(12), s(12), s(12), s(10)),
           decoration: BoxDecoration(
-            color: cardBackgroundColor, // 👈 greys out when out of stock
-            borderRadius: BorderRadius.circular(s(10)),
+            color: cardBackgroundColor,
+            borderRadius: BorderRadius.circular(s(14)),
             border: Border.all(
               color: Colors.grey.shade200,
               width: s(1),
@@ -426,134 +491,222 @@ class _ProductCardState extends State<ProductCard> {
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),
-                blurRadius: s(4),
+                blurRadius: s(6),
                 offset: Offset(0, s(2)),
               ),
             ],
           ),
-          clipBehavior: Clip.antiAlias,
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  width: w(4),
-                  decoration: BoxDecoration(
-                    color: vegDotColor,
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.all(s(12)),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: s(14),
-                              height: s(14),
-                              margin: EdgeInsets.only(top: s(2)),
-                              padding: EdgeInsets.all(s(2)),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: vegDotColor,
-                                  width: s(1.2),
-                                ),
-                                borderRadius: BorderRadius.circular(s(3)),
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: vegDotColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: s(6)),
-                            Expanded(
-                              child: Text(
-                                product.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: s(14),
-                                  color: titleColor, // 👈 greyed when out of stock
-                                ),
-                              ),
-                            ),
-                          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween, // title top, price bottom
+            children: [
+              // ── Title – FIXED height for exactly 2 lines ──
+              // This guarantees the 2nd line is never cut
+              // and all cards have the price at the same vertical level
+              SizedBox(
+                height: s(36), // ≈ fontSize 15 * height 1.2 * 2 lines
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: s(16),
+                      height: s(14),
+                      margin: EdgeInsets.only(top: s(2)),
+                      padding: EdgeInsets.all(s(2)),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: vegDotColor,
+                          width: s(1.3),
                         ),
-                        SizedBox(height: s(8)),
-                        if (outOfStock)
-                        // ── NEW: out-of-stock layout, matches reference image ──
-                          _OutOfStockBlock(
-                            currencySymbol: currencySymbol,
-                            price: product.price,
-                            s: s,
-                          )
-                        else
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  '$currencySymbol${product.price ?? '0.00'}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: ColorConstants.primaryColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: s(15),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: s(8)),
-                              if (isVariant)
-                                quantity == 0
-                                    ? _VariantIndicatorIcon(size: s(20))
-                                    : Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: s(8),
-                                    vertical: s(3),
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: ColorConstants.primaryColor,
-                                    borderRadius: BorderRadius.circular(s(6)),
-                                  ),
-                                  child: Text(
-                                    '$quantity',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: s(12),
-                                    ),
-                                  ),
-                                )
-                              else if (quantity == 0)
-                                Icon(
-                                  Icons.add_circle,
-                                  color: ColorConstants.primaryColor,
-                                  size: s(24),
-                                )
-                              else
-                                _CompactStepper(
-                                  quantity: quantity,
-                                  onAdd: onAdd,
-                                  onRemove: onRemove,
-                                  scale: scale,
-                                ),
-                            ],
-                          ),
-                      ],
+                        borderRadius: BorderRadius.circular(s(3.5)),
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: vegDotColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     ),
-                  ),
+                    SizedBox(width: s(7)),
+                    Expanded(
+                      child: Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: s(15),          // slightly smaller = safer
+                          height: 1.2,
+                          color: titleColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+
+
+              if (outOfStock)
+              // Compact single-line style so it matches the height of the normal row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Out of stock',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.w600,
+                              fontSize: s(12),
+                            ),
+                          ),
+                          Text(
+                            '$currencySymbol${product.price ?? '0.00'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.bold,
+                              fontSize: s(15),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // empty space on the right so price stays left-aligned like other cards
+                    SizedBox(width: s(28)), // same approximate width as the add icon
+                  ],
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '$currencySymbol${product.price ?? '0.00'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ColorConstants.primaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: s(16),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: s(6)),
+                    if (isVariant)
+                      quantity == 0
+                          ? _VariantIndicatorIcon(size: s(13))
+                          : Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: s(9),
+                          vertical: s(3),
+                        ),
+                        decoration: BoxDecoration(
+                          color: ColorConstants.primaryColor,
+                          borderRadius: BorderRadius.circular(s(7)),
+                        ),
+                        child: Text(
+                          '$quantity',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: s(12),
+                          ),
+                        ),
+                      )
+                    else if (quantity == 0)
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onAdd,
+                        child: Icon(
+                          Icons.add_circle,
+                          color: ColorConstants.primaryColor,
+                          size: s(28),
+                        ),
+                      )
+                    else
+                      _CompactStepper(
+                        quantity: quantity,
+                        onAdd: onAdd,
+                        onRemove: onRemove,
+                        scale: scale,
+                      ),
+                  ],
+                ),
+
+              // ── Price + action (always pinned to bottom) ──
+              // if (outOfStock)
+              //   _OutOfStockBlock(
+              //     currencySymbol: currencySymbol,
+              //     price: product.price,
+              //     s: s,
+              //   )
+              // else
+              //   Row(
+              //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //     crossAxisAlignment: CrossAxisAlignment.center,
+              //     children: [
+              //       Flexible(
+              //         child: Text(
+              //           '$currencySymbol${product.price ?? '0.00'}',
+              //           maxLines: 1,
+              //           overflow: TextOverflow.ellipsis,
+              //           style: TextStyle(
+              //             color: ColorConstants.primaryColor,
+              //             fontWeight: FontWeight.bold,
+              //             fontSize: s(16),
+              //           ),
+              //         ),
+              //       ),
+              //       SizedBox(width: s(6)),
+              //       if (isVariant)
+              //         quantity == 0
+              //             ? _VariantIndicatorIcon(size: s(13))
+              //             : Container(
+              //           padding: EdgeInsets.symmetric(
+              //             horizontal: s(9),
+              //             vertical: s(3),
+              //           ),
+              //           decoration: BoxDecoration(
+              //             color: ColorConstants.primaryColor,
+              //             borderRadius: BorderRadius.circular(s(7)),
+              //           ),
+              //           child: Text(
+              //             '$quantity',
+              //             style: TextStyle(
+              //               color: Colors.white,
+              //               fontWeight: FontWeight.bold,
+              //               fontSize: s(12),
+              //             ),
+              //           ),
+              //         )
+              //       else if (quantity == 0)
+              //         GestureDetector(
+              //           behavior: HitTestBehavior.opaque,
+              //           onTap: outOfStock ? null : onAdd,
+              //           child: Icon(
+              //             Icons.add_circle,
+              //             color: ColorConstants.primaryColor,
+              //             size: s(28),               // slightly smaller
+              //           ),
+              //         )
+              //       else
+              //         _CompactStepper(
+              //           quantity: quantity,
+              //           onAdd: onAdd,
+              //           onRemove: onRemove,
+              //           scale: scale,
+              //         ),
+              //     ],
+              //   ),
+            ],
           ),
         ),
       ),
@@ -561,9 +714,6 @@ class _ProductCardState extends State<ProductCard> {
   }
 }
 
-/// 👈 NEW: the red "linked circles" variant indicator, loaded from
-/// assets/images/variants_image.png. Falls back to a plain icon if
-/// the asset is missing so the app never crashes because of it.
 class _VariantIndicatorIcon extends StatelessWidget {
   final double size;
   const _VariantIndicatorIcon({required this.size});
@@ -575,10 +725,9 @@ class _VariantIndicatorIcon extends StatelessWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      color: Colors.red,              // 👈 tints the image red regardless of its original color
-      colorBlendMode: BlendMode.srcIn, // 👈 applies the tint using the image's alpha shape
+      color: Colors.red,
+      colorBlendMode: BlendMode.srcIn,
       errorBuilder: (context, error, stackTrace) {
-        // Safe fallback if the asset isn't registered in pubspec.yaml yet.
         return Icon(
           Icons.dynamic_feed_outlined,
           color: Colors.red,
@@ -588,7 +737,6 @@ class _VariantIndicatorIcon extends StatelessWidget {
     );
   }
 }
-
 
 class _OutOfStockBlock extends StatelessWidget {
   final String currencySymbol;
@@ -605,16 +753,17 @@ class _OutOfStockBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           'Out of stock',
           style: TextStyle(
             color: Colors.red,
             fontWeight: FontWeight.bold,
-            fontSize: s(14),
+            fontSize: s(15),
           ),
         ),
-        SizedBox(height: s(2)),
+        SizedBox(height: s(3)),
         Text(
           '$currencySymbol${price ?? '0.00'}',
           maxLines: 1,
@@ -622,7 +771,7 @@ class _OutOfStockBlock extends StatelessWidget {
           style: TextStyle(
             color: Colors.grey.shade400,
             fontWeight: FontWeight.bold,
-            fontSize: s(15),
+            fontSize: s(17),
           ),
         ),
       ],
@@ -630,7 +779,7 @@ class _OutOfStockBlock extends StatelessWidget {
   }
 }
 
-/// Responsive compact stepper.
+/// Responsive compact stepper — same logic, slightly bigger to match the new card size.
 class _CompactStepper extends StatelessWidget {
   final int quantity;
   final VoidCallback onAdd;
@@ -649,10 +798,10 @@ class _CompactStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: s(24),
+      height: s(30),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(s(6)),
+        borderRadius: BorderRadius.circular(s(8)),
         border: Border.all(
           color: ColorConstants.primaryColor,
           width: s(1),
@@ -665,24 +814,24 @@ class _CompactStepper extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: onRemove,
             child: SizedBox(
-              width: s(22),
-              height: s(24),
+              width: s(28),
+              height: s(30),
               child: Center(
                 child: Icon(
                   Icons.remove,
-                  size: s(14),
+                  size: s(16),
                   color: ColorConstants.primaryColor,
                 ),
               ),
             ),
           ),
           SizedBox(
-            width: s(18),
+            width: s(22),
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: s(12),
+                fontSize: s(14),
                 fontWeight: FontWeight.bold,
                 color: ColorConstants.primaryColor,
               ),
@@ -692,12 +841,12 @@ class _CompactStepper extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTap: onAdd,
             child: SizedBox(
-              width: s(22),
-              height: s(24),
+              width: s(28),
+              height: s(30),
               child: Center(
                 child: Icon(
                   Icons.add,
-                  size: s(14),
+                  size: s(16),
                   color: ColorConstants.primaryColor,
                 ),
               ),
@@ -708,5 +857,3 @@ class _CompactStepper extends StatelessWidget {
     );
   }
 }
-
-///==== above impo

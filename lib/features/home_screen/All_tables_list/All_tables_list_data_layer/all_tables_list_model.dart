@@ -1,4 +1,3 @@
-
 import '../All_tables_list_domain/all_tables_list_entity.dart';
 
 class AllTablesResponse {
@@ -46,8 +45,11 @@ class TableModel {
   final String? dineInTime;
   final String? status;
   final bool? isMerged;
+  final String? mergeRole;                 // "parent" | "child"
+  final List<String>? childTableIds;       // only present when merge_role == "parent"
+  final int? parentTableId;                // only present when merge_role == "child"
   final String? mergedTables;
-  final String? orderAmount; // 👈 new
+  final String? orderAmount;
 
   TableModel({
     this.tableId,
@@ -62,6 +64,9 @@ class TableModel {
     this.dineInTime,
     this.status,
     this.isMerged,
+    this.mergeRole,
+    this.childTableIds,
+    this.parentTableId,
     this.mergedTables,
     this.orderAmount,
   });
@@ -88,8 +93,16 @@ class TableModel {
       isMerged: json['is_merged'] is bool
           ? json['is_merged']
           : json['is_merged']?.toString().toLowerCase() == 'true',
+      mergeRole: json['merge_role']?.toString(),
+      childTableIds: json['child_table_ids'] != null
+          ? List<String>.from(
+          (json['child_table_ids'] as List).map((e) => e.toString()))
+          : null,
+      parentTableId: json['parent_table_id'] is int
+          ? json['parent_table_id']
+          : int.tryParse(json['parent_table_id']?.toString() ?? ''),
       mergedTables: json['merged_tables']?.toString(),
-      orderAmount: json['order_amount']?.toString(), // 👈 new
+      orderAmount: json['order_amount']?.toString(),
     );
   }
 
@@ -106,6 +119,9 @@ class TableModel {
     'dine_in_time': dineInTime,
     'status': status,
     'is_merged': isMerged,
+    'merge_role': mergeRole,
+    'child_table_ids': childTableIds,
+    'parent_table_id': parentTableId,
     'merged_tables': mergedTables,
     'order_amount': orderAmount,
   };
@@ -123,8 +139,11 @@ class TableModel {
     dineInTime: dineInTime,
     status: status,
     isMerged: isMerged,
+    mergeRole: mergeRole,
+    childTableIds: childTableIds,
+    parentTableId: parentTableId,
     mergedTables: mergedTables,
-    orderId: null, // not in API response
+    orderId: null,
     orderAmount: orderAmount,
   );
 }

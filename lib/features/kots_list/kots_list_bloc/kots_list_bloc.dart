@@ -22,7 +22,11 @@ class KotsListBloc extends Bloc<KotsListEvent, KotsListState> {
         restaurantId: event.restaurantId,
         zoneId: event.zoneId,
       );
-      emit(KotsListLoaded(kots: kots));
+      // 👇 Now includes parentOrderId for caching / validation
+      emit(KotsListLoaded(
+        kots: kots,
+        parentOrderId: event.parentOrderId,
+      ));
     } catch (e) {
       emit(KotsListError(message: e.toString()));
     }

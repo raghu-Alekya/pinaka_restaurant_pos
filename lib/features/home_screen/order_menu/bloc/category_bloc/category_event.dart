@@ -17,3 +17,13 @@ class SelectCategory extends CategoryEvent {
   @override
   List<Object> get props => [categoryId];
 }
+
+class UpdateProductsStock extends CategoryEvent {
+  /// productId → inStock (true = available)
+  final Map<int, bool> stockById;
+
+  const UpdateProductsStock({required this.stockById});
+
+  @override
+  List<Object> get props => [stockById];
+}

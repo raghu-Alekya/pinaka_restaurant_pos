@@ -256,6 +256,13 @@ class _AllTablesListWidgetState extends State<AllTablesListWidget> {
                                 orderStartedAt: orderStartedAt,
                                 onOrderAction: _refreshSilently,
                                 currencySymbol: _currencySymbol,
+
+                                // ─── ADD THESE ──────────────────────────────────────
+                                isMerged: table.isMerged ?? false,
+                                mergeRole: table.mergeRole,
+                                childTableIds: table.childTableIds,
+                                parentTableId: table.parentTableId,
+                                mergedTables: table.mergedTables,
                               );
                             },
                           ),
@@ -429,7 +436,14 @@ class _TableCard extends StatelessWidget {
   final double? orderTotal;
   final DateTime? orderStartedAt;
   final VoidCallback onOrderAction;
-  final String currencySymbol; // 👈 new
+  final String currencySymbol;
+
+  // ─── NEW ────────────────────────────────────────────────
+  final bool isMerged;
+  final String? mergeRole;          // "parent" | "child"
+  final List<String>? childTableIds;
+  final int? parentTableId;
+  final String? mergedTables;
 
   const _TableCard({
     required this.tableId,
@@ -444,6 +458,12 @@ class _TableCard extends StatelessWidget {
     this.orderStartedAt,
     required this.onOrderAction,
     required this.currencySymbol,
+    // ─── NEW ──────────────────────────────────────────────
+    this.isMerged = false,
+    this.mergeRole,
+    this.childTableIds,
+    this.parentTableId,
+    this.mergedTables,
   });
 
   bool get _isAvailable =>
@@ -453,7 +473,15 @@ class _TableCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final kind = _statusKind(status);
     final isAvailable = kind == _TableStatusKind.available;
-    final color = _statusColor(kind);
+    // final color = _statusColor(kind);
+
+    // ─── Child merged tables → force black color (any status) ────
+    Color color = _statusColor(kind);
+    if (isMerged && mergeRole?.toLowerCase() == 'child') {
+      color = Colors.black;   // ← always black for child tables
+    }
+// ────────────────────────────────────────────────────────────
+
     final label = _statusLabel(kind);
 
     final elapsed =
@@ -510,6 +538,34 @@ class _TableCard extends StatelessWidget {
                     // ─────────────────────────────────────
                     // Table name
                     // ─────────────────────────────────────
+                    // Row(
+                    //   mainAxisAlignment: isAvailable
+                    //       ? MainAxisAlignment.end
+                    //       : MainAxisAlignment.start,
+                    //   children: [
+                    //     if (!isAvailable) ...[
+                    //       Icon(
+                    //         Icons.person_outline,
+                    //         size: 13,
+                    //         color: color,
+                    //       ),
+                    //       const SizedBox(width: 2),
+                    //     ],
+                    //     Flexible(
+                    //       child: Text(
+                    //         tableName,
+                    //         maxLines: 1,
+                    //         overflow: TextOverflow.ellipsis,
+                    //         style: TextStyle(
+                    //           color: color,
+                    //           fontWeight: FontWeight.bold,
+                    //           fontSize: 14,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
+
                     Row(
                       mainAxisAlignment: isAvailable
                           ? MainAxisAlignment.end
@@ -639,6 +695,8 @@ class _TableCard extends StatelessWidget {
         context,
         MaterialPageRoute(
           builder: (_) => CartScreen(
+            key: ValueKey('cart_${tableId}_$activeOrderId'), // 👈 added
+
             cartItems: [],
             orderId: activeOrderId!,
             tableName: tableName,
@@ -683,6 +741,8 @@ class _TableCard extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (_) => CartScreen(
+              key: ValueKey('cart_${tableId}_$activeOrderId'),
+
               cartItems: [],
               orderId: activeOrderId!,
               tableName: tableName,
@@ -760,7 +820,52 @@ class _TableCard extends StatelessWidget {
     //   return;
     // }
 // Available table
+//     if (_isAvailable) {
+//       final captainStorage = context.read<CaptainLocalStorage>();
+//
+//       captainStorage.getCaptainData().then((captainData) async {
+//         final restaurantName =
+//             captainData?.data?.restaurantName ?? 'My Restaurant';
+//
+//         if (!context.mounted) return;
+//
+//         final didCreateOrder = await _showGuestBottomSheet(
+//           context,
+//           tableId: tableId,
+//           tableName: tableName,
+//           zoneId: zoneId,
+//           zoneName: zoneName,
+//           restaurantId: restaurantId,
+//           restaurantName: restaurantName,
+//         );
+//
+//         // Only refresh when an order was actually created
+//         if (context.mounted && didCreateOrder) {
+//           onOrderAction.call();
+//         }
+//       });
+//
+//       return;
+//     }
+
     if (_isAvailable) {
+      // ─── BLOCK child tables of a merge ────────────────────
+      if (isMerged && mergeRole?.toLowerCase() == 'child') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              mergedTables != null && mergedTables!.isNotEmpty
+                  ? 'This table is part of merged group "$mergedTables". Please use the parent table to create an order.'
+                  : 'This is a child table of a merged group. Please select the parent table to create an order.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+      // ──────────────────────────────────────────────────────
+
       final captainStorage = context.read<CaptainLocalStorage>();
 
       captainStorage.getCaptainData().then((captainData) async {
@@ -787,6 +892,7 @@ class _TableCard extends StatelessWidget {
 
       return;
     }
+
     // Occupied / other status
     try {
       ScaffoldMessenger.of(context).showSnackBar(

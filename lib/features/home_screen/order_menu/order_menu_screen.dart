@@ -2431,15 +2431,9 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   String _currencySymbol = '';
   final ValueNotifier<String> _currencySymbolNotifier = ValueNotifier<String>('');
 
-  // ─── NEW: guards against multiple rapid taps opening several
-  // variant/add-on sheets stacked on top of each other, and against
-  // a single tap being registered twice (which felt like "add to
-  // cart" was delayed because the second event queued behind the
-  // first one's async work). These do NOT add any artificial delay
-  // to a normal single tap — they only block a *second* concurrent
-  // trigger while the first one is still being handled. ───────────
   bool _isCartActionBusy = false;
   final Set<int> _pendingQuantityChangeIds = {};
+  bool _isSubcategoryTapBusy = false;
 
   @override
   void initState() {
@@ -2496,9 +2490,6 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   }
 
   void _addToCartDirect(ProductEntity product) {
-    // 👈 NEW: per-product guard — ignores a duplicate tap on the same
-    // product that arrives within 250ms of the first one, instead of
-    // double-incrementing the cart.
     if (_pendingQuantityChangeIds.contains(product.id)) return;
     _pendingQuantityChangeIds.add(product.id);
 
@@ -2518,7 +2509,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   }
 
   void _removeFromCart(ProductEntity product) {
-    // 👈 NEW: same duplicate-tap guard as _addToCartDirect.
+
     if (_pendingQuantityChangeIds.contains(product.id)) return;
     _pendingQuantityChangeIds.add(product.id);
 
@@ -2567,324 +2558,686 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   }
 
 
+  // Future<void> _showVariantAndAddOnSheet(ProductEntity product) async {
+  //   if (_isCartActionBusy) return;
+  //   _isCartActionBusy = true;
+  //
+  //   try {
+  //     final variationsFuture = context.read<FetchVariationsUseCase>()(product.id);
+  //     final addOnsFuture = context.read<FetchAddOnsUseCase>()(product.id);
+  //
+  //     final results = await Future.wait([variationsFuture, addOnsFuture]);
+  //     final variations = results[0] as List<VariationEntity>;
+  //     final addOns = results[1] as List<AddOnEntity>;
+  //
+  //     if (variations.isEmpty) {
+  //       if (addOns.isEmpty) {
+  //         _addToCartDirect(product);
+  //         return;
+  //       } else {
+  //         await _showAddOnsOnlySheet(product, addOns);
+  //         return;
+  //       }
+  //     }
+  //
+  //     int quantity = 1;
+  //     VariationEntity? selectedVariation = variations.first;
+  //     final selectedAddOns = <AddOnEntity>{};
+  //     final nonVeg = isNonVegProduct(product);
+  //     final currencySymbol = _currencySymbolNotifier.value;
+  //
+  //     await showModalBottomSheet(
+  //       context: context,
+  //       isScrollControlled: true,
+  //       backgroundColor: Colors.white,
+  //
+  //       shape: const RoundedRectangleBorder(
+  //         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  //       ),
+  //       builder: (sheetContext) {
+  //         return StatefulBuilder(
+  //           builder: (context, setSheetState) {
+  //             final media = MediaQuery.of(context);
+  //             const referenceWidth = 375.0;
+  //             const referenceHeight = 812.0;
+  //             final widthScale = media.size.width / referenceWidth;
+  //             final heightScale = media.size.height / referenceHeight;
+  //             final scale = widthScale < heightScale ? widthScale : heightScale;
+  //             double s(double v) => v * scale;
+  //
+  //             final gridHorizontalPadding = s(20) * 2;
+  //             final cellSpacing = s(10);
+  //             final cardOuterWidth =
+  //                 (media.size.width - gridHorizontalPadding - cellSpacing) / 2;
+  //             final cardContentWidth = cardOuterWidth - (s(12) * 2); // minus card's own horizontal padding
+  //
+  //             final basePrice = double.tryParse(selectedVariation?.price ?? '0') ?? 0;
+  //             final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
+  //             final total = (basePrice + addOnsTotal) * quantity;
+  //
+  //             return SingleChildScrollView(
+  //               padding: EdgeInsets.only(
+  //                 left: s(20),
+  //                 right: s(20),
+  //                 top: s(16),
+  //                 bottom: media.viewInsets.bottom + s(24),
+  //               ),
+  //               child: ConstrainedBox(
+  //                 constraints: BoxConstraints(
+  //                   minHeight: media.size.height * 0.55, // 👈 increased sheet height
+  //                 ),
+  //                 child: Column(
+  //                   mainAxisSize: MainAxisSize.min,
+  //                   crossAxisAlignment: CrossAxisAlignment.start,
+  //                   children: [
+  //                     Row(
+  //                       crossAxisAlignment: CrossAxisAlignment.center,
+  //                       children: [
+  //                         Container(
+  //                           width: s(10),
+  //                           height: s(10),
+  //                           decoration: BoxDecoration(
+  //                             shape: BoxShape.circle,
+  //                             color: nonVeg ? Colors.red : Colors.green,
+  //                           ),
+  //                         ),
+  //                         SizedBox(width: s(8)),
+  //                         Expanded(
+  //                           child: Text(
+  //                             product.name,
+  //                             style: TextStyle(fontSize: s(18), fontWeight: FontWeight.bold),
+  //                             maxLines: 1,
+  //                             overflow: TextOverflow.ellipsis,
+  //                           ),
+  //                         ),
+  //                         GestureDetector(
+  //                           onTap: () => Navigator.pop(sheetContext),
+  //                           child: Container(
+  //                             padding: EdgeInsets.all(s(4)),
+  //                             decoration: const BoxDecoration(
+  //                               shape: BoxShape.circle,
+  //                               color: Color(0xFFFFEAEA),
+  //                             ),
+  //                             child: Icon(Icons.close, size: s(18), color: Colors.red),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                     SizedBox(height: s(16)),
+  //
+  //                     // ── Variations ──
+  //                     GridView.builder(
+  //                       shrinkWrap: true,
+  //                       physics: const NeverScrollableScrollPhysics(),
+  //                       itemCount: variations.length,
+  //                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+  //                         crossAxisCount: 2,
+  //                         mainAxisSpacing: s(10),
+  //                         crossAxisSpacing: s(10),
+  //                         mainAxisExtent: s(118),
+  //                       ),
+  //                       itemBuilder: (context, index) {
+  //                         final variant = variations[index];
+  //                         final isSelected = selectedVariation?.variationId == variant.variationId;
+  //
+  //                         return GestureDetector(
+  //                           onTap: () => setSheetState(() {
+  //                             selectedVariation = variant;
+  //                             if (!isSelected) quantity = 1;
+  //                           }),
+  //                           child: Container(
+  //                             padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(8)),
+  //                             decoration: BoxDecoration(
+  //                               color: isSelected
+  //                                   ? ColorConstants.primaryColor.withOpacity(0.06)
+  //                                   : Colors.white,
+  //                               borderRadius: BorderRadius.circular(s(10)),
+  //                               border: Border.all(
+  //                                 color: isSelected ? ColorConstants.primaryColor : Colors.grey.shade300,
+  //                                 width: isSelected ? s(1.4) : s(1),
+  //                               ),
+  //                             ),
+  //                             // 👇 auto-shrinks content instead of overflowing,
+  //                             // no matter how large the device's font/text-scale is.
+  //                             child: FittedBox(
+  //                               fit: BoxFit.scaleDown,
+  //                               alignment: Alignment.topLeft,
+  //                               child: SizedBox(
+  //                                 width: cardContentWidth,
+  //                                 child: Column(
+  //                                   crossAxisAlignment: CrossAxisAlignment.start,
+  //                                   mainAxisSize: MainAxisSize.min,
+  //                                   children: [
+  //                                     Text(
+  //                                       product.name,
+  //                                       maxLines: 1,
+  //                                       overflow: TextOverflow.ellipsis,
+  //                                       style: TextStyle(fontSize: s(11), color: Colors.grey.shade600),
+  //                                     ),
+  //                                     SizedBox(height: s(4)),
+  //                                     Row(
+  //                                       crossAxisAlignment: CrossAxisAlignment.center,
+  //                                       children: [
+  //                                         Expanded(
+  //                                           child: Text(
+  //                                             variant.name,
+  //                                             maxLines: 1,
+  //                                             overflow: TextOverflow.ellipsis,
+  //                                             style: TextStyle(fontSize: s(13), fontWeight: FontWeight.w600),
+  //                                           ),
+  //                                         ),
+  //                                         SizedBox(width: s(6)),
+  //                                         isSelected
+  //                                             ? _VariantStepper(
+  //                                           quantity: quantity,
+  //                                           scale: scale,
+  //                                           diameter: 22, // 👈 add this — compact size for the grid card
+  //                                           onAdd: () => setSheetState(() => quantity++),
+  //                                           onRemove: () => setSheetState(() {
+  //                                             if (quantity > 1) quantity--;
+  //                                           }),
+  //                                         )
+  //                                             : GestureDetector(
+  //                                           behavior: HitTestBehavior.opaque,
+  //                                           onTap: () => setSheetState(() {
+  //                                             selectedVariation = variant;
+  //                                             quantity = 1;
+  //                                           }),
+  //                                           child: Padding(
+  //                                             padding: EdgeInsets.all(s(2)),
+  //                                             child: Icon(
+  //                                               Icons.add_circle,
+  //                                               color: ColorConstants.primaryColor,
+  //                                               size: s(22),
+  //                                             ),
+  //                                           ),
+  //                                         ),
+  //                                       ],
+  //                                     ),
+  //                                     SizedBox(height: s(6)),
+  //                                     Text(
+  //                                       '$currencySymbol${variant.price}', // 👈 dynamic symbol
+  //                                       maxLines: 1,
+  //                                       overflow: TextOverflow.ellipsis,
+  //                                       style: TextStyle(
+  //                                         color: ColorConstants.primaryColor,
+  //                                         fontWeight: FontWeight.bold,
+  //                                         fontSize: s(14),
+  //                                       ),
+  //                                     ),
+  //                                   ],
+  //                                 ),
+  //                               ),
+  //                             ),
+  //                           ),
+  //                         );
+  //                       },
+  //                     ),
+  //
+  //                     // ── Modifiers ──
+  //                     if (addOns.isNotEmpty) ...[
+  //                       SizedBox(height: s(16)),
+  //                       Row(
+  //                         children: [
+  //                           Text(
+  //                             'Modifiers',
+  //                             style: TextStyle(fontWeight: FontWeight.w600, fontSize: s(14)),
+  //                           ),
+  //                           SizedBox(width: s(8)),
+  //                           const Expanded(child: Divider()),
+  //                         ],
+  //                       ),
+  //                       ...addOns.map((addOn) {
+  //                         final isChecked = selectedAddOns.contains(addOn);
+  //                         return CheckboxListTile(
+  //                           contentPadding: EdgeInsets.zero,
+  //                           controlAffinity: ListTileControlAffinity.leading,
+  //                           value: isChecked,
+  //                           title: Text(addOn.name, style: TextStyle(fontSize: s(14))),
+  //                           secondary: Text(
+  //                             '+ $currencySymbol${addOn.price.toStringAsFixed(2)}', // 👈 dynamic
+  //                           ),
+  //                           onChanged: (checked) {
+  //                             setSheetState(() {
+  //                               if (checked == true) {
+  //                                 selectedAddOns.add(addOn);
+  //                               } else {
+  //                                 selectedAddOns.remove(addOn);
+  //                               }
+  //                             });
+  //                           },
+  //                         );
+  //                       }),
+  //                     ],
+  //
+  //                     SizedBox(height: s(8)),
+  //
+  //                     // ── Add to Cart ──
+  //                     SizedBox(
+  //                       width: double.infinity,
+  //                       child: ElevatedButton(
+  //                         onPressed: () {
+  //                           final selectedProduct = ProductEntity(
+  //                             id: selectedVariation!.variationId,
+  //                             name: '${product.name} - ${selectedVariation?.name}',
+  //                             price: selectedVariation?.price,
+  //                             inStock: selectedVariation?.inStock == 'Yes',
+  //                           );
+  //                           final selectedList = selectedAddOns
+  //                               .map((a) => {'name': a.name, 'price': a.price})
+  //                               .toList();
+  //                           _addVariantToCart(selectedProduct, quantity, selectedList);
+  //                           Navigator.pop(sheetContext);
+  //                         },
+  //                         style: ElevatedButton.styleFrom(
+  //                           backgroundColor: ColorConstants.primaryColor,
+  //                           foregroundColor: Colors.white,
+  //                           padding: EdgeInsets.symmetric(vertical: s(14)),
+  //                           shape: RoundedRectangleBorder(
+  //                             borderRadius: BorderRadius.circular(s(16)),
+  //                           ),
+  //                         ),
+  //                         child: Row(
+  //                           mainAxisAlignment: MainAxisAlignment.center, // 👈 centered
+  //                           children: [
+  //                             Text(
+  //                               'Add to Cart',
+  //                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
+  //                             ),
+  //                             SizedBox(width: s(12)),
+  //                             Container(width: s(1), height: s(18), color: Colors.white54), // 👈 divider
+  //                             SizedBox(width: s(12)),
+  //                             Text(
+  //                               '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
+  //                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
+  //                             ),
+  //                           ],
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             );
+  //           },
+  //         );
+  //       },
+  //     );
+  //   } catch (e) {
+  //     _addToCartDirect(product);
+  //   } finally {
+  //     // 👈 NEW: only unlock once the sheet has actually been closed
+  //     // (or we bailed out early), so a rapid double-tap can't queue
+  //     // up a second sheet while this one is still on screen.
+  //     _isCartActionBusy = false;
+  //   }
+  // }
   Future<void> _showVariantAndAddOnSheet(ProductEntity product) async {
-    // 👈 NEW: if a sheet is already opening/open for a previous tap,
-    // ignore this call instead of stacking a second sheet on top.
     if (_isCartActionBusy) return;
     _isCartActionBusy = true;
 
+    // 👈 CHANGED: kick off both fetches immediately, but do NOT await them
+    // before opening the sheet. The sheet opens instantly below and shows
+    // a loading state while this future resolves — this is what fixes the
+    // "pop-up feels laggy" issue, since the user gets instant visual feedback.
+    final combinedFuture = Future.wait([
+      context.read<FetchVariationsUseCase>()(product.id),
+      context.read<FetchAddOnsUseCase>()(product.id),
+    ]);
+
+    // 👈 NEW: tracks whether we closed the variant sheet because there
+    // turned out to be no variations, so we can run the existing fallback
+    // flows (addons-only sheet / direct add) after the sheet closes.
+    bool fellBackAfterClose = false;
+
     try {
-      final variationsFuture = context.read<FetchVariationsUseCase>()(product.id);
-      final addOnsFuture = context.read<FetchAddOnsUseCase>()(product.id);
-
-      final results = await Future.wait([variationsFuture, addOnsFuture]);
-      final variations = results[0] as List<VariationEntity>;
-      final addOns = results[1] as List<AddOnEntity>;
-
-      if (variations.isEmpty) {
-        if (addOns.isEmpty) {
-          _addToCartDirect(product);
-          return;
-        } else {
-          await _showAddOnsOnlySheet(product, addOns);
-          return;
-        }
-      }
-
-      int quantity = 1;
-      VariationEntity? selectedVariation = variations.first;
-      final selectedAddOns = <AddOnEntity>{};
-      final nonVeg = isNonVegProduct(product);
-      final currencySymbol = _currencySymbolNotifier.value; // 👈 get symbol
-
       await showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        backgroundColor: Colors.white, // 👈 add this
-
+        backgroundColor: Colors.white,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
         builder: (sheetContext) {
-          return StatefulBuilder(
-            builder: (context, setSheetState) {
-              final media = MediaQuery.of(context);
-              const referenceWidth = 375.0;
-              const referenceHeight = 812.0;
-              final widthScale = media.size.width / referenceWidth;
-              final heightScale = media.size.height / referenceHeight;
-              final scale = widthScale < heightScale ? widthScale : heightScale;
-              double s(double v) => v * scale;
+          return FutureBuilder<List<dynamic>>(
+            future: combinedFuture,
+            builder: (context, snapshot) {
+              // ── Instant-opening loading state ──
+              if (!snapshot.hasData && !snapshot.hasError) {
+                return SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.32,
+                  child: const Center(child: CupertinoActivityIndicator(radius: 14)),
+                );
+              }
 
-              // Width of one grid cell, used so FittedBox knows how much
-              // horizontal room the card content actually has.
-              final gridHorizontalPadding = s(20) * 2;
-              final cellSpacing = s(10);
-              final cardOuterWidth =
-                  (media.size.width - gridHorizontalPadding - cellSpacing) / 2;
-              final cardContentWidth = cardOuterWidth - (s(12) * 2); // minus card's own horizontal padding
+              if (snapshot.hasError) {
+                fellBackAfterClose = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (Navigator.of(sheetContext).canPop()) Navigator.pop(sheetContext);
+                });
+                return const SizedBox.shrink();
+              }
 
-              final basePrice = double.tryParse(selectedVariation?.price ?? '0') ?? 0;
-              final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
-              final total = (basePrice + addOnsTotal) * quantity;
+              final variations = snapshot.data![0] as List<VariationEntity>;
+              final addOns = snapshot.data![1] as List<AddOnEntity>;
 
-              return SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  left: s(20),
-                  right: s(20),
-                  top: s(16),
-                  bottom: media.viewInsets.bottom + s(24),
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: media.size.height * 0.55, // 👈 increased sheet height
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: s(10),
-                            height: s(10),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: nonVeg ? Colors.red : Colors.green,
-                            ),
-                          ),
-                          SizedBox(width: s(8)),
-                          Expanded(
-                            child: Text(
-                              product.name,
-                              style: TextStyle(fontSize: s(18), fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(sheetContext),
-                            child: Container(
-                              padding: EdgeInsets.all(s(4)),
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Color(0xFFFFEAEA),
-                              ),
-                              child: Icon(Icons.close, size: s(18), color: Colors.red),
-                            ),
-                          ),
-                        ],
+              if (variations.isEmpty) {
+                fellBackAfterClose = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (Navigator.of(sheetContext).canPop()) Navigator.pop(sheetContext);
+                });
+                return const SizedBox.shrink();
+              }
+
+              int quantity = 1;
+              VariationEntity? selectedVariation = variations.first;
+              final selectedAddOns = <AddOnEntity>{};
+              final nonVeg = isNonVegProduct(product);
+              final currencySymbol = _currencySymbolNotifier.value;
+
+              return StatefulBuilder(
+                builder: (context, setSheetState) {
+                  final media = MediaQuery.of(context);
+                  const referenceWidth = 375.0;
+                  const referenceHeight = 812.0;
+                  final widthScale = media.size.width / referenceWidth;
+                  final heightScale = media.size.height / referenceHeight;
+                  final scale = widthScale < heightScale ? widthScale : heightScale;
+                  double s(double v) => v * scale;
+
+                  final gridHorizontalPadding = s(20) * 2;
+                  final cellSpacing = s(10);
+                  final cardOuterWidth =
+                      (media.size.width - gridHorizontalPadding - cellSpacing) / 2;
+                  final cardContentWidth = cardOuterWidth - (s(12) * 2);
+
+                  final basePrice = double.tryParse(selectedVariation?.price ?? '0') ?? 0;
+                  final addOnsTotal = selectedAddOns.fold<double>(0, (sum, a) => sum + a.price);
+                  final total = (basePrice + addOnsTotal) * quantity;
+
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.only(
+                      left: s(20),
+                      right: s(20),
+                      top: s(16),
+                      bottom: media.viewInsets.bottom + s(24),
+                    ),
+                    child: ConstrainedBox(
+                      // 👈 CHANGED: was a forced minHeight of 55% of screen height,
+                      // which left a big empty gap under short variant lists.
+                      // Now we only cap the MAX height, so the sheet hugs its content.
+                      constraints: BoxConstraints(
+                        maxHeight: media.size.height * 0.85,
                       ),
-                      SizedBox(height: s(16)),
-
-                      // ── Variations ──
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: variations.length,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: s(10),
-                          crossAxisSpacing: s(10),
-                          mainAxisExtent: s(118), // 👈 fixed card height — never overflows
-                        ),
-                        itemBuilder: (context, index) {
-                          final variant = variations[index];
-                          final isSelected = selectedVariation?.variationId == variant.variationId;
-
-                          return GestureDetector(
-                            onTap: () => setSheetState(() {
-                              selectedVariation = variant;
-                              if (!isSelected) quantity = 1;
-                            }),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(8)),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? ColorConstants.primaryColor.withOpacity(0.06)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(s(10)),
-                                border: Border.all(
-                                  color: isSelected ? ColorConstants.primaryColor : Colors.grey.shade300,
-                                  width: isSelected ? s(1.4) : s(1),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: s(10),
+                                height: s(10),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: nonVeg ? Colors.red : Colors.green,
                                 ),
                               ),
-                              // 👇 auto-shrinks content instead of overflowing,
-                              // no matter how large the device's font/text-scale is.
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.topLeft,
-                                child: SizedBox(
-                                  width: cardContentWidth,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        product.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(fontSize: s(11), color: Colors.grey.shade600),
-                                      ),
-                                      SizedBox(height: s(4)),
-                                      Row(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
+                              SizedBox(width: s(8)),
+                              Expanded(
+                                child: Text(
+                                  product.name,
+                                  // 👈 CHANGED: 18 -> 20
+                                  style: TextStyle(fontSize: s(20), fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => Navigator.pop(sheetContext),
+                                child: Container(
+                                  padding: EdgeInsets.all(s(4)),
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFFFFEAEA),
+                                  ),
+                                  child: Icon(Icons.close, size: s(18), color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: s(14)),
+
+                          // ── Variations ──
+                          GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: variations.length,
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: s(10),
+                              crossAxisSpacing: s(10),
+                              // 👈 CHANGED: 118 -> 128 to comfortably fit the bigger
+                              // stepper/fonts without clipping.
+                              mainAxisExtent: s(128),
+                            ),
+                            itemBuilder: (context, index) {
+                              final variant = variations[index];
+                              final isSelected = selectedVariation?.variationId == variant.variationId;
+
+                              return GestureDetector(
+                                onTap: () => setSheetState(() {
+                                  selectedVariation = variant;
+                                  if (!isSelected) quantity = 1;
+                                }),
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(8)),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? ColorConstants.primaryColor.withOpacity(0.06)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(s(10)),
+                                    border: Border.all(
+                                      color: isSelected ? ColorConstants.primaryColor : Colors.grey.shade300,
+                                      width: isSelected ? s(1.4) : s(1),
+                                    ),
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.topLeft,
+                                    child: SizedBox(
+                                      width: cardContentWidth,
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Expanded(
-                                            child: Text(
-                                              variant.name,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(fontSize: s(13), fontWeight: FontWeight.w600),
-                                            ),
+                                          Text(
+                                            product.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            // 👈 CHANGED: 11 -> 12
+                                            style: TextStyle(fontSize: s(12), color: Colors.grey.shade600),
                                           ),
-                                          SizedBox(width: s(6)),
-                                          isSelected
-                                              ? _VariantStepper(
-                                            quantity: quantity,
-                                            scale: scale,
-                                            diameter: 22, // 👈 add this — compact size for the grid card
-                                            onAdd: () => setSheetState(() => quantity++),
-                                            onRemove: () => setSheetState(() {
-                                              if (quantity > 1) quantity--;
-                                            }),
-                                          )
-                                              : GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () => setSheetState(() {
-                                              selectedVariation = variant;
-                                              quantity = 1;
-                                            }),
-                                            child: Padding(
-                                              padding: EdgeInsets.all(s(2)),
-                                              child: Icon(
-                                                Icons.add_circle,
-                                                color: ColorConstants.primaryColor,
-                                                size: s(22),
+                                          SizedBox(height: s(4)),
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  variant.name,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  // 👈 CHANGED: 13 -> 15
+                                                  style: TextStyle(fontSize: s(15), fontWeight: FontWeight.w600),
+                                                ),
                                               ),
+                                              SizedBox(width: s(6)),
+                                              isSelected
+                                                  ? _VariantStepper(
+                                                quantity: quantity,
+                                                scale: scale,
+                                                // 👈 CHANGED: 22 -> 34, bigger touch target,
+                                                // fills the extra card space we freed up.
+                                                diameter: 34,
+                                                onAdd: () => setSheetState(() => quantity++),
+                                                onRemove: () => setSheetState(() {
+                                                  if (quantity > 1) quantity--;
+                                                }),
+                                              )
+                                                  : GestureDetector(
+                                                behavior: HitTestBehavior.opaque,
+                                                onTap: () => setSheetState(() {
+                                                  selectedVariation = variant;
+                                                  quantity = 1;
+                                                }),
+                                                child: Padding(
+                                                  padding: EdgeInsets.all(s(2)),
+                                                  child: Icon(
+                                                    Icons.add_circle,
+                                                    color: ColorConstants.primaryColor,
+                                                    // 👈 CHANGED: 22 -> 30
+                                                    size: s(30),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(height: s(6)),
+                                          Text(
+                                            '$currencySymbol${variant.price}',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: ColorConstants.primaryColor,
+                                              fontWeight: FontWeight.bold,
+                                              // 👈 CHANGED: 14 -> 16
+                                              fontSize: s(16),
                                             ),
                                           ),
                                         ],
                                       ),
-                                      SizedBox(height: s(6)),
-                                      Text(
-                                        '$currencySymbol${variant.price}', // 👈 dynamic symbol
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: ColorConstants.primaryColor,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: s(14),
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      // ── Modifiers ──
-                      if (addOns.isNotEmpty) ...[
-                        SizedBox(height: s(16)),
-                        Row(
-                          children: [
-                            Text(
-                              'Modifiers',
-                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: s(14)),
-                            ),
-                            SizedBox(width: s(8)),
-                            const Expanded(child: Divider()),
-                          ],
-                        ),
-                        ...addOns.map((addOn) {
-                          final isChecked = selectedAddOns.contains(addOn);
-                          return CheckboxListTile(
-                            contentPadding: EdgeInsets.zero,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            value: isChecked,
-                            title: Text(addOn.name, style: TextStyle(fontSize: s(14))),
-                            secondary: Text(
-                              '+ $currencySymbol${addOn.price.toStringAsFixed(2)}', // 👈 dynamic
-                            ),
-                            onChanged: (checked) {
-                              setSheetState(() {
-                                if (checked == true) {
-                                  selectedAddOns.add(addOn);
-                                } else {
-                                  selectedAddOns.remove(addOn);
-                                }
-                              });
+                              );
                             },
-                          );
-                        }),
-                      ],
+                          ),
 
-                      SizedBox(height: s(8)),
+                          // ── Modifiers ──
+                          if (addOns.isNotEmpty) ...[
+                            SizedBox(height: s(16)),
+                            Row(
+                              children: [
+                                Text(
+                                  'Modifiers',
+                                  // 👈 CHANGED: 14 -> 15
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: s(15)),
+                                ),
+                                SizedBox(width: s(8)),
+                                const Expanded(child: Divider()),
+                              ],
+                            ),
+                            ...addOns.map((addOn) {
+                              final isChecked = selectedAddOns.contains(addOn);
+                              return CheckboxListTile(
+                                contentPadding: EdgeInsets.zero,
+                                controlAffinity: ListTileControlAffinity.leading,
+                                value: isChecked,
+                                // 👈 CHANGED: 14 -> 15
+                                title: Text(addOn.name, style: TextStyle(fontSize: s(15))),
+                                secondary: Text(
+                                  '+ $currencySymbol${addOn.price.toStringAsFixed(2)}',
+                                  style: TextStyle(fontSize: s(14)),
+                                ),
+                                onChanged: (checked) {
+                                  setSheetState(() {
+                                    if (checked == true) {
+                                      selectedAddOns.add(addOn);
+                                    } else {
+                                      selectedAddOns.remove(addOn);
+                                    }
+                                  });
+                                },
+                              );
+                            }),
+                          ],
 
-                      // ── Add to Cart ──
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final selectedProduct = ProductEntity(
-                              id: selectedVariation!.variationId,
-                              name: '${product.name} - ${selectedVariation?.name}',
-                              price: selectedVariation?.price,
-                              inStock: selectedVariation?.inStock == 'Yes',
-                            );
-                            final selectedList = selectedAddOns
-                                .map((a) => {'name': a.name, 'price': a.price})
-                                .toList();
-                            _addVariantToCart(selectedProduct, quantity, selectedList);
-                            Navigator.pop(sheetContext);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: ColorConstants.primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(vertical: s(14)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(s(16)),
+                          SizedBox(height: s(8)),
+
+                          // ── Add to Cart ──
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                final selectedProduct = ProductEntity(
+                                  id: selectedVariation!.variationId,
+                                  name: '${product.name} - ${selectedVariation?.name}',
+                                  price: selectedVariation?.price,
+                                  inStock: selectedVariation?.inStock == 'Yes',
+                                );
+                                final selectedList = selectedAddOns
+                                    .map((a) => {'name': a.name, 'price': a.price})
+                                    .toList();
+                                _addVariantToCart(selectedProduct, quantity, selectedList);
+                                Navigator.pop(sheetContext);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: ColorConstants.primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: s(14)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(s(16)),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Add to Cart',
+                                    // 👈 CHANGED: 15 -> 16
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(16)),
+                                  ),
+                                  SizedBox(width: s(12)),
+                                  Container(width: s(1), height: s(18), color: Colors.white54),
+                                  SizedBox(width: s(12)),
+                                  Text(
+                                    '$currencySymbol${total.toStringAsFixed(2)}',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(16)),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center, // 👈 centered
-                            children: [
-                              Text(
-                                'Add to Cart',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
-                              ),
-                              SizedBox(width: s(12)),
-                              Container(width: s(1), height: s(18), color: Colors.white54), // 👈 divider
-                              SizedBox(width: s(12)),
-                              Text(
-                                '$currencySymbol${total.toStringAsFixed(2)}', // 👈 dynamic
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: s(15)),
-                              ),
-                            ],
-                          ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             },
           );
         },
       );
+
+      // 👈 NEW: run the original fallback logic (unchanged) after the sheet
+      // has closed, only if it turned out there were no variations.
+      if (fellBackAfterClose) {
+        final results = await combinedFuture;
+        final addOns = results[1] as List<AddOnEntity>;
+        if (addOns.isEmpty) {
+          _addToCartDirect(product);
+        } else {
+          await _showAddOnsOnlySheet(product, addOns);
+        }
+      }
     } catch (e) {
       _addToCartDirect(product);
     } finally {
-      // 👈 NEW: only unlock once the sheet has actually been closed
-      // (or we bailed out early), so a rapid double-tap can't queue
-      // up a second sheet while this one is still on screen.
       _isCartActionBusy = false;
     }
   }
+
 
   Future<void> _showAddOnsOnlySheet(ProductEntity product, List<AddOnEntity> addOns) async {
     int quantity = 1;
@@ -3287,10 +3640,52 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     }
   }
 
+
+
+  List<String> _languagesFor(CategoryLoaded state) {
+    if (_selectedSubcategoryId == null) {
+      return state.availableLanguages;
+    }
+
+    final matches = state.subcategories.where((s) => s.id == _selectedSubcategoryId);
+    if (matches.isEmpty) return const [];
+
+    final sub = matches.first;
+    final minis = state.miniSubcategoriesMap[sub.id] ?? sub.miniSubcategories;
+
+    final seen = <String>{};
+    final result = <String>[];
+    for (final m in minis) {
+      if (m.name.trim().isNotEmpty && seen.add(m.name)) {
+        result.add(m.name);
+      }
+    }
+    return result;
+  }
+
+  void _onSubcategoryTap(int subId) {
+    if (_isSubcategoryTapBusy) return;
+    _isSubcategoryTapBusy = true;
+
+    // 👈 CHANGED: no more toggle-to-null. Tapping the same subcategory
+    // again (single tap, double tap, whatever) just keeps it selected.
+    // Only tapping a *different* subcategory changes the selection.
+    if (_selectedSubcategoryId != subId) {
+      setState(() {
+        _selectedSubcategoryId = subId;
+        _language = null;
+      });
+    }
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _isSubcategoryTapBusy = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFFDFDFD),
       appBar: AppBar(
         // toolbarHeight: 32,
         backgroundColor: Colors.white,
@@ -3344,14 +3739,33 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
               if (state is CategoryLoaded) {
                 final selected = state.categories.where((c) => c.id == state.selectedCategoryId).toList();
                 final title = selected.isNotEmpty ? selected.first.name : '';
-                final languages = state.availableLanguages;
+                final languages = _languagesFor(state); //
+
+                // if (_lastCategoryIdForFilters != state.selectedCategoryId) {
+                //   WidgetsBinding.instance.addPostFrameCallback((_) {
+                //     if (!mounted) return;
+                //     setState(() {
+                //       _lastCategoryIdForFilters = state.selectedCategoryId;
+                //       _selectedSubcategoryId = null;
+                //       _language = languages.isNotEmpty ? languages.first : null;
+                //     });
+                //   });
+                // } else if (languages.isNotEmpty &&
+                //     (_language == null || !languages.contains(_language))) {
+                //   WidgetsBinding.instance.addPostFrameCallback((_) {
+                //     if (mounted) setState(() => _language = languages.first);
+                //   });
+                // }
 
                 if (_lastCategoryIdForFilters != state.selectedCategoryId) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (!mounted) return;
                     setState(() {
                       _lastCategoryIdForFilters = state.selectedCategoryId;
-                      _selectedSubcategoryId = null;
+                      //  default to the first subcategory instead of null
+                      _selectedSubcategoryId = state.subcategories.isNotEmpty
+                          ? state.subcategories.first.id
+                          : null;
                       _language = languages.isNotEmpty ? languages.first : null;
                     });
                   });
@@ -3397,11 +3811,11 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         onVisibleSubcategoryChanged: (subId) {
                           // Only auto-update from scroll when no subcategory is selected.
                           // When user has selected a subcategory, keep that list locked.
-                          if (_selectedSubcategoryId != null) return;
-
-                          if (_selectedSubcategoryId != subId) {
-                            setState(() => _selectedSubcategoryId = subId);
-                          }
+                          // if (_selectedSubcategoryId != null) return;
+                          //
+                          // if (_selectedSubcategoryId != subId) {
+                          //   setState(() => _selectedSubcategoryId = subId);
+                          // }
                         },
                         currencySymbol: symbol,
                       );
@@ -3644,7 +4058,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   Widget _buildCategoriesLabelRow() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -3704,25 +4118,60 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     );
   }
 
+  // Widget _buildCategoryHeaderBlock(
+  //     String title,
+  //     List<SubcategoryEntity> subcategories,
+  //     List<String> languages,
+  //     ) {
+  //   return Container(
+  //     color: const Color(0xFFFDFDFD),
+  //     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+  //         if (subcategories.isNotEmpty) ...[
+  //           const SizedBox(height: 10),
+  //           _buildSubcategoryChipsRow(subcategories),
+  //         ],
+  //         if (languages.isNotEmpty) ...[
+  //           const SizedBox(height: 12),
+  //           // Make languages horizontally scrollable
+  //           SingleChildScrollView(
+  //             scrollDirection: Axis.horizontal,
+  //             child: Row(
+  //               children: languages.map(_languageOption).toList(),
+  //             ),
+  //           ),
+  //         ],
+  //       ],
+  //     ),
+  //   );
+  // }
+
   Widget _buildCategoryHeaderBlock(
       String title,
       List<SubcategoryEntity> subcategories,
       List<String> languages,
       ) {
     return Container(
-      color: const Color(0xFFF5F5F5),
+      color: const Color(0xFFFDFDFD),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           if (subcategories.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 6), // 👈 reduced from 10 to 6
             _buildSubcategoryChipsRow(subcategories),
+            // ─── Divider between subcategories and languages ───
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Divider(color: Color(0xFFE0E0E0), height: 1),
+            ),
           ],
           if (languages.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            // 👇 Make languages horizontally scrollable
+            // SingleChildScrollView removed – now languages are inside a separate row
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -3763,16 +4212,11 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             for (int i = 0; i < displayedSubs.length; i++) ...[
-              if (i > 0) const SizedBox(width: 8), // 👈 no gap before the first chip
+              if (i > 0) const SizedBox(width: 8),
               _subcategoryChip(
                 label: displayedSubs[i].name,
                 selected: _selectedSubcategoryId == displayedSubs[i].id,
-                onTap: () => setState(() {
-                  _selectedSubcategoryId =
-                  (_selectedSubcategoryId == displayedSubs[i].id)
-                      ? null
-                      : displayedSubs[i].id;
-                }),
+                onTap: () => _onSubcategoryTap(displayedSubs[i].id), // 👈 changed
               ),
             ],
             if (showMoreChip) ...[
@@ -3796,6 +4240,47 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       ),
     );
   }
+  //
+  // Widget _toggleChip({
+  //   required String label,
+  //   required bool isActive,
+  //   required VoidCallback onTap,
+  // }) {
+  //   return GestureDetector(
+  //     onTap: onTap,
+  //     child: Container(
+  //       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+  //       decoration: BoxDecoration(
+  //         color: isActive ? ColorConstants.primaryColor.withOpacity(0.1) : Colors.white,
+  //         borderRadius: BorderRadius.circular(4),
+  //         border: Border.all(
+  //           color: isActive ? ColorConstants.primaryColor : Colors.grey.shade300,
+  //         ),
+  //       ),
+  //       child: Row(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           Text(
+  //             label,
+  //             style: TextStyle(
+  //               fontSize: 12,
+  //               color: isActive ? ColorConstants.primaryColor : Colors.black87,
+  //               fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+  //             ),
+  //           ),
+  //           if (isActive) ...[
+  //             const SizedBox(width: 2),
+  //             Icon(
+  //               Icons.keyboard_arrow_up,
+  //               size: 14,
+  //               color: ColorConstants.primaryColor,
+  //             ),
+  //           ],
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _toggleChip({
     required String label,
@@ -3808,9 +4293,10 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isActive ? ColorConstants.primaryColor.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(8), // 👈 consistency
           border: Border.all(
             color: isActive ? ColorConstants.primaryColor : Colors.grey.shade300,
+            width: isActive ? 1.5 : 1.0,
           ),
         ),
         child: Row(
@@ -3838,6 +4324,35 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     );
   }
 
+  // Widget _subcategoryChip({
+  //   required String label,
+  //   required bool selected,
+  //   required VoidCallback onTap,
+  // }) {
+  //   return GestureDetector(
+  //     onTap: onTap,
+  //     child: Container(
+  //       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+  //       decoration: BoxDecoration(
+  //         color: selected ? ColorConstants.primaryColor.withOpacity(0.1) : Colors.white,
+  //         borderRadius: BorderRadius.circular(4),
+  //         border: Border.all(color: selected ? ColorConstants.primaryColor : Colors.grey.shade300),
+  //       ),
+  //       child: Text(
+  //         label,
+  //         style: TextStyle(
+  //           fontSize: 12,
+  //           color: selected ? ColorConstants.primaryColor : Colors.black87,
+  //           fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+  //         ),
+  //         maxLines: 1,
+  //         overflow: TextOverflow.ellipsis,
+  //         softWrap: false,
+  //       ),
+  //     ),
+  //   );
+  // }
+
   Widget _subcategoryChip({
     required String label,
     required bool selected,
@@ -3849,8 +4364,11 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? ColorConstants.primaryColor.withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: selected ? ColorConstants.primaryColor : Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8), // 👈 changed from 4 to 8
+          border: Border.all(
+            color: selected ? ColorConstants.primaryColor : Colors.grey.shade300,
+            width: selected ? 1.5 : 1.0, // 👈 added: thinner border when unselected
+          ),
         ),
         child: Text(
           label,
@@ -3925,7 +4443,10 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                     ? const Icon(Icons.check, color: ColorConstants.primaryColor)
                     : null,
                 onTap: () {
-                  setState(() => _selectedSubcategoryId = sub.id);
+                  setState(() {
+                    _selectedSubcategoryId = sub.id;
+                    _language = null; //  NEW: default to first language for this subcategory
+                  });
                   Navigator.pop(sheetContext);
                 },
               ))
@@ -3938,6 +4459,35 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   }
 
 
+  // Widget _languageOption(String label) {
+  //   final selected = _language == label;
+  //   return Padding(
+  //     padding: const EdgeInsets.only(right: 8),
+  //     child: GestureDetector(
+  //       onTap: () => setState(() => _language = label),
+  //       child: Container(
+  //         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+  //         decoration: BoxDecoration(
+  //           color: selected ? ColorConstants.primaryColor : Colors.white,
+  //           borderRadius: BorderRadius.all(Radius.circular(8)),
+  //           border: Border.all(
+  //             color: selected ? ColorConstants.primaryColor : ColorConstants.primaryColor,
+  //             width: 1.5,
+  //           ),
+  //         ),
+  //         child: Text(
+  //           label,
+  //           style: TextStyle(
+  //             fontSize: 12,
+  //             color: selected ? Colors.white : ColorConstants.primaryColor,
+  //             fontWeight: FontWeight.w600,
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
   Widget _languageOption(String label) {
     final selected = _language == label;
     return Padding(
@@ -3948,10 +4498,10 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
             color: selected ? ColorConstants.primaryColor : Colors.white,
-            borderRadius: BorderRadius.all(Radius.circular(8)),
+            borderRadius: BorderRadius.circular(8), // keep 8
             border: Border.all(
               color: selected ? ColorConstants.primaryColor : ColorConstants.primaryColor,
-              width: 1.5,
+              width: selected ? 1.5 : 1.0, // 👈 thinner when unselected
             ),
           ),
           child: Text(

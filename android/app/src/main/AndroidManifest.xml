@@ -31,7 +31,9 @@
         android:label="Restaurant captain"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
 
         <activity
             android:name=".MainActivity"

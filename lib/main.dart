@@ -1,5 +1,4 @@
-// import 'package:firebase_core/firebase_core.dart';
-// import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -87,15 +86,6 @@ import 'features/variations/variations_domain/variation_repository.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // await Firebase.initializeApp(
-  //   options: DefaultFirebaseOptions.currentPlatform,
-  // );
-
-  // FirebaseMessaging.onBackgroundMessage(
-  //   firebaseMessagingBackgroundHandler,
-  // );
-  //
-  // await FirebaseNotificationService.instance.initialize();
 
   runApp(const MyApp());
 }
@@ -451,9 +441,19 @@ class _AuthCheckState extends State<AuthCheck> {
     final captainStorage = context.read<CaptainLocalStorage>();
 
     final merchantData = await merchantStorage.getMerchantData();
-    final isMerchantLoggedIn = merchantData != null && merchantData.success;
+    print('MerchantData: $merchantData');   // <-- add this
+
+    // OR for an int field like 'userId':
+    final isMerchantLoggedIn = merchantData != null &&
+        merchantData.success &&
+        merchantData.userId != null &&
+        merchantData.userId! > 0;  // or token
+
+    print('isMerchantLoggedIn: $isMerchantLoggedIn');
 
     final captainData = await captainStorage.getCaptainData();
+    print(' CaptainData: $captainData');
+    print(' isCaptainLoggedIn: ${captainData != null && captainData.success}');
     final isCaptainLoggedIn =
         isMerchantLoggedIn && captainData != null && captainData.success;
 
