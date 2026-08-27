@@ -887,30 +887,92 @@ class _TablesScreenState extends State<TablesScreen> {
                                     parentTableId,
                                     childTableIds,
                                     ) async {
-                                  setState(() {
-                                    // Parent table
-                                    placedTables[i]['is_merged'] = true;
-                                    placedTables[i]['is_child'] = false;
+                                  try {
+                                    final parentTable = placedTables[i];
 
-                                    // Disable all child tables
-                                    for (final childId in childTableIds) {
-                                      final childIndex = placedTables.indexWhere(
-                                            (table) =>
-                                        int.tryParse(table['table_id']?.toString() ?? '') == childId,
-                                      );
+                                    final String zoneName =
+                                        parentTable['areaName'] ??
+                                            parentTable['zoneName'] ??
+                                            '';
 
-                                      if (childIndex != -1) {
-                                        placedTables[childIndex]['is_child'] = true;
-                                        placedTables[childIndex]['is_merged'] = true;
-                                        placedTables[childIndex]['parent_table_id'] = parentTableId;
-                                        placedTables[childIndex]['status'] = 'Disabled';
+                                    final int restaurantId =
+                                        int.tryParse(widget.restaurantId.toString()) ?? 0;
+
+                                    final mergeRepository = TableMergeRepository();
+
+                                    final response =
+                                    await mergeRepository.updateMergeTablesWithStatus(
+                                      token: widget.token,
+                                      restaurantId: restaurantId,
+                                      zoneName: zoneName,
+                                      parentTableId: parentTableId,
+                                      childTableIds: childTableIds,
+                                    );
+
+                                    AppLogger.info(
+                                      'Merge tables response: $response',
+                                    );
+
+                                    if (!mounted) return;
+
+                                    setState(() {
+                                      // -------------------------
+                                      // Parent
+                                      // -------------------------
+                                      placedTables[i]['is_merged'] = true;
+                                      placedTables[i]['is_child'] = false;
+                                      placedTables[i]['parent_table_id'] = null;
+
+                                      // -------------------------
+                                      // Children
+                                      // -------------------------
+                                      for (final childId in childTableIds) {
+                                        final childIndex = placedTables.indexWhere(
+                                              (table) =>
+                                          int.tryParse(
+                                            table['table_id']?.toString() ?? '',
+                                          ) == childId,
+                                        );
+
+                                        if (childIndex != -1) {
+                                          placedTables[childIndex]['is_child'] = true;
+                                          placedTables[childIndex]['is_merged'] = true;
+                                          placedTables[childIndex]['parent_table_id'] =
+                                              parentTableId;
+
+                                          // Keep disabled for UI
+                                          placedTables[childIndex]['status'] = 'Disabled';
+                                        }
                                       }
-                                    }
-                                  });
+                                    });
 
-                                  // context.read<TableBloc>().add(
-                                  //   LoadTablesEvent(widget.token),
-                                  // );
+                                    // IMPORTANT:
+                                    // Do NOT reload TableBloc here.
+                                    //
+                                    // TableLoadedState will replace placedTables with
+                                    // state.tables and can remove the local merge flags.
+                                    //
+                                    // TableRepository.clearMemoryCache();
+                                    // context.read<TableBloc>().add(
+                                    //   LoadTablesEvent(widget.token),
+                                    // );
+
+                                  } catch (e) {
+                                    AppLogger.error(
+                                      'Failed to merge tables: $e',
+                                    );
+
+                                    if (mounted) {
+                                      AreaMovementNotifier.showPopup(
+                                        context: context,
+                                        fromArea: '',
+                                        toArea: '',
+                                        tableName: '',
+                                        customMessage:
+                                        'Failed to merge tables. Please try again.',
+                                      );
+                                    }
+                                  }
                                 },
                               ),
                             );
@@ -1248,18 +1310,29 @@ class _TablesScreenState extends State<TablesScreen> {
       ) {
     final actualIndex = placedTables.indexOf(tableData);
 
-    // Get capacity FIRST
     final int capacity =
         int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
-    // Identify child/disabled table
+    final String status =
+        tableData['status']?.toString().toLowerCase().trim() ?? 'available';
+
     final bool isChildTable =
         tableData['is_child'] == true ||
             tableData['is_child']?.toString().toLowerCase() == 'true' ||
-            tableData['status']?.toString().toLowerCase() == 'disabled' ||
-            capacity == 0;
+            status == 'disabled' ||
+            tableData['parent_table_id'] != null;
+
+    // IMPORTANT:
+    // Give ShapeBasedGridItem the calculated disabled state.
+    final Map<String, dynamic> gridTableData =
+    Map<String, dynamic>.from(tableData);
+
+    gridTableData['is_child'] = isChildTable;
+    gridTableData['status'] =
+    isChildTable ? 'disabled' : status;
 
     return ShapeBasedGridItem(
+      // tableData: gridTableData,
       tableData: tableData,
 
       // =========================
@@ -1476,21 +1549,38 @@ class _TablesScreenState extends State<TablesScreen> {
       },
     );
   }
-
   Widget _buildCommonGridItem(
       Map<String, dynamic> tableData,
       int filteredIndex,
       ) {
     final actualIndex = placedTables.indexOf(tableData);
-    final int capacity = int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+
+    final int capacity =
+        int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
+
+    final String status =
+        tableData['status']?.toString().toLowerCase().trim() ?? 'available';
+
     final bool isChildTable =
         tableData['is_child'] == true ||
             tableData['is_child']?.toString().toLowerCase() == 'true' ||
-            tableData['status']?.toString().toLowerCase() == 'disabled' ||
-            capacity == 0;
+            status == 'disabled' ||
+            tableData['parent_table_id'] != null;
+
+    // IMPORTANT:
+    // Pass the calculated state to CommonGridItem.
+    final Map<String, dynamic> gridTableData =
+    Map<String, dynamic>.from(tableData);
+
+    gridTableData['is_child'] = isChildTable;
+
+    if (isChildTable) {
+      gridTableData['status'] = 'disabled';
+    }
 
     return CommonGridItem(
-      tableData: tableData,
+      tableData: gridTableData,
+
       onTap: isChildTable
           ? null
           : () async {
