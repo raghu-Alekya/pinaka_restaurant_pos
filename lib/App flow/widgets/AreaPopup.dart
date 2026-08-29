@@ -92,7 +92,7 @@ class _AreaPopupState extends State<AreaPopup> {
                     color: isDark
                         ? Colors.white24
                         : const Color(0xFF1F9724),
-                    width: isDark ? 1 : 4,
+                    width: isDark ? 1 : 2,
                   ),
                   boxShadow: isDark
                       ? []

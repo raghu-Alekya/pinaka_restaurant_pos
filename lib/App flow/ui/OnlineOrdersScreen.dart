@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -5,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../models/UserPermissions.dart';
 import '../../models/order_list/order_list_model.dart';
 import '../../repositories/order_list_repository.dart';
+import '../../services/kds_seivices.dart';
 import '../widgets/top_bar.dart';
 
 class OnlineOrdersScreen extends StatefulWidget {
@@ -42,7 +44,84 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
   @override
   void initState() {
     super.initState();
+
     _fetchOnlineOrders();
+
+    _listenToKdsStatusUpdates();
+  }
+
+  @override
+  void dispose() {
+    _kdsStatusSubscription?.cancel();
+    super.dispose();
+  }
+  StreamSubscription<Map<String, dynamic>>?
+  _kdsStatusSubscription;
+
+  void _listenToKdsStatusUpdates() {
+
+    KdsMqttPublisher.listenForKdsStatusUpdates(
+      restaurantId: widget.restaurantId,
+    );
+
+    _kdsStatusSubscription =
+        KdsMqttPublisher.statusUpdates.listen((message) {
+
+          debugPrint(
+            'POS RECEIVED KDS STATUS: $message',
+          );
+
+          final kotNumber =
+          message['kot_number']?.toString();
+
+          final newStatus =
+          message['status']?.toString().toLowerCase();
+
+          if (kotNumber == null || newStatus == null) {
+            return;
+          }
+
+          setState(() {
+
+            for (final order in _orders) {
+
+              final orderKotNumber =
+              order['kot_number']?.toString();
+
+              final orderId =
+              order['id']?.toString();
+
+              if (orderKotNumber == kotNumber ||
+                  orderId == kotNumber) {
+
+                if (newStatus == 'preparing' ||
+                    newStatus == 'accepted') {
+
+                  order['status'] = 'Preparing';
+
+                } else if (newStatus == 'ready') {
+
+                  order['status'] = 'Ready';
+
+                } else if (newStatus == 'served' ||
+                    newStatus == 'completed') {
+
+                  order['status'] = 'Served';
+
+                } else if (newStatus == 'cancelled' ||
+                    newStatus == 'cancel') {
+
+                  order['status'] = 'Cancelled';
+                }
+
+                debugPrint(
+                  'POS KOT $kotNumber updated to '
+                      '${order['status']}',
+                );
+              }
+            }
+          });
+        });
   }
 
   /// Fetch online orders from both POS OrderList API & OrderOut API
@@ -150,15 +229,31 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
         timeStr = DateFormat.jm().format(dt);
       } catch (_) {}
     }
-
-    // Status mapping
+// Status mapping
     String mappedStatus = "New";
+
     final st = (o.status ?? "").toLowerCase();
-    if (st.contains("preparing") || st.contains("kitchen") || st.contains("accepted")) {
+
+    if (st.contains("preparing") ||
+        st.contains("kitchen") ||
+        st.contains("accepted")) {
+
       mappedStatus = "Preparing";
-    } else if (st.contains("ready") || st.contains("dispatched") || st.contains("completed") || st.contains("paid")) {
+
+    } else if (st.contains("ready") ||
+        st.contains("dispatched")) {
+
       mappedStatus = "Ready";
-    } else if (st.contains("cancel") || st.contains("void")) {
+
+    } else if (st.contains("served") ||
+        st.contains("completed") ||
+        st.contains("paid")) {
+
+      mappedStatus = "Served";
+
+    } else if (st.contains("cancel") ||
+        st.contains("void")) {
+
       mappedStatus = "Cancelled";
     }
 
@@ -176,10 +271,14 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
     }
 
     final totalAmt = o.netPayable ?? o.total ?? o.amount ?? o.grossTotal ?? 0;
-
+    final String kotNumber =
+    o.kotOrders?.isNotEmpty == true
+        ? o.kotOrders!.first.kotNumber ?? ''
+        : '';
     return {
       "id": orderId,
-      "rawId": o.orderId?.toString() ?? "",
+      "orderId": o.orderId?.toString() ?? "",
+      "kotNumber": kotNumber,
       "platform": platform,
       "time": timeStr,
       "customerName": o.customerName ?? "Online Customer",
@@ -187,7 +286,9 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
       "status": mappedStatus,
       "paymentStatus": o.paymentType ?? "Paid Online",
       "totalAmount": totalAmt,
-      "note": o.tableName != null ? "Table: ${o.tableName}" : "Add Cutlery",
+      "note": o.tableName != null
+          ? "Table: ${o.tableName}"
+          : "Add Cutlery",
       "items": visibleItems,
       "allItemsCount": itemsList.length,
       "moreItemsCount": moreCount,
@@ -1133,68 +1234,40 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
           const SizedBox(height: 12),
 
           /// ACTION BUTTONS (CANCEL ORDER / ACCEPT ORDER)
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 38,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      _updateOrderStatus(order, "Cancelled");
-                    },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFF87171)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      "Cancel Order",
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFEF4444),
-                      ),
-                    ),
+          /// ACTION BUTTON
+          ///
+          /// Cancel Order should be displayed ONLY for New orders.
+          /// Preparing / Ready / Cancelled → no button.
+
+          if (status.toLowerCase() == "new")
+            SizedBox(
+              width: double.infinity,
+              height: 38,
+              child: OutlinedButton(
+                onPressed: () {
+                  _updateOrderStatus(
+                    order,
+                    "Cancelled",
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(
+                    color: Color(0xFFF87171),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text(
+                  "Cancel Order",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFEF4444),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: SizedBox(
-                  height: 38,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (status == "New") {
-                        _updateOrderStatus(order, "Preparing");
-                      } else if (status == "Preparing") {
-                        _updateOrderStatus(order, "Ready");
-                      } else {
-                        _updateOrderStatus(order, "Dispatched");
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      status == "New"
-                          ? "Accept Order"
-                          : (status == "Preparing" ? "Mark Ready" : "Dispatch"),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
         ],
       ),
     );

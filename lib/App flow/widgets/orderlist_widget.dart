@@ -129,7 +129,7 @@ class OrderPanelList extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(width: 7),
+                  // const SizedBox(width: 7),
 
                   // Serial #
                   SizedBox(
@@ -140,7 +140,7 @@ class OrderPanelList extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(width: 6),
+                  // const SizedBox(width: 1),
 
                   // ✅ Item name + modifiers → TAKE AVAILABLE SPACE
                   Expanded(
@@ -220,54 +220,53 @@ class OrderPanelList extends StatelessWidget {
 
                   // Modifier Button
                   GestureDetector(
-                    onTap:
-                        item.hasOptions
-                            ? () => _showModifierPopup(context, index)
-                            : null,
+                    onTap: item.hasOptions
+                        ? () => _showModifierPopup(context, index)
+                        : null,
                     child: Container(
-                      width: 61,
+                      width: 31,
                       height: 24,
                       alignment: Alignment.center,
                       decoration: ShapeDecoration(
-                        color:
-                            isDark
-                                ? const Color(0xFF2B3042)
-                                : Colors.transparent,
+                        color: isDark
+                            ? const Color(0xFF2B3042)
+                            : Colors.transparent,
                         shape: RoundedRectangleBorder(
                           side: BorderSide(
                             width: 1,
-                            color:
-                                item.hasOptions
-                                    ? const Color(0xFFFFB820)
-                                    : (isDark
-                                        ? Colors.white38
-                                        : Colors.grey.shade400),
+                            color: item.hasOptions
+                                ? const Color(0xFFFFB820)
+                                : (isDark
+                                ? Colors.white38
+                                : Colors.grey.shade400),
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         shadows: [
                           BoxShadow(
-                            color:
-                                isDark
-                                    ? Colors.black26
-                                    : (item.hasOptions
-                                        ? const Color(0xFFFFFFFF)
-                                        : Colors.black12),
+                            color: isDark
+                                ? Colors.black26
+                                : (item.hasOptions
+                                ? const Color(0xFFFFFFFF)
+                                : Colors.black12),
                             blurRadius: 2,
                             offset: const Offset(0, 1),
                           ),
                         ],
                       ),
-                      child: Text(
-                        "Modifier",
-                        style: TextStyle(
-                          color:
-                              item.hasOptions
-                                  ? const Color(0xFFFFB820)
-                                  : (isDark ? Colors.white54 : Colors.grey),
-                          fontSize: 10,
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w500,
+                      child: Center(
+                        child: Text(
+                          "+",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: item.hasOptions
+                                ? const Color(0xFFFFB820)
+                                : (isDark ? Colors.white54 : Colors.grey),
+                            fontSize: 18,
+                            height: 1.0,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),
@@ -275,7 +274,7 @@ class OrderPanelList extends StatelessWidget {
 
                   // Unit Price (fixed)
                   SizedBox(
-                    width: 70,
+                    width: 65,
                     child: Text(
                       // '₹${item.price.toStringAsFixed(2)}',
                       '$currency${item.price.toStringAsFixed(2)}',

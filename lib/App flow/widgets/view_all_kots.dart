@@ -653,7 +653,7 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
                 // const SizedBox(height: 10),
                 if (_expanded)
                   SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.53,
+                    height: MediaQuery.of(context).size.height * 0.51,
                     child: Material(
                       elevation: 8,
                       color: Colors.transparent,

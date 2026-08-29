@@ -2771,7 +2771,7 @@ class _TablesScreenState extends State<TablesScreen> {
                   //   ),
                   // ),
 
-                  const SizedBox(width: 15),
+                  // const SizedBox(width: 10),
                   if (!_showPopup)
                     ViewLayoutToggle(
                       selectedMode: _currentViewMode,

@@ -923,7 +923,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                 SizedBox(
                                   height: 40,
                                   width: 42,
-                                  child: ElevatedButton.icon(
+                                  child: ElevatedButton(
                                     onPressed: _isRefreshing ? null : _refreshOrders,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: isDark
@@ -931,9 +931,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                           : Colors.white,
                                       foregroundColor: const Color(0xFF1E2A5A),
                                       elevation: 0,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 0,
-                                      ),
+                                      padding: EdgeInsets.zero,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(10),
                                         side: BorderSide(
@@ -943,13 +941,15 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                         ),
                                       ),
                                     ),
-                                    icon: SizedBox(
-                                      width: 22,
-                                      height: 22,
+                                    child: Center(
                                       child: _isRefreshing
-                                          ? const CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Color(0xFF1E2A5A),
+                                          ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF1E2A5A),
+                                        ),
                                       )
                                           : const Icon(
                                         Icons.sync,
@@ -957,7 +957,6 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                         color: Color(0xFF1E2A5A),
                                       ),
                                     ),
-                                    label: const SizedBox.shrink(),
                                   ),
                                 ),
                               ],

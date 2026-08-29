@@ -845,7 +845,7 @@ class _TipsScreenState extends State<TipsScreen>
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 0,
+                    vertical: 3,
                   ),
                   child: Container(
                     margin: const EdgeInsets.all(16),

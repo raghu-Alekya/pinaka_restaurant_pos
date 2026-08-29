@@ -1730,7 +1730,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               _buildResetButton(),
               const SizedBox(width: 12),
               SizedBox(
-                height: 40,
+                height: 42,
                 width: 42,
                 child: Material(
                   color: Colors.transparent,
@@ -1763,7 +1763,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                         )
                             : Icon(
                           Icons.sync,
-                          size: 19,
+                          size: 22,
                           color: isDark
                               ? Colors.white
                               : const Color(0xFF374151),
@@ -1854,12 +1854,12 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
           ),
           shadows: [
             BoxShadow(
-              color:
-              isDark
-                  ? Colors.black.withOpacity(0.30)
-                  : const Color(0x4204347F),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
+              color: isDark
+                  ? Colors.black.withOpacity(0.06)
+                  : const Color(0x2204347F),
+              blurRadius: 3,
+              spreadRadius: 0,
+              offset: const Offset(0, 0),
             ),
           ],
         ),

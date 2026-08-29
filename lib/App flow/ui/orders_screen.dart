@@ -2601,7 +2601,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                   ),
                                 ),
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
+                                  horizontal: 2,
                                 ),
                                 child: Row(
                                   children: [
@@ -2609,10 +2609,10 @@ class _OrderPanelState extends State<OrderPanel> {
                                     SizedBox(width: 40, child: headerText('#')),
                                     const SizedBox(width: 6),
                                     Expanded(child: headerText('Item Name')),
-                                    const SizedBox(width: 40),
+                                    const SizedBox(width: 50),
                                     headerText('Modifiers'),
                                     SizedBox(
-                                      width: 70,
+                                      width: 40,
                                       child: headerText(
                                         'Price',
                                         align: TextAlign.right,
@@ -2620,7 +2620,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                     ),
                                     const SizedBox(width: 30),
                                     SizedBox(
-                                      width: 80,
+                                      width: 90,
                                       child: headerText(
                                         'Qty',
                                         align: TextAlign.center,
@@ -2628,12 +2628,13 @@ class _OrderPanelState extends State<OrderPanel> {
                                     ),
                                     const SizedBox(width: 5),
                                     SizedBox(
-                                      width: 70,
+                                      width: 80,
                                       child: headerText(
                                         'Amount',
                                         align: TextAlign.right,
                                       ),
                                     ),
+                                    const SizedBox(width: 5),
                                   ],
                                 ),
                               ),

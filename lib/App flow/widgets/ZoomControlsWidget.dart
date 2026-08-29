@@ -64,8 +64,8 @@ class ZoomControlsWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 120,
-      left: 40,
+      bottom: 70,
+      left: 30,
 
       /// Arranges the zoom buttons vertically with spacing.
       child: Column(

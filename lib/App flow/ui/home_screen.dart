@@ -1445,9 +1445,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _topSellingItems() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Responsive height
+    final containerHeight = (screenHeight * 0.77).clamp(
+      400.0,
+      650.0,
+    );
+
     return Container(
-      height: 503,
-      padding: const EdgeInsets.only(left: 16, top: 16, right: 20, bottom: 12),
+      height: containerHeight,
+      padding: const EdgeInsets.only(
+        left: 16,
+        top: 16,
+        right: 20,
+        bottom: 12,
+      ),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF202433) : Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -1455,7 +1468,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BoxShadow(
             blurRadius: 6,
             offset: const Offset(0, 2),
-            color: isDark ? Colors.black.withOpacity(0.35) : Colors.black12,
+            color:
+            isDark
+                ? Colors.black.withOpacity(0.35)
+                : Colors.black12,
           ),
         ],
       ),
@@ -1473,7 +1489,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Color(0xFF1A1A1A),
+                        color:
+                        isDark
+                            ? Colors.white
+                            : const Color(0xFF1A1A1A),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1482,9 +1501,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 11,
                         color:
-                            isDark
-                                ? Colors.grey.shade400
-                                : const Color(0xFF8B97A8),
+                        isDark
+                            ? Colors.grey.shade400
+                            : const Color(0xFF8B97A8),
                       ),
                     ),
                   ],
@@ -1494,8 +1513,12 @@ class _HomeScreenState extends State<HomeScreen> {
               Icon(
                 Icons.calendar_today_outlined,
                 size: 18,
-                color: isDark ? Colors.white70 : const Color(0xFF334155),
+                color:
+                isDark
+                    ? Colors.white70
+                    : const Color(0xFF334155),
               ),
+
               const SizedBox(width: 6),
 
               Text(
@@ -1503,7 +1526,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                  color:
+                  isDark
+                      ? Colors.white
+                      : const Color(0xFF1E293B),
                 ),
               ),
             ],
@@ -1511,15 +1537,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(height: 24),
 
-          //Raghu
-          // _overviewRow(
-          //   Icons.room_service_outlined,
-          //   Colors.grey.shade100,
-          //   Colors.grey,
-          //   "Queue Kot's",
-          //   "${statusCount?.queue ?? 0}",
-          //   isDark,
-          // ),
           _overviewRow(
             Icons.access_time,
             const Color(0xFFFFF7D6),
@@ -1528,15 +1545,6 @@ class _HomeScreenState extends State<HomeScreen> {
             "${statusCount?.kitchenPreparing ?? 0}",
             isDark,
           ),
-
-          // _overviewRow(
-          //   Icons.check_circle_outline,
-          //   const Color(0xFFEAF2FF),
-          //   Colors.blue,
-          //   "Ready to Serve Kot's",
-          //   "${statusCount?.served ?? 0}",
-          //   isDark,
-          // ),
 
           _overviewRow(
             Icons.cancel_outlined,
@@ -1596,7 +1604,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   Widget _overviewRow(
     IconData icon,
     Color bgColor,
@@ -2006,11 +2013,17 @@ class _HomeScreenState extends State<HomeScreen> {
     required List<BoxShadow> boxShadows,
     required Gradient gradient,
   }) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Available height for 2 rows of cards.
+    // Adjust these values according to your parent layout.
+    final cardHeight = (screenHeight * 0.20).clamp(110.0, 160.0);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        height: 165,
+        height: cardHeight,
         padding: const EdgeInsets.all(14),
         decoration: ShapeDecoration(
           gradient: gradient,
@@ -2143,11 +2156,14 @@ class _HomeScreenState extends State<HomeScreen> {
     String countLabel = "",
     VoidCallback? onTap,
   }) {
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    final cardHeight = (screenHeight * 0.20).clamp(110.0, 160.0);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        height: 165,
+        height: cardHeight,
         padding: const EdgeInsets.all(14),
         decoration: ShapeDecoration(
           color: Theme.of(context).cardColor,
