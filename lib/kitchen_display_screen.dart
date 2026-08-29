@@ -3058,38 +3058,61 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
     final String buttonText;
     final Color buttonColor;
-
     if (isOnline) {
+
+      // ==========================================================
+      // ONLINE ORDER
+      // Accept → Ready to serve → Served
+      // ==========================================================
+
+      final bool isOnlineAccepted =
+      onlineAcceptedTimeMap.containsKey(switchKey);
+
       if (normalizedStatus == 'served' ||
           normalizedStatus == 'completed') {
+
         buttonText = 'Served';
         buttonColor = const Color(0xff667085);
-      } else if (normalizedStatus == 'preparing' ||
-          normalizedStatus == 'accepted' ||
-          normalizedStatus == 'ready' ||
-          allItemsOn) {
+
+      } else if (isOnlineAccepted) {
+
+        // Accept was actually clicked
         buttonText = 'Ready to serve';
         buttonColor = const Color(0xff5B9638);
+
       } else {
+
+        // New online order
         buttonText = 'Accept';
         buttonColor = const Color(0xff3B923F);
       }
-    } else if (allItemsOn || normalizedStatus == 'ready') {
+
+    } else if (allItemsOn ||
+        normalizedStatus == 'ready') {
+
       buttonText = 'Ready';
       buttonColor = const Color(0xff5B9638);
+
     } else if (normalizedStatus == 'served' ||
         normalizedStatus == 'completed') {
+
       buttonText = 'Served';
       buttonColor = const Color(0xff667085);
+
     } else if (isNewKot) {
+
       buttonText = 'New';
-      buttonColor = const Color(0xff3B923F); // GREEN
+      buttonColor = const Color(0xff3B923F);
+
     } else if (isRunningKot) {
+
       buttonText = 'Running';
-      buttonColor = const Color(0xffC01F33); // RED
+      buttonColor = const Color(0xffC01F33);
+
     } else {
+
       buttonText = 'New';
-      buttonColor = const Color(0xff3B923F); // GREEN
+      buttonColor = const Color(0xff3B923F);
     }
     return Container(
       decoration: BoxDecoration(
@@ -4341,7 +4364,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           if (allItemsSelectedForCancel) {
 
                             // ======================================================
-                            // CANCEL ENTIRE KOT USING ITEM-LEVEL CANCEL API
+                            // CANCEL ENTIRE KOT
                             // ======================================================
 
                             final itemsToCancel = items
@@ -4375,15 +4398,86 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           return;
                         }
 
+
                         // ==========================================================
-                        // NEW / RUNNING
-                        // SERVE ALL ITEMS
+                        // ONLINE ORDER FLOW
+                        // ==========================================================
+
+                        if (isOnline) {
+
+                          // ========================================================
+                          // STEP 1: ACCEPT
+                          // Accept → Preparing
+                          // ========================================================
+
+                          if (buttonText == 'Accept') {
+
+                            debugPrint(
+                              'ONLINE ORDER: ACCEPT KOT=$kotId',
+                            );
+
+                            // Start timer from acceptance
+                            onlineAcceptedTimeMap[switchKey] =
+                                DateTime.now();
+
+                            // Change status from Pending → Preparing
+                            await provider.updateOrderStatus(
+                              kotId,
+                              'Preparing',
+                            );
+
+                            if (mounted) {
+                              setState(() {});
+                            }
+
+                            return;
+                          }
+
+
+                          // ========================================================
+                          // STEP 2: READY TO SERVE
+                          // Ready to serve → Served
+                          // ========================================================
+
+                          if (buttonText == 'Ready to serve') {
+
+                            debugPrint(
+                              'ONLINE ORDER: READY TO SERVE KOT=$kotId',
+                            );
+
+                            // Mark all items ready
+                            setState(() {
+                              selectedItemsMap[switchKey] =
+                              List<bool>.filled(
+                                items.length,
+                                true,
+                              );
+                            });
+
+                            // Change status → Served
+                            await provider.updateOrderStatus(
+                              kotId,
+                              'Served',
+                            );
+
+                            if (mounted) {
+                              setState(() {});
+                            }
+
+                            return;
+                          }
+                        }
+
+
+                        // ==========================================================
+                        // DINE-IN / TAKEAWAY
+                        // Keep existing behavior
+                        // New / Running → Served
                         // ==========================================================
 
                         if (buttonText == 'New' ||
                             buttonText == 'Running') {
 
-                          // Turn ON all item toggles immediately
                           setState(() {
                             selectedItemsMap[switchKey] =
                             List<bool>.filled(
@@ -4392,7 +4486,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                             );
                           });
 
-                          // Update complete KOT
                           await provider.updateOrderStatus(
                             kotId,
                             'Served',
@@ -4405,30 +4498,42 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           return;
                         }
 
+
                         // ==========================================================
                         // READY
                         // ==========================================================
 
                         if (buttonText == 'Ready') {
+
                           await provider.updateOrderStatus(
                             kotId,
                             'served',
                           );
+
+                          if (mounted) {
+                            setState(() {});
+                          }
+
+                          return;
                         }
+
 
                         // ==========================================================
                         // SERVED
                         // ==========================================================
 
-                        else if (buttonText == 'Served') {
+                        if (buttonText == 'Served') {
+
                           await provider.updateOrderStatus(
                             kotId,
                             'Served',
                           );
-                        }
 
-                        if (mounted) {
-                          setState(() {});
+                          if (mounted) {
+                            setState(() {});
+                          }
+
+                          return;
                         }
                       },
                       style: ElevatedButton.styleFrom(
