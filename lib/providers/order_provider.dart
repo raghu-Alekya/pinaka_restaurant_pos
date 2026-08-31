@@ -1036,21 +1036,78 @@ class OrderProvider extends ChangeNotifier {
   void _handleKotStatusUpdate(Map<String, dynamic> message) {
     final kotId = message['kot_id']?.toString();
     final kotNumber = message['kot_number']?.toString();
+    final parentOrderId = message['parent_order_id']?.toString();
     final status = message['status']?.toString();
 
     debugPrint('========== KOT STATUS UPDATE ==========');
-    debugPrint('KOT ID     : $kotId');
-    debugPrint('KOT NUMBER : $kotNumber');
-    debugPrint('STATUS     : $status');
+    debugPrint('KOT ID          : $kotId');
+    debugPrint('KOT NUMBER      : $kotNumber');
+    debugPrint('PARENT ORDER ID : $parentOrderId');
+    debugPrint('STATUS          : $status');
     debugPrint('=======================================');
 
     if (status == null || status.isEmpty) {
       return;
     }
 
+    final normalizedStatus = status.trim().toLowerCase();
+
+    // ==========================================================
+    // CANCELLED
+    // Remove the complete KOT from KDS immediately
+    // ==========================================================
+    if (normalizedStatus == 'cancelled' ||
+        normalizedStatus == 'cancel') {
+      final beforeCount = _orders.length;
+
+      _orders.removeWhere((order) {
+        final matchesKotId =
+            kotId != null &&
+                kotId.isNotEmpty &&
+                order.kotId?.toString() == kotId;
+
+        final matchesKotNumber =
+            kotNumber != null &&
+                kotNumber.isNotEmpty &&
+                order.id.toString() == kotNumber;
+
+        final matchesParentOrder =
+            parentOrderId != null &&
+                parentOrderId.isNotEmpty &&
+                order.parentOrderId?.toString() == parentOrderId;
+
+        return matchesKotId ||
+            matchesKotNumber ||
+            matchesParentOrder;
+      });
+
+      if (_orders.length != beforeCount) {
+        debugPrint(
+          '🗑️ CANCELLED KOT REMOVED FROM KDS '
+              'kotId=$kotId kotNumber=$kotNumber '
+              'parentOrderId=$parentOrderId',
+        );
+
+        _persist();
+        notifyListeners();
+      } else {
+        debugPrint(
+          '⚠️ CANCELLED KOT NOT FOUND IN KDS '
+              'kotId=$kotId kotNumber=$kotNumber '
+              'parentOrderId=$parentOrderId',
+        );
+      }
+
+      return;
+    }
+
+    // ==========================================================
+    // FIND ORDER FOR OTHER STATUS UPDATES
+    // ==========================================================
+
     KitchenOrder? order;
 
-    // Find using kot_id first
+    // Find using KOT ID
     if (kotId != null && kotId.isNotEmpty) {
       order = _orders.cast<KitchenOrder?>().firstWhere(
             (o) => o?.kotId?.toString() == kotId,
@@ -1058,21 +1115,30 @@ class OrderProvider extends ChangeNotifier {
       );
     }
 
-    // Fallback to KOT number
+    // Fallback using KOT number
     order ??= _orders.cast<KitchenOrder?>().firstWhere(
           (o) => o?.id.toString() == kotNumber,
+      orElse: () => null,
+    );
+
+    // Fallback using parent order ID
+    order ??= _orders.cast<KitchenOrder?>().firstWhere(
+          (o) => o?.parentOrderId?.toString() == parentOrderId,
       orElse: () => null,
     );
 
     if (order == null) {
       debugPrint(
         'KOT not found in local KDS list. '
-            'kotId=$kotId kotNumber=$kotNumber',
+            'kotId=$kotId kotNumber=$kotNumber '
+            'parentOrderId=$parentOrderId',
       );
       return;
     }
 
-    final normalizedStatus = status.toLowerCase();
+    // ==========================================================
+    // NORMAL STATUS UPDATES
+    // ==========================================================
 
     _updateAndSave(() {
       if (normalizedStatus == 'completed' ||
@@ -1727,17 +1793,21 @@ class OrderProvider extends ChangeNotifier {
                   (item) =>
               item.status.toString().trim().toLowerCase() == 'cancelled',
             );
-
         if (allItemsCancelled) {
           debugPrint(
             '🗑️ ALL ITEMS CANCELLED - '
-                'REMOVING KOT ${order.id} FROM ACTIVE KDS',
+                'KOT ${order.id}',
           );
+
+          order.status = 'Cancelled';
+          order.servedAt = null;
+          order.isCancelled = true;
 
           _orders.removeWhere(
                 (o) =>
             o.id == order.id ||
-                (o.kotId != null && o.kotId == order.kotId),
+                (o.kotId != null &&
+                    o.kotId == order.kotId),
           );
         }
       });

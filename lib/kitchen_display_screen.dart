@@ -3014,27 +3014,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final date = DateFormat('hh:mm a').format(kotTime);
 
     final DateTime? timerStartTime;
-    if (isOnline) {
-      final isAccepted = onlineAcceptedTimeMap.containsKey(switchKey) ||
-          normalizedStatus == 'preparing' ||
-          normalizedStatus == 'accepted' ||
-          normalizedStatus == 'ready' ||
-          normalizedStatus == 'served' ||
-          order['acceptedAt'] != null ||
-          order['accepted_at'] != null;
+    // final DateTime? timerStartTime;
 
-      if (isAccepted) {
-        timerStartTime = onlineAcceptedTimeMap[switchKey] ??
-            (order['acceptedAt'] != null || order['accepted_at'] != null
-                ? _parseKotTime(order['acceptedAt'] ?? order['accepted_at'])
-                : kotTime);
-      } else {
-        timerStartTime = null;
-      }
+    if (isOnline) {
+      // Online order:
+      // Timer starts ONLY after Accept button is clicked.
+      timerStartTime = onlineAcceptedTimeMap[switchKey];
     } else {
+      // Takeaway / Dine-In:
+      // Timer starts from KOT creation time.
       timerStartTime = kotTime;
     }
-
     final isNewKot = kotOrderStatus == 'new';
     final isRunningKot = kotOrderStatus == 'running';
 
@@ -3157,8 +3147,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         table,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xffFF6E47),
+                        style: TextStyle(
+                          color: headerColor,
                           fontSize: 14,
                           height: 1.0,
                           fontWeight: FontWeight.w900,
@@ -3193,11 +3183,11 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                         ),
                         const SizedBox(width: 3),
                         Text(
-                          _formatCountUpTimer(kotTime),
+                          _formatCountUpTimer(timerStartTime),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color(0xffFF6E47),
+                          style: TextStyle(
+                            color: headerColor,
                             fontSize: 13,
                             height: 1.0,
                             fontWeight: FontWeight.w900,
@@ -3229,8 +3219,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       orderType.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xffFF6E47),
+                      style: TextStyle(
+                        color: headerColor,
                         fontSize: 13,
                         height: 1.0,
                         fontWeight: FontWeight.w900,

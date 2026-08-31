@@ -177,59 +177,79 @@ class KdsMqttService {
     );
   }
 
-  void _onMessages(List<MqttReceivedMessage<MqttMessage>> messages) {
-    KdsDebugLog.info('Received ${messages.length} MQTT packet(s)');
+  void _onMessages(
+      List<MqttReceivedMessage<MqttMessage>> messages,
+      ) {
+    KdsDebugLog.info(
+      'Received ${messages.length} MQTT packet(s)',
+    );
 
     for (final message in messages) {
       final topic = message.topic;
-      KdsDebugLog.info('Raw topic="$topic" (expected="$ordersTopic")');
 
-      if (topic != ordersTopic) {
-        KdsDebugLog.warn('Topic mismatch — ignoring');
+      KdsDebugLog.info(
+        'Raw topic="$topic"',
+      );
+
+      // Accept BOTH order and status topics
+      if (topic != ordersTopic && topic != statusTopic) {
+        KdsDebugLog.warn(
+          'Topic mismatch — ignoring: $topic',
+        );
         continue;
       }
 
       final payload = message.payload;
+
       if (payload is! MqttPublishMessage) {
-        KdsDebugLog.warn('Payload is not MqttPublishMessage: ${payload.runtimeType}');
+        KdsDebugLog.warn(
+          'Payload is not MqttPublishMessage: '
+              '${payload.runtimeType}',
+        );
         continue;
       }
 
       final body = MqttPublishPayload.bytesToStringAsString(
         payload.payload.message,
       );
-      KdsDebugLog.info('Payload (${body.length} chars): ${body.length > 200 ? '${body.substring(0, 200)}...' : body}');
+
+      KdsDebugLog.info(
+        'Payload (${body.length} chars): '
+            '${body.length > 200 ? '${body.substring(0, 200)}...' : body}',
+      );
 
       try {
         final decoded = jsonDecode(body);
+
         if (decoded is! Map) {
-          KdsDebugLog.warn('Decoded JSON is not a Map: ${decoded.runtimeType}');
+          KdsDebugLog.warn(
+            'Decoded JSON is not a Map: '
+                '${decoded.runtimeType}',
+          );
           continue;
         }
+
         final map = Map<String, dynamic>.from(decoded);
 
         messagesReceived++;
 
-        final event = map['event']?.toString() ?? '';
+        final event =
+            map['event']?.toString() ?? '';
 
         KdsDebugLog.info(
           'Parsed event="$event" '
               'kot=${map['kot']?['kot_number']} '
+              'kotId=${map['kot_id']} '
               'parentOrderId=${map['parent_order_id']} '
               'status=${map['status']} '
               'total=$messagesReceived',
         );
 
-        if (event == 'takeaway_completed') {
-          KdsDebugLog.info(
-            '🚨 TAKEAWAY COMPLETED EVENT RECEIVED '
-                'parentOrderId=${map['parent_order_id']}',
-          );
-        }
-
         _incomingController.add(map);
       } catch (e) {
-        KdsDebugLog.error('JSON parse error: $e');
+        KdsDebugLog.error(
+          'JSON parse error: $e',
+        );
       }
     }
   }
