@@ -541,7 +541,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     ? const Color(0xFF2B3042)
                                     : Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(10),
                                   side: BorderSide(
                                     color:
                                     isDark
@@ -759,7 +759,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     ],
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
                                 child: const Row(
@@ -787,7 +787,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
 
                             /// Refresh button
                             InkWell(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                               onTap: isLoading ? null : _refreshVendorPayments,
                               child: Container(
                                 width: 42,

@@ -1438,7 +1438,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _restaurantOverview() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [const SizedBox(height: 20), _topSellingItems()],
+      children: [const SizedBox(height: 30), _topSellingItems()],
     );
   }
 
@@ -1448,11 +1448,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     // Responsive height
-    final containerHeight = (screenHeight * 0.77).clamp(
-      400.0,
-      650.0,
-    );
-
+    // final containerHeight = (screenHeight * 0.77).clamp(
+    //   400.0,
+    //   650.0,
+    // );
+    final containerHeight = screenHeight < 850
+        ? 500.0
+        : screenHeight < 1000
+        ? 570.0
+        : 630.0;
     return Container(
       height: containerHeight,
       padding: const EdgeInsets.only(
@@ -2017,8 +2021,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Available height for 2 rows of cards.
     // Adjust these values according to your parent layout.
-    final cardHeight = (screenHeight * 0.20).clamp(110.0, 160.0);
-
+    // final cardHeight = (screenHeight * 0.20).clamp(110.0, 160.0);
+    final cardHeight = screenHeight <= 800
+        ? 135.0
+        : screenHeight <= 900
+        ? 150.0
+        : 160.0;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -2158,7 +2166,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final screenHeight = MediaQuery.of(context).size.height;
 
-    final cardHeight = (screenHeight * 0.20).clamp(110.0, 160.0);
+    // final cardHeight = (screenHeight * 0.20).clamp(110.0, 160.0);
+    final cardHeight = screenHeight <= 800
+        ? 130.0
+        : screenHeight <= 900
+        ? 150.0
+        : 160.0;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),

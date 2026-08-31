@@ -55,11 +55,11 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
     _kdsStatusSubscription?.cancel();
     super.dispose();
   }
+
   StreamSubscription<Map<String, dynamic>>?
   _kdsStatusSubscription;
 
   void _listenToKdsStatusUpdates() {
-
     KdsMqttPublisher.listenForKdsStatusUpdates(
       restaurantId: widget.restaurantId,
     );
@@ -67,9 +67,7 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
     _kdsStatusSubscription =
         KdsMqttPublisher.statusUpdates.listen((message) {
 
-          debugPrint(
-            'POS RECEIVED KDS STATUS: $message',
-          );
+          debugPrint('POS RECEIVED KDS STATUS: $message');
 
           final kotNumber =
           message['kot_number']?.toString();
@@ -82,11 +80,9 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
           }
 
           setState(() {
-
             for (final order in _orders) {
-
               final orderKotNumber =
-              order['kot_number']?.toString();
+              order['kotNumber']?.toString();
 
               final orderId =
               order['id']?.toString();
@@ -99,18 +95,19 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
 
                   order['status'] = 'Preparing';
 
-                } else if (newStatus == 'ready') {
-
-                  order['status'] = 'Ready';
-
-                } else if (newStatus == 'served' ||
+                } else if (newStatus == 'ready' ||
+                    newStatus == 'served' ||
                     newStatus == 'completed') {
 
-                  order['status'] = 'Served';
+                  // KDS Ready to Serve / Served
+                  // should appear in POS Ready tab
+                  order['status'] = 'Ready';
 
                 } else if (newStatus == 'cancelled' ||
                     newStatus == 'cancel') {
 
+                  // Cancelled KOT should appear
+                  // in POS Cancelled tab
                   order['status'] = 'Cancelled';
                 }
 
@@ -1272,18 +1269,104 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
       ),
     );
   }
+  Future<void> _updateOrderStatus(
+      Map<String, dynamic> order,
+      String newStatus,
+      ) async {
+    final normalizedStatus = newStatus.toLowerCase();
 
-  void _updateOrderStatus(Map<String, dynamic> order, String newStatus) {
-    setState(() {
-      order["status"] = newStatus;
-    });
+    final kotNumber = order["kotNumber"]?.toString().trim();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Order #${order['id']} moved to $newStatus"),
-        backgroundColor: newStatus == "Cancelled" ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
+    final kotId = int.tryParse(
+      order["kotId"]?.toString() ?? '',
     );
+
+    final parentOrderId = int.tryParse(
+      order["parentOrderId"]?.toString() ?? '',
+    );
+
+    debugPrint('======================================');
+    debugPrint('POS UPDATE ORDER');
+    debugPrint('STATUS          : $newStatus');
+    debugPrint('KOT NUMBER      : $kotNumber');
+    debugPrint('KOT ID          : $kotId');
+    debugPrint('PARENT ORDER ID : $parentOrderId');
+    debugPrint('======================================');
+
+    try {
+      // ==========================================================
+      // CANCEL ORDER
+      // ==========================================================
+      if (normalizedStatus == 'cancelled') {
+        if (kotNumber == null || kotNumber.isEmpty) {
+          debugPrint(
+            '❌ Cannot cancel KDS KOT: kotNumber is empty',
+          );
+          return;
+        }
+
+        // --------------------------------------------------------
+        // Send cancellation to KDS
+        // --------------------------------------------------------
+        await KdsMqttPublisher.publishKotStatus(
+          restaurantId: widget.restaurantId,
+          kotId: kotId,
+          kotNumber: kotNumber,
+          status: 'cancelled',
+          parentOrderId: parentOrderId,
+        );
+
+        debugPrint(
+          '✅ CANCELLED STATUS SENT TO KDS',
+        );
+
+        // --------------------------------------------------------
+        // Update POS UI only after successful KDS publish
+        // --------------------------------------------------------
+        if (mounted) {
+          setState(() {
+            order["status"] = "Cancelled";
+          });
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Order #${order['id']} cancelled",
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        return;
+      }
+
+      // ==========================================================
+      // OTHER STATUS UPDATES
+      // ==========================================================
+      if (mounted) {
+        setState(() {
+          order["status"] = newStatus;
+        });
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Order #${order['id']} moved to $newStatus",
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e, stackTrace) {
+      debugPrint(
+        '❌ KDS CANCEL ERROR: $e',
+      );
+
+      debugPrint(
+        stackTrace.toString(),
+      );
+    }
   }
 }

@@ -936,10 +936,11 @@ class _TipsScreenState extends State<TipsScreen>
                             children: [
                               Text(
                                 "Total Orders: $totalOrders",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                  // color: Colors.black87,
                                 ),
                               ),
 

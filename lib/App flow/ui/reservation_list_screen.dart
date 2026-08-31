@@ -731,7 +731,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             color:
                             isDark ? const Color(0xFF374151) : Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                             shadows: const [
                               BoxShadow(
@@ -894,7 +894,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                           decoration: BoxDecoration(
                             color:
                             isDark ? const Color(0xFF374151) : Colors.white,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
                               color:
                               isDark
@@ -971,6 +971,8 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                             foregroundColor:
                             isResetEnabled ? Colors.red : Colors.grey,
                             elevation: 0,
+                            // Height = 40
+                            fixedSize: const Size.fromHeight(40),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 10,
@@ -1044,7 +1046,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                 vertical: 10,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                             onPressed: () {

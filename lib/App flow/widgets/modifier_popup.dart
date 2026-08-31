@@ -617,7 +617,10 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                               });
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFFFF4D20),
+                              backgroundColor: const Color(0xFFFF4D20),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
                             child: const Text(
                               'Save & Continue',

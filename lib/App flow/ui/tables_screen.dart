@@ -2582,7 +2582,7 @@ class _TablesScreenState extends State<TablesScreen> {
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: 70,
+                  bottom: 20,
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(

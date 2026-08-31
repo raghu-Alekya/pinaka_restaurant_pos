@@ -509,7 +509,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
                             /// SEARCH
                             Container(
-                              height: 36,
+                              height: 40,
                               width: 360,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,
@@ -520,7 +520,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                     ? const Color(0xFF2B3042)
                                     : Colors.white,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 shadows: const [
                                   BoxShadow(
@@ -700,12 +700,12 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
                             //  Order Type dropdown
                             Container(
-                              height: 36,
+                              height: 40,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                               ),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                                 color:
                                 isDark
                                     ? const Color(0xFF34384F)
@@ -758,12 +758,12 @@ class _OrdersListTableState extends State<OrdersListTable> {
 
                             //  status dropdown
                             Container(
-                              height: 36,
+                              height: 40,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                               ),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                                 color:
                                 isDark
                                     ? const Color(0xFF34384F)

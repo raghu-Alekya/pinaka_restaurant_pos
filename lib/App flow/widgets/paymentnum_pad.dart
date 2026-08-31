@@ -287,6 +287,18 @@ class _paymentsummaryState extends State<paymentsummary> {
   }
 
   Future<void> applyServiceCharge(int percentage) async {
+    // Service charge is not applicable for Take Away orders
+    if (widget.isTakeAway) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Service charge is not applicable for Take Away"),
+          duration: Duration(seconds: 1),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final response = await serviceChargeRepository.applyServiceCharge(
       token: widget.token,
       orderId: widget.orderId,
