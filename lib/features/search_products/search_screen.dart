@@ -222,10 +222,10 @@ class _SearchResultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Build the "In <Category>" label shown under the item name.
-    final String categoryLabel = item.parentName.isNotEmpty
-        ? (item.parentName.trim().toLowerCase().startsWith('in ')
-        ? item.parentName
-        : 'In ${item.parentName}')
+    final String categoryLabel = item.categoryName.isNotEmpty
+        ? (item.categoryName.trim().toLowerCase().startsWith('in ')
+        ? item.categoryName
+        : 'In ${item.categoryName}')
         : '';
 
     return InkWell(

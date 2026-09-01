@@ -16,13 +16,16 @@ class SearchResponse {
       success: json['success'] ?? false,
       count: json['count'] ?? 0,
       data: (json['data'] as List?)
-          ?.map((e) => SearchResultItem(
-        id: e['id'] ?? 0,
-        name: e['name'] ?? '',
-        inStock: e['in_stock'] ?? 'No',
-        price: e['price'] ?? '0',
-        parentName: e['parent_name'] as String? ?? '', // 👈 new
-      ))
+          ?.map(
+            (e) => SearchResultItem(
+          id: e['id'] ?? 0,
+          name: e['name'] ?? '',
+          inStock: e['in_stock'] ?? 'No',
+          price: e['price'] ?? '0',
+          parentName: e['parent_name'] as String? ?? '',
+          categoryName: e['category_name'] as String? ?? '',
+        ),
+      )
           .toList() ??
           [],
     );

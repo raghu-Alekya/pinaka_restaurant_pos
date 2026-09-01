@@ -539,7 +539,7 @@ class _TableManagementScreenState extends State<TableManagementScreen>
           'Table Management',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 15,
+            fontSize: 18,
             color: Colors.black87,
           ),
         ),
@@ -1067,8 +1067,8 @@ class _LegendDot extends StatelessWidget {
         Text(
           item.label,
           style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
             color: item.color,
           ),
         ),
@@ -1219,7 +1219,7 @@ class _AppDrawer extends StatelessWidget {
                   trailing: const Icon(
                     Icons.chevron_right,
                     color: Color(0xFFE64545),
-                    size: 18,
+                    size: 30,
                   ),
                   onTap: onLogout,
                 ),
@@ -1250,14 +1250,14 @@ class _AppDrawer extends StatelessWidget {
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                              fontSize: 15,
                             ),
                           ),
                           Text(
                             captainRole,
                             style: const TextStyle(
                               color: Colors.white70,
-                              fontSize: 11,
+                              fontSize: 14,
                             ),
                           ),
                         ],

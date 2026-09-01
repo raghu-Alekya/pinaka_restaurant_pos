@@ -1,10 +1,10 @@
-
 class SearchResultItem {
   final int id;
   final String name;
   final String inStock;
   final String price;
   final String parentName;
+  final String categoryName;
 
   SearchResultItem({
     required this.id,
@@ -12,5 +12,6 @@ class SearchResultItem {
     required this.inStock,
     required this.price,
     required this.parentName,
+    required this.categoryName,
   });
 }

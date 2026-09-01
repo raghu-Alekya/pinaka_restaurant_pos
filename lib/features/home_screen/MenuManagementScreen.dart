@@ -1237,9 +1237,9 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
         final success = data['success'] ?? false;
 
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Menu updated successfully')),
-          );
+          // ScaffoldMessenger.of(context).showSnackBar(
+          //   const SnackBar(content: Text('Menu updated successfully')),
+          // );
           return true;
         } else {
           final message = data['message'] ?? 'Update failed';
