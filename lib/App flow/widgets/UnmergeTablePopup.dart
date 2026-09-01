@@ -24,16 +24,19 @@ class UnmergeTablePopup extends StatelessWidget {
     final parentTableId = tableData['table_id'] ?? 0;
     final zoneId = tableData['zone_id'] ?? 0;
     final restaurantId = tableData['restaurant_id'] ?? 0;
+
     final parentTableName =
         tableData['table_name']?.toString() ??
-            tableData['tableName']?.toString() ??
-            '';
+        tableData['tableName']?.toString() ??
+        '';
+
     final mergedTables =
         tableData['merged_tables']?.toString() ?? parentTableName;
+
     final zoneName =
         tableData['areaName']?.toString() ??
-            tableData['zone_name']?.toString() ??
-            '';
+        tableData['zone_name']?.toString() ??
+        '';
 
     try {
       final resData = await repository.deleteMergeTable(
@@ -48,9 +51,10 @@ class UnmergeTablePopup extends StatelessWidget {
         unawaited(
           KdsMqttPublisher.notifyTablesUnmerged(
             restaurantId: restaurantId.toString(),
-            parentTableId: parentTableId is int
-                ? parentTableId
-                : int.tryParse(parentTableId.toString()) ?? 0,
+            parentTableId:
+                parentTableId is int
+                    ? parentTableId
+                    : int.tryParse(parentTableId.toString()) ?? 0,
             parentTableName: parentTableName,
             zoneId: zoneId is int ? zoneId : int.tryParse(zoneId.toString()),
             zoneName: zoneName,
@@ -68,123 +72,242 @@ class UnmergeTablePopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mergedTables = tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+    final mergedTables =
+        tableData['merged_tables'] ?? tableData['tableName'] ?? '';
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      backgroundColor: theme.cardColor,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      content: SizedBox(
-        width: 350,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+      child: Container(
+        width: 500,
+        height: 224,
+        constraints: const BoxConstraints(maxWidth: 556),
+        padding: const EdgeInsets.fromLTRB(30, 30, 30, 30),
+        decoration: BoxDecoration(
+          // Same gradient style as TableSetupHeader
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors:
+                isDark
+                    ? const [Color(0xFF46333A), Color(0xFF202433)]
+                    : const [
+                      Color(0xFFF5D0D0),
+                      Color(0xFFFFF8F8),
+                      Colors.white,
+                    ],
+            stops: isDark ? const [0.0, 1.0] : const [0.0, 0.45, 1.0],
+          ),
+
+          borderRadius: BorderRadius.circular(22),
+
+          // Same red top border
+          border: const Border(
+            top: BorderSide(color: Color(0xFFFF3B30), width: 6),
+          ),
+
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(isDark ? 0.45 : 0.22),
+              blurRadius: 30,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 8),
-
-            Center(
-              child: Image.asset(
-                'assets/check-broken.png',
-                width: 70,
-                height: 50,
-                fit: BoxFit.cover,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Text(
-              'Are you sure ?',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: TextStyle(
-                  color: theme.textTheme.bodyLarge?.color,
-                  fontSize: 15,
-                ),
-                children: [
-                  const TextSpan(
-                    text: 'Do you want to really unmerge the table(s): ',
-                  ),
-                  TextSpan(
-                    text: mergedTables,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: theme.textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                  const TextSpan(text: '?'),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
+            // ============================================================
+            // ICON + TITLE + MESSAGE
+            // ============================================================
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextButton(
-                  style: TextButton.styleFrom(
-                    backgroundColor: isDark
-                        ? Colors.grey.shade800
-                        : const Color(0xFFF1F4F8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    side: BorderSide(
-                      color: theme.dividerColor,
+                // Warning icon container
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2A2F3D) : Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0xFFFF3B30),
+                      width: 1.5,
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    'No, Keep It.',
-                    style: TextStyle(
-                      color: theme.textTheme.bodyLarge?.color,
-                    ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.warning_rounded,
+                    color: Color(0xFFE53935),
+                    size: 38,
                   ),
                 ),
 
-                const SizedBox(width: 12),
+                const SizedBox(width: 28),
 
-                TextButton(
-                  style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFFFE6464),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: () => _unmergeTable(context),
-                  child: const Text(
-                    'Yes, Unmerge!',
-                    style: TextStyle(
-                      color: Colors.white,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Unmerge Table(s)?',
+                          style: TextStyle(
+                            color:
+                                isDark ? Colors.white : const Color(0xFF373535),
+                            fontSize: 28,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.w600,
+                            height: 1.2,
+                          ),
+                        ),
+
+                        const SizedBox(height: 15),
+
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Do you want to really unmerge ',
+                                style: TextStyle(
+                                  color:
+                                      isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF656161),
+                                  fontSize: 16,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.45,
+                                ),
+                              ),
+                              TextSpan(
+                                text: mergedTables.toString(),
+                                style: TextStyle(
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF373535),
+                                  fontSize: 16,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.45,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' ?',
+                                style: TextStyle(
+                                  color:
+                                      isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF656161),
+                                  fontSize: 16,
+                                  fontFamily: 'Inter',
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.45,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 30),
+
+            // ============================================================
+            // BUTTONS
+            // ============================================================
+            Padding(
+              padding: const EdgeInsets.only(left: 100),
+              child: Row(
+                children: [
+                  // --------------------------------------------------------
+                  // NO / KEEP
+                  // --------------------------------------------------------
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor:
+                              isDark
+                                  ? const Color(0xFF2A2F3D)
+                                  : const Color(0xFFF7F7F7),
+                          foregroundColor:
+                              isDark ? Colors.white : const Color(0xFF373535),
+                          side: BorderSide(
+                            color:
+                                isDark
+                                    ? Colors.white24
+                                    : const Color(0xFFD8D8D8),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: Text(
+                          'No, Keep It',
+                          style: TextStyle(
+                            color:
+                                isDark ? Colors.white : const Color(0xFF373535),
+                            fontSize: 16,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 20),
+
+                  // --------------------------------------------------------
+                  // YES / UNMERGE
+                  // --------------------------------------------------------
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () => _unmergeTable(context),
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: const Color(0xFFFF3B30),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: const Text(
+                          'Yes, Unmerge',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontFamily: 'Inter',
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

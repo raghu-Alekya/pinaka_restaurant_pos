@@ -184,8 +184,8 @@ class _CouponscreenState extends State<Couponscreen> {
                         ),
                         child: Image.asset(
                           "assets/Coupon Icon.png",
-                          width: 26,
-                          height: 26,
+                          width: 36,
+                          height: 36,
                           fit: BoxFit.contain,
                         ),
                       ),

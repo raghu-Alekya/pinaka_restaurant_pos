@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/Bloc Event/ZoneEvent.dart';
 import '../../blocs/Bloc State/ZoneState.dart';
 import '../../blocs/Bloc Logic/zone_bloc.dart';
+import '../../models/view_mode.dart';
 import '../../repositories/zone_repository.dart';
 import 'AreaPopup.dart';
 import 'DeleteConfirmationPopup.dart';
@@ -52,6 +53,9 @@ class CreateTableWidget extends StatefulWidget {
 class _CreateTableWidgetState extends State<CreateTableWidget> {
   // Controls visibility of the area creation popup.
   bool _isPopupVisible = false;
+  late ViewMode _currentViewMode;
+  bool _showPopup = false;
+  ViewMode? _previousGridMode;
 
   // Controls visibility of the delete confirmation popup.
   bool _isDeleteConfirmationVisible = false;
@@ -118,6 +122,13 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
         _currentAreaName = _createdAreaNames.first;
         widget.onAreaSelected(_currentAreaName!);
       }
+    });
+  }
+  void _openTableSetup() {
+    _previousGridMode = _currentViewMode;
+
+    setState(() {
+      _showPopup = true;
     });
   }
 
@@ -336,6 +347,17 @@ class _CreateTableWidgetState extends State<CreateTableWidget> {
                       _isPopupVisible = false;
                     });
                   },
+
+                  onExitTableSetup: () {
+                    setState(() {
+                      _currentViewMode =
+                          _previousGridMode ?? ViewMode.gridShapeBased;
+
+                      _showPopup = false;
+                    });
+                  },
+
+
                   onUpdateAreaName: _updateAreaNameInDatabase,
                   onShowAreaOptions: _showAreaOptions,
                   onShowEditPopup: _showEditArea,

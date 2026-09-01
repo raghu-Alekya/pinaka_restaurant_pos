@@ -2794,24 +2794,27 @@ class _TablesScreenState extends State<TablesScreen> {
 
                   Builder(
                     builder: (context) {
-                      final hasPermission =
+                      final bool isNormalView =
+                          _currentViewMode == ViewMode.normal;
+
+                      final bool hasPermission =
                           areaNames.isNotEmpty &&
+                              isNormalView &&
                               !_showPopup &&
                               _userPermissions != null &&
                               _userPermissions!.canSetupTables;
 
                       return Container(
                         decoration: BoxDecoration(
-                          color:
-                          hasPermission
+                          color: hasPermission
                               ? const Color(0xFF15315E)
                               : Colors.grey.shade400,
                           borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
+                          boxShadow: const [
                             BoxShadow(
-                              color: const Color.fromARGB(25, 0, 0, 0),
+                              color: Color.fromARGB(25, 0, 0, 0),
                               blurRadius: 4,
-                              offset: const Offset(0, 2),
+                              offset: Offset(0, 2),
                             ),
                           ],
                         ),
@@ -2821,21 +2824,13 @@ class _TablesScreenState extends State<TablesScreen> {
                         ),
                         child: InkWell(
                           onTap: () {
+                            // 🚫 Disable Table Setup in grid views
+                            if (!isNormalView) {
+                              return;
+                            }
+
                             if (hasPermission) {
-                              if (_currentViewMode != ViewMode.normal) {
-                                WidgetsBinding.instance.addPostFrameCallback((_) {
-                                  if (gridScrollController.hasClients) {
-                                    gridScrollController.animateTo(
-                                      0,
-                                      duration: const Duration(milliseconds: 300),
-                                      curve: Curves.easeOut,
-                                    );
-                                  }
-                                });
-                              }
-                              else {
-                                _togglePopup();
-                              }
+                              _togglePopup();
                             } else {
                               AreaMovementNotifier.showPopup(
                                 context: context,
@@ -2847,15 +2842,14 @@ class _TablesScreenState extends State<TablesScreen> {
                               );
                             }
                           },
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(6),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 'Table Setup',
                                 style: TextStyle(
-                                  color:
-                                  hasPermission
+                                  color: hasPermission
                                       ? Colors.white
                                       : Colors.grey.shade200,
                                   fontSize: 14,
@@ -2864,8 +2858,7 @@ class _TablesScreenState extends State<TablesScreen> {
                               const SizedBox(width: 8),
                               Icon(
                                 Icons.edit,
-                                color:
-                                hasPermission
+                                color: hasPermission
                                     ? Colors.white
                                     : Colors.grey.shade200,
                                 size: 14,

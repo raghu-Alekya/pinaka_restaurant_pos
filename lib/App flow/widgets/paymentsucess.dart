@@ -338,103 +338,222 @@ class Paymentsucess extends StatelessWidget {
     return showDialog<bool>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.72),
       builder: (dialogContext) {
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+          child: Container(
+            width: 500,
+            constraints: const BoxConstraints(maxWidth: 556),
+            padding: const EdgeInsets.fromLTRB(30, 30, 30, 30),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDark
+                    ? const [
+                  Color(0xFF46333A),
+                  Color(0xFF202433),
+                ]
+                    : const [
+                  Color(0xFFF5D0D0),
+                  Color(0xFFFFF8F8),
+                  Colors.white,
+                ],
+                stops: isDark
+                    ? const [0.0, 1.0]
+                    : const [0.0, 0.45, 1.0],
               ),
-              backgroundColor: theme.dialogTheme.backgroundColor ??
-                  theme.colorScheme.surface,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+              borderRadius: BorderRadius.circular(22),
+              border: const Border(
+                top: BorderSide(
+                  color: Color(0xFFFF3B30),
+                  width: 6,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(
+                    isDark ? 0.45 : 0.22,
+                  ),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ============================================================
+                // ICON + TITLE + MESSAGE
+                // ============================================================
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      width: 72,
+                      height: 72,
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(isDark ? 0.2 : 0.1),
-                        shape: BoxShape.circle,
+                        color: isDark
+                            ? const Color(0xFF2A2F3D)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: const Color(0xFFFF3B30),
+                          width: 1.5,
+                        ),
                       ),
+                      alignment: Alignment.center,
                       child: const Icon(
                         Icons.warning_rounded,
-                        color: Colors.red,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    Text(
-                      "Void Payment",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
+                        color: Color(0xFFE53935),
+                        size: 38,
                       ),
                     ),
 
-                    const SizedBox(height: 6),
+                    const SizedBox(width: 28),
 
-                    Text(
-                      "Do you want to void this payment?",
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                color: theme.colorScheme.outline,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: () =>
-                                Navigator.pop(dialogContext, false),
-                            child: Text(
-                              "Cancel",
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Column(
+                          crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Void Payment?',
                               style: TextStyle(
-                                color: theme.colorScheme.onSurface,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF373535),
+                                fontSize: 28,
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w600,
+                                height: 1.2,
                               ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
 
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                            const SizedBox(height: 15),
+
+                            Text(
+                              'Do you want to really void this payment?',
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF656161),
+                                fontSize: 16,
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.w500,
+                                height: 1.45,
                               ),
                             ),
-                            onPressed: () =>
-                                Navigator.pop(dialogContext, true),
-                            child: const Text("Void"),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
-              ),
+
+                const SizedBox(height: 30),
+
+                // ============================================================
+                // BUTTONS
+                // Starts aligned with the text, not the warning icon
+                // ============================================================
+                Padding(
+                  padding: const EdgeInsets.only(left: 100),
+                  child: Row(
+                    children: [
+                      // ------------------------------------------------------
+                      // CANCEL
+                      // ------------------------------------------------------
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.of(
+                                dialogContext,
+                              ).pop(false);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: isDark
+                                  ? const Color(0xFF2A2F3D)
+                                  : const Color(0xFFF7F7F7),
+                              foregroundColor: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF373535),
+                              side: BorderSide(
+                                color: isDark
+                                    ? Colors.white24
+                                    : const Color(0xFFD8D8D8),
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(15),
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF373535),
+                                fontSize: 16,
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 20),
+
+                      // ------------------------------------------------------
+                      // VOID
+                      // ------------------------------------------------------
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(
+                                dialogContext,
+                              ).pop(true);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor:
+                              const Color(0xFFFF3B30),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(15),
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: const Text(
+                              'Yes, Void',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontFamily: 'Inter',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );

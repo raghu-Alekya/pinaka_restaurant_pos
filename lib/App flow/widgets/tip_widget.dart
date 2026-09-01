@@ -340,15 +340,15 @@ class _TipPopupState extends State<TipPopup> {
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         decoration: const BoxDecoration(
                           color: Color(0xFF7CCABB),
                           shape: BoxShape.circle,
                         ),
                         child: Image.asset(
                           "assets/Tips Icon.png",
-                          width: 28,
-                          height: 28,
+                          width: 36,
+                          height: 36,
                           fit: BoxFit.contain,
                         ),
                       ),

@@ -1455,7 +1455,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final containerHeight = screenHeight < 850
         ? 500.0
         : screenHeight < 1000
-        ? 570.0
+        ? 770.0
         : 630.0;
     return Container(
       height: containerHeight,
@@ -2025,8 +2025,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final cardHeight = screenHeight <= 800
         ? 135.0
         : screenHeight <= 900
-        ? 150.0
-        : 160.0;
+        ? 240.0
+        : 190.0;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -2170,8 +2170,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final cardHeight = screenHeight <= 800
         ? 130.0
         : screenHeight <= 900
-        ? 150.0
-        : 160.0;
+        ? 240.0
+        : 190.0;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),

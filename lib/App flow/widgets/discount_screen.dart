@@ -464,8 +464,8 @@ class _DiscountPopupState extends State<DiscountPopup> {
             ),
             child: Image.asset(
               "assets/Discount Icon.png",
-              width: 26,
-              height: 26,
+              width: 36,
+              height: 36,
               fit: BoxFit.contain,
             ),
           ),

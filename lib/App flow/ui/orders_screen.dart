@@ -2082,23 +2082,50 @@ class _OrderPanelState extends State<OrderPanel> {
                         children: [
                           Row(
                             children: [
-                              Icon(
-                                Icons.calendar_today_outlined,
-                                size: 18,
-                                color: isDark ? Colors.white70 : Colors.black54,
+                              // Calendar icon
+                              Image.asset(
+                                "assets/icon/calender.png",
+                                width: 16,
+                                height: 16,
+                                color: isDark ? Colors.white70 : null,
                               ),
-                              const SizedBox(width: 6),
+
+                              const SizedBox(width: 4),
+
+                              // Date
                               Text(
-                                DateFormat(
-                                  'dd MMMM, yyyy',
-                                ).format(DateTime.now()),
+                                DateFormat('dd MMMM, yyyy').format(DateTime.now()),
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
-                                  color:
-                                      isDark
-                                          ? Colors.white
-                                          : const Color(0xFF121212),
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF121212),
+                                ),
+                              ),
+
+                              const SizedBox(width: 4),
+
+                              // Vertical divider
+                              Container(
+                                height: 22,
+                                width: 1,
+                                color: isDark
+                                    ? Colors.white24
+                                    : Colors.black26,
+                              ),
+
+                              const SizedBox(width: 4),
+
+                              // Time
+                              Text(
+                                DateFormat('hh:mm a').format(DateTime.now()),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF121212),
                                 ),
                               ),
                             ],
@@ -2763,7 +2790,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'Total Items: ${state.orderItems.length}',
+                                      'Total Items: ${state.orderItems.length.toString().padLeft(2, '0')}',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,

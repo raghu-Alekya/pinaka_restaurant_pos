@@ -47,8 +47,8 @@ class ConfirmationPopup extends StatelessWidget {
           child: GestureDetector(
             onTap: () {},
             child: Container(
-              width: 556,
-              padding: const EdgeInsets.fromLTRB(34, 30, 1, 30),
+              width: 520,
+              padding: const EdgeInsets.fromLTRB(34, 30, 30, 30),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
@@ -172,74 +172,74 @@ class ConfirmationPopup extends StatelessWidget {
 
                   const SizedBox(height: 28),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-
-                      SizedBox(
-                        width: 170,
-                        height: 48,
-                        child: OutlinedButton(
-                          onPressed: isLoading ? null : onCancel,
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: isDark
-                                ? const Color(0xFF2A2F3D)
-                                : const Color(0xFFF6F6F6),
-
-                            side: BorderSide(
-                              color: theme.dividerColor,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 90),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 170,
+                          height: 48,
+                          child: OutlinedButton(
+                            onPressed: isLoading ? null : onCancel,
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: isDark
+                                  ? const Color(0xFF2A2F3D)
+                                  : const Color(0xFFF6F6F6),
+                              side: BorderSide(
+                                color: theme.dividerColor,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: Text(
-                            cancelButtonText,
-                            style: TextStyle(
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF373535),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 14),
-
-                      SizedBox(
-                        width: 170,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: isLoading ? null : onConfirm,
-                          style: ElevatedButton.styleFrom(
-                            elevation: 0,
-                            backgroundColor: primaryColor,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                              : Text(
-                            confirmButtonText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                            child: Text(
+                              cancelButtonText,
+                              style: TextStyle(
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF373535),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+
+                        const SizedBox(width: 14),
+
+                        SizedBox(
+                          width: 170,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: isLoading ? null : onConfirm,
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: primaryColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                                : Text(
+                              confirmButtonText,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
