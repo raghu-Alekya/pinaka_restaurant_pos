@@ -3017,17 +3017,17 @@ class _OrderPanelState extends State<OrderPanel> {
                                       // ==========================================================
 
                                       final String tableName =
-                                          widget.isTakeAway
-                                              ? ''
-                                              : orderBloc.state.tableName;
+                                      widget.isTakeAway
+                                          ? ''
+                                          : orderBloc.state.tableName;
                                       final String restaurantId =
-                                          orderBloc.state.restaurantId.toString();
+                                      orderBloc.state.restaurantId.toString();
                                       final int zoneId =
                                           orderBloc.state.zoneId;
                                       final String zoneName =
                                           orderBloc.state.zoneName;
                                       final List<Map<String, dynamic>> itemsToPrint =
-                                          state.orderItems.map((e) {
+                                      state.orderItems.map((e) {
                                         return {
                                           "name": e.name,
                                           "qty": e.quantity,
@@ -3130,8 +3130,21 @@ class _OrderPanelState extends State<OrderPanel> {
                                               '========== SENDING KOT TO KDS =========='
                                           );
 
+                                          final prefs = await SharedPreferences.getInstance();
+                                          final storeId = prefs.getString('store_id')?.trim() ?? '';
+                                          debugPrint(
+                                              '========== MQTT STORE DEBUG =========='
+                                          );
+                                          debugPrint('restaurantId = $restaurantId');
+                                          debugPrint('storeId      = "$storeId"');
+                                          debugPrint('parentOrder = ${state.orderId}');
+                                          debugPrint('zoneId      = $zoneId');
+                                          debugPrint('orderType   = ${widget.isTakeAway ? 'takeaway' : 'dine_in'}');
+                                          debugPrint('======================================');
+
                                           await KdsMqttPublisher.notifyKotCreated(
                                             restaurantId: restaurantId,
+                                            storeId: storeId,
                                             parentOrderId: state.orderId,
                                             zoneId: zoneId,
                                             zoneName: zoneName,
@@ -3199,6 +3212,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                 }
                                     : null,
                               ),
+
                               const SizedBox(width: 6),
                               orderButton(
                                 'Checkout',

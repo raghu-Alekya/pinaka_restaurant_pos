@@ -131,6 +131,7 @@ class KdsMqttPublisher {
   // ─── Publish KOT created ──────────────────────────────────────
   static Future<void> notifyKotCreated({
     required String restaurantId,
+    required String storeId,
     required int parentOrderId,
     required int zoneId,
     required String zoneName,
@@ -141,11 +142,13 @@ class KdsMqttPublisher {
   }) async {
     try {
       await _ensureConnected();
+
       if (!_connected || _client == null) return;
 
       final payload = {
         'event': 'kot_created',
         'restaurant_id': restaurantId,
+        'store_id': storeId,
         'parent_order_id': parentOrderId,
         'zone_id': zoneId,
         'zone_name': zoneName,
@@ -163,12 +166,15 @@ class KdsMqttPublisher {
         MqttQos.atLeastOnce,
         builder.payload!,
       );
-      print(' KOT created published: ${kot.kotNumber}');
+
+      print(
+        '✅ KOT ${kot.kotNumber} published '
+            'for storeId=$storeId',
+      );
     } catch (e) {
       print('MQTT publish failed: $e');
     }
   }
-
   // ─── Publish Takeaway Completed ───────────────────────────────
   static Future<void> notifyTakeawayCompleted({
     required String restaurantId,
@@ -418,6 +424,91 @@ class KdsMqttPublisher {
       print('Order created event sent to Captain successfully');
     } catch (e, stack) {
       print(' Captain MQTT publish (order created) failed: $e');
+      print(stack);
+    }
+  }
+  static Future<void> notifyKotTableUpdated({
+    required String restaurantId,
+    required String storeId,
+    required int kotId,
+    required String kotNumber,
+    required int parentOrderId,
+    int? newParentOrderId,
+    int? oldTableId,
+    String? oldTableName,
+    int? tableId,
+    required String tableName,
+    int? zoneId,
+    String? zoneName,
+  }) async {
+    try {
+      await _ensureConnected();
+
+      if (!_connected || _client == null) {
+        print(
+          '❌ MQTT not connected - cannot send table update',
+        );
+        return;
+      }
+
+      final payload = {
+        'event': 'kot_table_updated',
+
+        'restaurant_id': restaurantId,
+        'store_id': storeId,
+
+        'kot_id': kotId,
+        'kot_number': kotNumber,
+
+        'parent_order_id': parentOrderId,
+        'new_parent_order_id': newParentOrderId,
+
+        'old_table_id': oldTableId,
+        'old_table_name': oldTableName,
+
+        'table_id': tableId,
+        'table_name': tableName,
+
+        'zone_id': zoneId,
+        'zone_name': zoneName ?? '',
+
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print(
+        '========== PUBLISH KOT TABLE UPDATED ==========',
+      );
+
+      print(
+        'Topic: ${_topic(restaurantId)}',
+      );
+
+      print(
+        'Payload: ${jsonEncode(payload)}',
+      );
+
+      print(
+        '================================================',
+      );
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(
+          jsonEncode(payload),
+        );
+
+      _client!.publishMessage(
+        _topic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print(
+        '✅ KOT table update published successfully',
+      );
+    } catch (e, stack) {
+      print(
+        '❌ Table transfer MQTT publish failed: $e',
+      );
       print(stack);
     }
   }

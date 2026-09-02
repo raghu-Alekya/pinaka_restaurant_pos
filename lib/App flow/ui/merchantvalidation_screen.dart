@@ -173,12 +173,24 @@ class _MerchantOnboardingScreenState
 
                                           final prefs =
                                           await SharedPreferences.getInstance();
+
                                           await prefs.clear(); // 🧹 Clear cache from previous store
+
+                                          // ✅ Save Store ID for MQTT/KDS
+                                          await prefs.setString(
+                                            'store_id',
+                                            response.storeId.toString(),
+                                          );
+
+                                          print(
+                                            '✅ STORE ID SAVED: ${response.storeId}',
+                                          );
 
                                           await prefs.setString(
                                             'store_base_url',
                                             response.storeBaseUrl,
                                           );
+
                                           await prefs.setString(
                                             'store_name',
                                             response.storeName,
@@ -198,7 +210,11 @@ class _MerchantOnboardingScreenState
                                             'store_logo',
                                             response.storeLogo,
                                           );
-                                          await prefs.setString('store_gstin', response.storeGstin);
+
+                                          await prefs.setString(
+                                            'store_gstin',
+                                            response.storeGstin,
+                                          );
 
                                           Navigator.pushReplacement(
                                             context,

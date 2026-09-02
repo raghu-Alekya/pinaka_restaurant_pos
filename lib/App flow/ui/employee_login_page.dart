@@ -325,36 +325,36 @@ class _EmployeeLoginPageState extends State<EmployeeLoginPage> {
                                       ),
                                     ),
                                     const SizedBox(height: 16),
-                                    TextButton(
-                                      onPressed: () async {
-                                        final prefs = await SharedPreferences.getInstance();
-                                        await prefs.remove('store_base_url');
-                                        await prefs.remove('store_name');
-                                        await prefs.remove('store_address');
-                                        await prefs.remove('store_phone');
-                                        await prefs.remove('store_logo');
-                                        await prefs.remove('store_gstin');
-
-                                        if (context.mounted) {
-                                          Navigator.pushAndRemoveUntil(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => const MerchantOnboardingScreen(),
-                                            ),
-                                                (route) => false,
-                                          );
-                                        }
-                                      },
-                                      child: Text(
-                                        'Switch Store / Merchant Login',
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          color: isDark
-                                              ? Colors.lightBlueAccent
-                                              : Colors.blue,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
+                                    // TextButton(
+                                    //   onPressed: () async {
+                                    //     final prefs = await SharedPreferences.getInstance();
+                                    //     await prefs.remove('store_base_url');
+                                    //     await prefs.remove('store_name');
+                                    //     await prefs.remove('store_address');
+                                    //     await prefs.remove('store_phone');
+                                    //     await prefs.remove('store_logo');
+                                    //     await prefs.remove('store_gstin');
+                                    //
+                                    //     if (context.mounted) {
+                                    //       Navigator.pushAndRemoveUntil(
+                                    //         context,
+                                    //         MaterialPageRoute(
+                                    //           builder: (_) => const MerchantOnboardingScreen(),
+                                    //         ),
+                                    //             (route) => false,
+                                    //       );
+                                    //     }
+                                    //   },
+                                    //   child: Text(
+                                    //     'Switch Store / Merchant Login',
+                                    //     style: theme.textTheme.bodyMedium?.copyWith(
+                                    //       color: isDark
+                                    //           ? Colors.lightBlueAccent
+                                    //           : Colors.blue,
+                                    //       fontWeight: FontWeight.w500,
+                                    //     ),
+                                    //   ),
+                                    // ),
 
                                   ],
                                 ),

@@ -11,6 +11,7 @@ class SessionManager {
   static const String _tokenKey = 'auth_token';
   static const _restaurantIdKey = 'restaurant_id';
   static const _currencySymbolKey = 'currency_symbol';
+  static const _storeIdKey = 'store_id';
 
   // -------- TOKEN --------
   static Future<void> saveToken(String token) async {
@@ -135,6 +136,30 @@ class SessionManager {
     print(
       "🔍 FETCH RESTAURANT ID: $id",
     );
+
+    return id;
+  }
+
+  // -------- STORE ID --------
+  static Future<void> saveStoreId(String storeId) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.setString(
+      _storeIdKey,
+      storeId,
+    );
+
+    print("✅ STORE ID SAVED: $storeId");
+  }
+
+  static Future<String?> getStoreId() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final id = prefs.getString(
+      _storeIdKey,
+    );
+
+    print("🔍 FETCH STORE ID: $id");
 
     return id;
   }

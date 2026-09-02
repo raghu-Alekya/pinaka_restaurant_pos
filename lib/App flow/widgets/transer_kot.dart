@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../blocs/Bloc Event/transfer_kot_event.dart';
 import '../../blocs/Bloc Logic/transfer_kot_bloc.dart';
 import '../../blocs/Bloc State/transfer_kot_state.dart';
+import '../../services/kds_seivices.dart';
 import '../../utils/TableStatusColors.dart';
 
 class TransferKotItem {
@@ -682,8 +684,82 @@ class _TransferKOTDialogState extends State<TransferKOTDialog> {
     final isDark = theme.brightness == Brightness.dark;
 
     return BlocListener<TransferKotBloc, TransferKotState>(
-      listener: (context, state) {
+      listener: (context, state) async {
         if (state is KotTransferSuccess) {
+
+          debugPrint('==========================================');
+          debugPrint('✅ KOT TRANSFER SUCCESS');
+          debugPrint('KOT ID          : ${widget.kotId}');
+          debugPrint('KOT NUMBER      : ${widget.kotNo}');
+          debugPrint('OLD TABLE ID    : ${widget.fromTableId}');
+          debugPrint('OLD TABLE NAME  : ${widget.tableName}');
+          debugPrint('NEW TABLE NAME  : $selectedTable');
+          debugPrint('NEW TABLE ID    : ${state.toTableId}');
+          debugPrint('OLD PARENT ID   : ${widget.orderId}');
+          debugPrint('NEW PARENT ID   : ${state.newParentId}');
+          debugPrint('RESTAURANT ID   : ${widget.restaurantId}');
+          debugPrint('ZONE ID         : ${widget.zoneIds[selectedZone!]}');
+          debugPrint('ZONE NAME       : ${widget.zoneNames[selectedZone!]}');
+          debugPrint('==========================================');
+
+          // Get POS Store ID
+          final prefs = await SharedPreferences.getInstance();
+
+          final storeId =
+              prefs.getString('store_id')?.trim() ?? '';
+
+          if (storeId.isEmpty) {
+            debugPrint(
+              '❌ STORE ID EMPTY - TABLE TRANSFER MQTT NOT SENT',
+            );
+          } else if (selectedTable == null ||
+              selectedTable!.trim().isEmpty) {
+            debugPrint(
+              '❌ NEW TABLE EMPTY - TABLE TRANSFER MQTT NOT SENT',
+            );
+          } else {
+            await KdsMqttPublisher.notifyKotTableUpdated(
+              restaurantId:
+              widget.restaurantId.toString(),
+
+              storeId: storeId,
+
+              kotId:
+              widget.kotId,
+
+              kotNumber:
+              widget.kotNo,
+
+              parentOrderId:
+              widget.orderId,
+
+              newParentOrderId:
+              state.newParentId,
+
+              oldTableId:
+              widget.fromTableId,
+
+              oldTableName:
+              widget.tableName,
+
+              tableId:
+              state.toTableId,
+
+              tableName:
+              selectedTable!,
+
+              zoneId:
+              widget.zoneIds[selectedZone!],
+
+              zoneName:
+              widget.zoneNames[selectedZone!] ?? '',
+            );
+
+            debugPrint(
+              '✅ TABLE TRANSFER MQTT SENT',
+            );
+          }
+
           Navigator.pop(context, {
             "newParentId": state.newParentId,
             "toTableId": state.toTableId,

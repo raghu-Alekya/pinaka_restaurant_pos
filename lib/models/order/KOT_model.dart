@@ -10,6 +10,7 @@ class KotModel {
   final int parentOrderId;
   final int? captainId;
   final int? guestCount;
+  final int? storeId;
 
   KotModel({
     this.kotId,
@@ -20,6 +21,8 @@ class KotModel {
     required this.parentOrderId,
     this.captainId,
     this.guestCount,
+    this.storeId,
+
     required List<dynamic> kotItems,
   });
 
@@ -66,6 +69,9 @@ class KotModel {
       parentOrderId: parseInt(json['parent_order_id']),
       captainId: parseInt(json['captain_id']),
       guestCount: parseInt(json['guest_count']),
+      storeId: json['store_id'] == null
+          ? null
+          : parseInt(json['store_id']),
       kotItems: [],
     );
   }
@@ -80,6 +86,7 @@ class KotModel {
     int? parentOrderId,
     int? captainId,
     int? guestCount,
+    int? storeId,
   }) {
     return KotModel(
       kotId: kotId ?? this.kotId,
@@ -91,6 +98,7 @@ class KotModel {
       captainId: captainId ?? this.captainId,
       guestCount: guestCount ?? this.guestCount,
       kotItems: const [],
+      storeId: storeId ?? this.storeId, //
     );
   }
 
@@ -104,6 +112,7 @@ class KotModel {
       'parent_order_id': parentOrderId,
       'captain_id': captainId,
       'guest_count': guestCount,
+      'store_id': storeId,
     };
   }
 }

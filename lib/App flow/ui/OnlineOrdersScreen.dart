@@ -16,6 +16,7 @@ class OnlineOrdersScreen extends StatefulWidget {
   final String restaurantName;
   final UserPermissions? userPermissions;
 
+
   const OnlineOrdersScreen({
     Key? key,
     required this.token,
@@ -30,6 +31,7 @@ class OnlineOrdersScreen extends StatefulWidget {
 }
 
 class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String _selectedPlatform = "All"; // All, Swiggy, Zomato, OrderOut, DoorDash, Direct
   String _selectedStatus = "New"; // New, Preparing, Ready, Cancelled
   String _searchQuery = "";
@@ -575,10 +577,14 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
           height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2A324B) : const Color(0xFFF1F5F9),
+            color: isDark
+                ? const Color(0xFF2A324B)
+                : const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isDark ? Colors.grey.shade700 : const Color(0xFFE2E8F0),
+              color: isDark
+                  ? Colors.grey.shade700
+                  : const Color(0xFFE2E8F0),
             ),
           ),
           child: Row(
@@ -586,25 +592,67 @@ class _OnlineOrdersScreenState extends State<OnlineOrdersScreen> {
               Icon(
                 Icons.search,
                 size: 20,
-                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                color: isDark
+                    ? Colors.white60
+                    : const Color(0xFF64748B),
               ),
+
               const SizedBox(width: 8),
+
               Expanded(
                 child: TextField(
-                  onChanged: (val) => setState(() => _searchQuery = val),
+                  controller: _searchController,
+                  textAlignVertical: TextAlignVertical.center,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
                   style: TextStyle(
                     fontSize: 14,
-                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                    color: isDark
+                        ? Colors.white
+                        : const Color(0xFF1E293B),
                   ),
                   decoration: InputDecoration(
                     hintText: "Search by Order ID",
                     hintStyle: TextStyle(
                       fontSize: 13,
-                      color: isDark ? Colors.grey.shade400 : const Color(0xFF94A3B8),
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : const Color(0xFF94A3B8),
                     ),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.zero,
+
+                    // Give proper vertical space
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                    ),
+
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                      onPressed: () {
+                        _searchController.clear();
+
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                      icon: Icon(
+                        Icons.clear,
+                        size: 18,
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xFF64748B),
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 30,
+                        minHeight: 30,
+                      ),
+                    )
+                        : null,
                   ),
                 ),
               ),
