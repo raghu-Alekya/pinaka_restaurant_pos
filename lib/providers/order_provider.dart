@@ -349,18 +349,35 @@ class OrderProvider extends ChangeNotifier {
     final event = message['event']?.toString();
     debugPrint('🔥🔥🔥 MQTT MESSAGE RECEIVED 🔥🔥🔥');
     debugPrint('MQTT MESSAGE = $message');
+    debugPrint('');
+    debugPrint('🔥🔥🔥 EVERY MQTT EVENT 🔥🔥🔥');
+    debugPrint('EVENT       : $event');
+    debugPrint('RESTAURANT  : ${message['restaurant_id']}');
+    debugPrint('STORE       : ${message['store_id']}');
+    debugPrint('KOT ID      : ${message['kot_id']}');
+    debugPrint('KOT NUMBER  : ${message['kot_number']}');
+    debugPrint('PARENT ID   : ${message['parent_order_id']}');
+    debugPrint('TABLE       : ${message['table_name']}');
+    debugPrint('ZONE ID     : ${message['zone_id']}');
+    debugPrint('ZONE NAME   : ${message['zone_name']}');
+    debugPrint('🔥🔥🔥 END MQTT EVENT 🔥🔥🔥');
 
     // ==========================================================
     // RESTAURANT ISOLATION CHECK
     // ==========================================================
-    final dynamic msgRestIdRaw = message['restaurant_id'] ??
-        message['restaurantId'] ??
-        message['store_id'] ??
-        message['storeId'] ??
-        message['merchant_id'] ??
-        message['merchantId'] ??
-        (message['kot'] is Map ? (message['kot']['restaurant_id'] ?? message['kot']['restaurantId'] ?? message['kot']['store_id'] ?? message['kot']['storeId'] ?? message['kot']['merchant_id'] ?? message['kot']['merchantId']) : null);
-
+    final dynamic msgRestIdRaw =
+        message['restaurant_id'] ??
+            message['restaurantId'] ??
+            message['merchant_id'] ??
+            message['merchantId'] ??
+            (message['kot'] is Map
+                ? (
+                message['kot']['restaurant_id'] ??
+                    message['kot']['restaurantId'] ??
+                    message['kot']['merchant_id'] ??
+                    message['kot']['merchantId']
+            )
+                : null);
     if (msgRestIdRaw != null) {
       final String msgRestId = msgRestIdRaw.toString().trim();
       final String currentRestId = _apiService.restaurantId.toString().trim();
@@ -709,6 +726,28 @@ class OrderProvider extends ChangeNotifier {
 
       return;
     }
+    // ==========================================================
+// KOT TABLE TRANSFER / TABLE UPDATE
+// ==========================================================
+    if (event == 'kot_table_updated' ||
+        event == 'kot_transferred' ||
+        event == 'table_transferred' ||
+        event == 'kot_table_transferred') {
+
+      debugPrint('========== KOT TABLE UPDATE ==========');
+      debugPrint('KOT ID       : ${message['kot_id']}');
+      debugPrint('KOT NUMBER   : ${message['kot_number']}');
+      debugPrint('PARENT ID    : ${message['parent_order_id']}');
+      debugPrint('OLD TABLE    : ${message['old_table_name']}');
+      debugPrint('NEW TABLE    : ${message['table_name']}');
+      debugPrint('TABLE ID     : ${message['table_id']}');
+      debugPrint('NEW ZONE ID  : ${message['zone_id']}');
+      debugPrint('NEW ZONE     : ${message['zone_name']}');
+
+      _handleKotTableUpdate(message);
+
+      return;
+    }
 
     // ==========================================================
     // UNKNOWN EVENT
@@ -716,6 +755,82 @@ class OrderProvider extends ChangeNotifier {
 
     debugPrint(
       'Ignoring MQTT event: $event',
+    );
+  }
+  void _handleKotTableUpdate(Map<String, dynamic> message) {
+    final kotId = message['kot_id']?.toString().trim();
+    final kotNumber = message['kot_number']?.toString().trim();
+    final parentOrderId =
+    message['parent_order_id']?.toString().trim();
+
+    final newTableName =
+    message['table_name']?.toString().trim();
+
+    final newZoneName =
+    message['zone_name']?.toString().trim();
+
+    final newZoneId =
+    int.tryParse(message['zone_id']?.toString() ?? '');
+
+    final index = _orders.indexWhere((order) {
+      if (kotId != null &&
+          kotId.isNotEmpty &&
+          order.kotId?.toString() == kotId) {
+        return true;
+      }
+
+      if (kotNumber != null &&
+          kotNumber.isNotEmpty &&
+          order.id == kotNumber) {
+        return true;
+      }
+
+      if (parentOrderId != null &&
+          parentOrderId.isNotEmpty &&
+          order.parentOrderId?.toString() == parentOrderId) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (index == -1) {
+      debugPrint(
+        '❌ KOT NOT FOUND FOR TABLE UPDATE '
+            'kotId=$kotId '
+            'kotNumber=$kotNumber '
+            'parentOrderId=$parentOrderId',
+      );
+      return;
+    }
+
+    final order = _orders[index];
+
+    debugPrint(
+      '🔄 TABLE UPDATE: '
+          '${order.tableName} → $newTableName',
+    );
+
+    if (newTableName != null && newTableName.isNotEmpty) {
+      order.tableName = newTableName;
+    }
+
+    if (newZoneName != null && newZoneName.isNotEmpty) {
+      order.zoneName = newZoneName;
+    }
+
+    if (newZoneId != null) {
+      order.zoneId = newZoneId;
+    }
+
+    _persist();
+    notifyListeners();
+
+    debugPrint(
+      '✅ KDS TABLE UPDATED '
+          'KOT=${order.kotNo} '
+          'TABLE=${order.tableName} '
+          'ZONE=${order.zoneName}',
     );
   }
   void _handleKotItemQuantityUpdate(

@@ -685,36 +685,36 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
                               // ============================
                               // SWITCH STORE / MERCHANT LOGIN
                               // ============================
-                              TextButton(
-                                onPressed: () {
-                                  if (!mounted) return;
-
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(
-                                      builder: (_) => MerchantOnboardingScreen(
-                                        onLoginSuccess: (config) {
-                                          // Pass the newly created config
-                                          // back to the application entry point.
-                                          widget.onLoginSuccess(config);
-                                        },
-                                      ),
-                                    ),
-                                        (route) => false,
-                                  );
-                                },
-                                child: Text(
-                                  'Switch Store / Merchant Login',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                    color: Theme.of(context).brightness == Brightness.dark
-                                        ? Colors.lightBlueAccent
-                                        : Colors.blue,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
+                              // TextButton(
+                              //   onPressed: () {
+                              //     if (!mounted) return;
+                              //
+                              //     Navigator.of(context).pushAndRemoveUntil(
+                              //       MaterialPageRoute(
+                              //         builder: (_) => MerchantOnboardingScreen(
+                              //           onLoginSuccess: (config) {
+                              //             // Pass the newly created config
+                              //             // back to the application entry point.
+                              //             widget.onLoginSuccess(config);
+                              //           },
+                              //         ),
+                              //       ),
+                              //           (route) => false,
+                              //     );
+                              //   },
+                              //   child: Text(
+                              //     'Switch Store / Merchant Login',
+                              //     style: Theme.of(context)
+                              //         .textTheme
+                              //         .bodyMedium
+                              //         ?.copyWith(
+                              //       color: Theme.of(context).brightness == Brightness.dark
+                              //           ? Colors.lightBlueAccent
+                              //           : Colors.blue,
+                              //       fontWeight: FontWeight.w500,
+                              //     ),
+                              //   ),
+                              // ),
                             ],
                           ),
                         ),

@@ -94,6 +94,7 @@ class _MyAppState extends State<MyApp> {
       brokerHost: config.brokerHost,
       brokerPort: config.brokerPort,
       restaurantId: config.restaurantId,
+      storeId: config.storeId,
     );
 
     final apiService = OrderApiService(

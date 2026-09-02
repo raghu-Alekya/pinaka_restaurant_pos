@@ -14,6 +14,7 @@ class KdsMqttService {
     required this.brokerHost,
     required this.brokerPort,
     required this.restaurantId,
+    required this.storeId,
   }) {
     KdsDebugLog.info(
       'MqttService created → broker=$brokerHost:$brokerPort restaurantId=$restaurantId',
@@ -23,6 +24,7 @@ class KdsMqttService {
   final String brokerHost;
   final int brokerPort;
   final String restaurantId;
+  final String storeId;
 
   MqttServerClient? _client;
   StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _subscription;
@@ -232,18 +234,33 @@ class KdsMqttService {
         final map = Map<String, dynamic>.from(decoded);
 
         messagesReceived++;
+        final event = map['event']?.toString() ?? '';
 
-        final event =
-            map['event']?.toString() ?? '';
+        final messageStoreId = map['store_id']?.toString();
 
         KdsDebugLog.info(
           'Parsed event="$event" '
+              'storeId=$messageStoreId '
+              'currentStoreId=$storeId '
               'kot=${map['kot']?['kot_number']} '
               'kotId=${map['kot_id']} '
               'parentOrderId=${map['parent_order_id']} '
               'status=${map['status']} '
               'total=$messagesReceived',
         );
+
+// Only restrict KOT/order messages
+        if (event == 'kot_created') {
+          if (messageStoreId == null ||
+              messageStoreId != storeId.toString()) {
+            KdsDebugLog.warn(
+              '🚫 KOT ignored — store mismatch '
+                  '(messageStoreId=$messageStoreId, '
+                  'currentStoreId=$storeId)',
+            );
+            continue;
+          }
+        }
 
         _incomingController.add(map);
       } catch (e) {

@@ -597,15 +597,15 @@ class KitchenOrder {
   final String id;
   final int? kotId;
   final int? parentOrderId;
-  final int? zoneId;
-  final String? zoneName;
+   int? zoneId;
+   String? zoneName;
   final String type;
   final int? restaurantId;
 
   String status;
   bool isCancelled;
 
-  final String? tableName;
+   String? tableName;
   final DateTime? kotTime;
   final List<OrderItem> items;
   final String kotStatus;

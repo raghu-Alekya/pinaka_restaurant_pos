@@ -470,7 +470,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
   Widget _filterButtonGroup() {
     return Container(
-      width: 510,
+      width: 540,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -596,68 +596,43 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                     color: Color(0xff1E293B),
                   ),
                 ),
-                const SizedBox(width: 30),
-                Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: TextField(
-                      controller: searchController,
-                      onChanged: (value) {
-                        searchText = value.trim();
-                        applyFilters();
-                      },
-                      decoration: InputDecoration(
-                        hintText: "Search Order ID or KOT ID...",
-                        prefixIcon: const Icon(
-                          Icons.search,
-                          size: 20,
+                const Spacer(),
+                SizedBox(
+                  width: 370,
+                  height: 34,
+                  child: TextField(
+                    controller: searchController,
+                    onChanged: (value) {
+                      searchText = value.trim();
+                      applyFilters();
+                    },
+                    decoration: InputDecoration(
+                      hintText: "Search Order ID or KOT ID...",
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        size: 16,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xfff8fafc),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(4),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade300,
                         ),
-
-                        // CLEAR BUTTON ON RIGHT
-                        suffixIcon: searchText.isNotEmpty
-                            ? IconButton(
-                          icon: const Icon(
-                            Icons.clear,
-                            size: 18,
-                          ),
-                          onPressed: () {
-                            searchController.clear();
-
-                            setState(() {
-                              searchText = '';
-                            });
-
-                            applyFilters();
-                          },
-                        )
-                            : null,
-
-                        filled: true,
-                        fillColor: const Color(0xfff8fafc),
-
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(4),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade300,
                         ),
-
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade300,
-                          ),
-                        ),
-
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade300,
-                          ),
-                        ),
-
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide(
-                            color: Colors.grey.shade400,
-                          ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(4),
+                        borderSide: BorderSide(
+                          color: Colors.grey.shade400,
                         ),
                       ),
                     ),
@@ -862,7 +837,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
 
               // Stats
               SizedBox(
-                width: 510,
+                width: 540,
                 child: Row(
                   children: [
                     Expanded(

@@ -101,23 +101,17 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final orderProvider = context.read<OrderProvider>();
-
-      await orderProvider.loadExistingOrders();
-
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
+      final orderProvider = context.read<OrderProvider>();
 
       setState(() {
         productCategoryMap =
-        Map<String, String>.from(
-          orderProvider.productCategoryMap,
-        );
+        Map<String, String>.from(orderProvider.productCategoryMap);
 
         productCategoryNameMap =
-        Map<String, String>.from(
-          orderProvider.productCategoryNameMap,
-        );
+        Map<String, String>.from(orderProvider.productCategoryNameMap);
 
         _categoryMapLoaded = true;
       });

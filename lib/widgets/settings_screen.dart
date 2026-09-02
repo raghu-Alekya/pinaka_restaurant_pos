@@ -58,10 +58,10 @@ class _KitchenDisplaySettingsScreenState
           margin: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(
-              color: const Color(0xFF008EFF),
-              width: 2.5,
-            ),
+            // border: Border.all(
+            //   color: const Color(0xFF008EFF),
+            //   width: 2.5,
+            // ),
           ),
           child: Column(
             children: [
