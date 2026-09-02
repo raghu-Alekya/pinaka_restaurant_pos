@@ -128,30 +128,20 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
         '==========================================',
       );
 
-      debugPrint(
-        'EMPLOYEE LOGIN',
-      );
-
-      debugPrint(
-        'PIN            : $enteredPin',
-      );
-
+      debugPrint('EMPLOYEE LOGIN');
+      debugPrint('PIN            : $enteredPin');
       debugPrint(
         'PIN LENGTH     : ${enteredPin.length}',
       );
-
       debugPrint(
         'WIDGET URL     : ${widget.storeBaseUrl}',
       );
-
       debugPrint(
         'WIDGET STORE ID: ${widget.storeId}',
       );
-
       debugPrint(
         'SAVED URL      : $savedBaseUrl',
       );
-
       debugPrint(
         'SAVED STORE ID : $savedStoreId',
       );
@@ -169,6 +159,10 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
         empLoginPin: enteredPin,
       );
 
+      // ======================================================
+      // API RESPONSE
+      // ======================================================
+
       debugPrint(
         '==========================================',
       );
@@ -178,18 +172,23 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       );
 
       debugPrint(
-        'RESTAURANT ID : '
-            '${response.data.restaurantId}',
+        'EMPLOYEE ID   : ${response.data.id}',
       );
 
       debugPrint(
-        'RESTAURANT    : '
-            '${response.data.restaurantName}',
+        'DISPLAY NAME  : ${response.data.displayName}',
       );
 
       debugPrint(
-        'ROLE          : '
-            '${response.data.role}',
+        'ROLE          : ${response.data.role}',
+      );
+
+      debugPrint(
+        'RESTAURANT ID : ${response.data.restaurantId}',
+      );
+
+      debugPrint(
+        'RESTAURANT    : ${response.data.restaurantName}',
       );
 
       debugPrint(
@@ -222,14 +221,57 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
         enteredPin,
       );
 
+      // ======================================================
+      // IMPORTANT:
+      // SAVE EMPLOYEE DISPLAY NAME
+      // NOT RESTAURANT NAME
+      // ======================================================
+
       await prefs.setString(
         'display_name',
-        response.data.restaurantName,
+        response.data.displayName,
       );
+
+      // ======================================================
+      // SAVE EMPLOYEE ROLE
+      // ======================================================
 
       await prefs.setString(
         'role',
         response.data.role,
+      );
+
+      // Optional - keep employee_name in sync
+      await prefs.setString(
+        'employee_name',
+        response.data.displayName,
+      );
+
+      await prefs.setString(
+        'employee_role',
+        response.data.role,
+      );
+
+      debugPrint(
+        '==========================================',
+      );
+
+      debugPrint(
+        'EMPLOYEE PROFILE SAVED',
+      );
+
+      debugPrint(
+        'Display Name : '
+            '${response.data.displayName}',
+      );
+
+      debugPrint(
+        'Role         : '
+            '${response.data.role}',
+      );
+
+      debugPrint(
+        '==========================================',
       );
 
       // ======================================================
@@ -248,17 +290,27 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       );
 
       debugPrint(
+        'Employee ID   : '
+            '${response.data.id}',
+      );
+
+      debugPrint(
+        'Display Name  : '
+            '${response.data.displayName}',
+      );
+
+      debugPrint(
+        'Role          : '
+            '${response.data.role}',
+      );
+
+      debugPrint(
         'Restaurant ID : '
             '${response.data.restaurantId}',
       );
 
       debugPrint(
         'Store ID      : $storeId',
-      );
-
-      debugPrint(
-        'Token         : '
-            '${response.data.token}',
       );
 
       debugPrint(
@@ -334,6 +386,14 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       );
 
       debugPrint(
+        'Employee Name : ${response.data.displayName}',
+      );
+
+      debugPrint(
+        'Employee Role : ${response.data.role}',
+      );
+
+      debugPrint(
         '==========================================',
       );
 
@@ -351,9 +411,6 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
       // NAVIGATE / CONTINUE
       // ======================================================
 
-      // IMPORTANT:
-      // This callback navigates away from this screen.
-      // Do not use context after this call.
       widget.onLoginSuccess(config);
 
       return;
@@ -386,7 +443,6 @@ class _EmployeeLoginScreenState extends State<EmployeeLoginScreen> {
         '==========================================',
       );
 
-      // The screen may already have been removed.
       if (!mounted) return;
 
       final errorStr =

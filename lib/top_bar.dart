@@ -1,7 +1,13 @@
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum OrderTypeFilter { all, dineIn, takeaway, online }
+enum OrderTypeFilter {
+  all,
+  dineIn,
+  takeaway,
+  online,
+}
 
 enum KotView {
   pending,
@@ -18,7 +24,6 @@ class TopBarWidget extends StatefulWidget {
   final ValueChanged<KotView> onViewChanged;
 
   final VoidCallback? onLogout;
-
 
   final int pendingCount;
   final int activeCount;
@@ -54,13 +59,12 @@ class TopBarWidget extends StatefulWidget {
 }
 
 class _TopBarWidgetState extends State<TopBarWidget> {
-
   // ==========================================================
   // PROFILE
   // ==========================================================
 
-  String _displayName = "IDAA Restaurant";
-  String _role = "Manager";
+  String _displayName = '';
+  String _role = '';
 
   // ==========================================================
   // INIT
@@ -82,28 +86,86 @@ class _TopBarWidgetState extends State<TopBarWidget> {
       final prefs =
       await SharedPreferences.getInstance();
 
-      final name =
-          prefs.getString("display_name") ??
-              prefs.getString("employee_name") ??
-              "IDAA Restaurant";
+      final savedName =
+      prefs.getString('display_name');
 
-      final role =
-          prefs.getString("role") ??
-              prefs.getString("employee_role") ??
-              "Manager";
+      final savedEmployeeName =
+      prefs.getString('employee_name');
+
+      final savedRole =
+      prefs.getString('role');
+
+      final savedEmployeeRole =
+      prefs.getString('employee_role');
+
+      // ========================================================
+      // NAME
+      // ========================================================
+
+      String name = '';
+
+      if (savedName != null &&
+          savedName.trim().isNotEmpty) {
+        name = savedName.trim();
+      } else if (savedEmployeeName != null &&
+          savedEmployeeName.trim().isNotEmpty) {
+        name = savedEmployeeName.trim();
+      }
+
+      // ========================================================
+      // ROLE
+      // ========================================================
+
+      String role = '';
+
+      if (savedRole != null &&
+          savedRole.trim().isNotEmpty) {
+        role = savedRole.trim();
+      } else if (savedEmployeeRole != null &&
+          savedEmployeeRole.trim().isNotEmpty) {
+        role = savedEmployeeRole.trim();
+      }
+
+      debugPrint(
+        '==========================================',
+      );
+      debugPrint(
+        'PROFILE LOADED',
+      );
+      debugPrint(
+        'Display Name : $name',
+      );
+      debugPrint(
+        'Role         : $role',
+      );
+      debugPrint(
+        '==========================================',
+      );
 
       if (!mounted) {
         return;
       }
 
       setState(() {
-        _displayName = name;
-        _role = role;
+        _displayName =
+        name.isNotEmpty ? name : 'User';
+
+        _role =
+        role.isNotEmpty ? role : 'Manager';
       });
     } catch (e) {
       debugPrint(
-        "Failed to load profile in TopBarWidget: $e",
+        'Failed to load profile in TopBarWidget: $e',
       );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _displayName = 'User';
+        _role = 'Manager';
+      });
     }
   }
 
@@ -111,24 +173,27 @@ class _TopBarWidgetState extends State<TopBarWidget> {
   // BUILD
   // ==========================================================
 
-
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 64,
       width: double.infinity,
+
       padding: const EdgeInsets.symmetric(
         horizontal: 14,
         vertical: 7,
       ),
+
       decoration: const BoxDecoration(
         color: Colors.white,
+
         border: Border(
           bottom: BorderSide(
             color: Color(0xffE4E7EC),
             width: 1,
           ),
         ),
+
         boxShadow: [
           BoxShadow(
             color: Color(0x08000000),
@@ -137,10 +202,12 @@ class _TopBarWidgetState extends State<TopBarWidget> {
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
 
+      child: Row(
+        crossAxisAlignment:
+        CrossAxisAlignment.center,
+
+        children: [
           // ====================================================
           // HAMBURGER MENU
           // ====================================================
@@ -154,10 +221,6 @@ class _TopBarWidgetState extends State<TopBarWidget> {
           // ====================================================
 
           _buildLogo(),
-
-          // ====================================================
-          // SPACE BETWEEN LOGO AND PROFILE
-          // ====================================================
 
           const Spacer(),
 
@@ -220,7 +283,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
       height: 44,
 
       child: Image.asset(
-        "assets/pinaka.png",
+        'assets/pinaka.png',
 
         height: 44,
 
@@ -233,7 +296,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             ) {
           return const Center(
             child: Text(
-              "PINAKA",
+              'PINAKA',
               style: TextStyle(
                 fontWeight:
                 FontWeight.w800,
@@ -261,11 +324,6 @@ class _TopBarWidgetState extends State<TopBarWidget> {
     int? count,
     required VoidCallback onTap,
   }) {
-
-    // ========================================================
-    // COLORS
-    // ========================================================
-
     const activeColor =
     Color(0xff7C3AED);
 
@@ -326,16 +384,9 @@ class _TopBarWidgetState extends State<TopBarWidget> {
           CrossAxisAlignment.center,
 
           children: [
-
-            // ==================================================
-            // ICON
-            // ==================================================
-
             Icon(
               icon,
-
               size: 17,
-
               color: isSelected
                   ? activeColor
                   : inactiveIcon,
@@ -343,13 +394,8 @@ class _TopBarWidgetState extends State<TopBarWidget> {
 
             const SizedBox(width: 6),
 
-            // ==================================================
-            // TITLE
-            // ==================================================
-
             Text(
               title,
-
               style: TextStyle(
                 color: isSelected
                     ? activeColor
@@ -361,10 +407,6 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                 fontSize: 13,
               ),
             ),
-
-            // ==================================================
-            // COUNT
-            // ==================================================
 
             if (count != null) ...[
               const SizedBox(width: 6),
@@ -400,7 +442,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                 ),
 
                 child: Text(
-                  "$count",
+                  '$count',
 
                   style: TextStyle(
                     color: isSelected
@@ -450,7 +492,6 @@ class _TopBarWidgetState extends State<TopBarWidget> {
           MainAxisSize.min,
 
           children: [
-
             const Icon(
               Icons.logout,
               color: Colors.white,
@@ -460,7 +501,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             const SizedBox(width: 5),
 
             const Text(
-              "Logout",
+              'Logout',
 
               style: TextStyle(
                 color: Colors.white,
@@ -515,7 +556,6 @@ class _TopBarWidgetState extends State<TopBarWidget> {
         CrossAxisAlignment.center,
 
         children: [
-
           // ==================================================
           // PROFILE IMAGE
           // ==================================================
@@ -536,7 +576,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
             ),
 
             child: Image.asset(
-              "assets/chef.png",
+              'assets/chef.png',
 
               fit: BoxFit.cover,
 
@@ -558,7 +598,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
           const SizedBox(width: 7),
 
           // ==================================================
-          // NAME + ROLE
+          // DYNAMIC NAME + ROLE
           // ==================================================
 
           Flexible(
@@ -570,23 +610,27 @@ class _TopBarWidgetState extends State<TopBarWidget> {
               MainAxisAlignment.center,
 
               children: [
-
                 // --------------------------------------------
-                // NAME
+                // DYNAMIC NAME
                 // --------------------------------------------
 
                 Text(
-                  _displayName,
+                  _displayName.isNotEmpty
+                      ? _displayName
+                      : 'User',
 
                   maxLines: 1,
 
                   overflow:
                   TextOverflow.ellipsis,
 
-                  style: const TextStyle(
+                  style:
+                  const TextStyle(
                     fontSize: 14,
+
                     fontWeight:
                     FontWeight.w700,
+
                     color:
                     Color(0xff1E293B),
                   ),
@@ -595,7 +639,7 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                 const SizedBox(height: 1),
 
                 // --------------------------------------------
-                // ROLE
+                // DYNAMIC ROLE
                 // --------------------------------------------
 
                 Text(
@@ -606,8 +650,10 @@ class _TopBarWidgetState extends State<TopBarWidget> {
                   overflow:
                   TextOverflow.ellipsis,
 
-                  style: const TextStyle(
+                  style:
+                  const TextStyle(
                     fontSize: 12,
+
                     color:
                     Color(0xff64748B),
                   ),
@@ -625,12 +671,19 @@ class _TopBarWidgetState extends State<TopBarWidget> {
   // ==========================================================
 
   String _formattedRole() {
-    if (_role
-        .toLowerCase()
-        .startsWith("role-")) {
-      return _role;
+    if (_role.trim().isEmpty) {
+      return 'role- Manager';
     }
 
-    return "role- $_role";
+    final role =
+    _role.trim();
+
+    if (role
+        .toLowerCase()
+        .startsWith('role-')) {
+      return role;
+    }
+
+    return 'role- $role';
   }
 }

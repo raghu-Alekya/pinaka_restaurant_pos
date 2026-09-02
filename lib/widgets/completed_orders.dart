@@ -180,10 +180,20 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
     return matchSearch && matchType && matchDate && matchDuration;
   }
 
+
   @override
   void initState() {
     super.initState();
+
+    // Default date = today's date
+    selectedDate = DateTime.now();
+
+    _dateController.text = DateFormat(
+      'dd/MM/yy',
+    ).format(selectedDate!);
+
     loadOrders();
+
     print("CompletedOrdersScreen Opened");
   }
 
@@ -913,7 +923,7 @@ class _CompletedOrdersScreenState extends State<CompletedOrdersScreen> {
                     : filteredOrders.isEmpty
                     ? const Center(
                       child: Text(
-                        "No KOT's fond for the sorted Date",
+                        "No KOT's found for the selected Date",
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,

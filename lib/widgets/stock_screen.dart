@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,7 @@ import 'login_screen.dart';
 class StockScreen extends StatefulWidget {
   final String token;
   final int restaurantId;
+
   // final int storeId;
 
   const StockScreen({
@@ -56,6 +58,7 @@ class _StockScreenState extends State<StockScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isUpdatingStock = false;
 
   // ==========================================================
   // INIT
@@ -79,7 +82,7 @@ class _StockScreenState extends State<StockScreen> {
   }
   void _saveCurrentState() {
     _previousCategory = _selectedCategory;
-    _previousItem = _selectedItems as StockItem?;
+    _previousItem = null;
     _previousSearch = _searchController.text;
   }
   void _resetSelection() {
@@ -232,84 +235,27 @@ class _StockScreenState extends State<StockScreen> {
       });
     }
   }
-  Future<String?> showStockPinDialog() async {
-    final controller = TextEditingController();
-
-    final pin = await showDialog<String>(
+  Future<String?> showStockPinDialog() {
+    return showDialog<String>(
       context: context,
-
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Enter PIN',
-          ),
-
-          content: TextField(
-            controller: controller,
-
-            obscureText: true,
-
-            keyboardType:
-            TextInputType.number,
-
-            decoration:
-            const InputDecoration(
-              hintText: 'Enter PIN',
-            ),
-          ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-
-              child: const Text(
-                'Cancel',
-              ),
-            ),
-
-            ElevatedButton(
-              onPressed: () {
-                final pin =
-                controller.text.trim();
-
-                if (pin.isEmpty) {
-                  return;
-                }
-
-                Navigator.pop(
-                  context,
-                  pin,
-                );
-              },
-
-              child: const Text(
-                'Confirm',
-              ),
-            ),
-          ],
-        );
-      },
+      barrierDismissible: false,
+      builder: (_) => const _StockPinDialog(),
     );
-
-    controller.dispose();
-
-    return pin;
   }
-  Future<void> updateProductStockStatus({
-    required StockItem item,
+  Future<void> updateMultipleProductStockStatus({
+    required List<StockItem> items,
     required String pin,
   }) async {
     try {
-      final prefs =
-      await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
 
       final baseUrl =
           prefs.getString('store_base_url') ?? '';
 
       if (baseUrl.isEmpty) {
-        throw Exception('Store base URL not found');
+        throw Exception(
+          'Store base URL not found',
+        );
       }
 
       final repository = ProductRepository(
@@ -317,45 +263,52 @@ class _StockScreenState extends State<StockScreen> {
         token: widget.token,
       );
 
-      // ==========================================
-      // DETERMINE OLD AND NEW STATUS
-      // ==========================================
+      final products = items.map((item) {
+        final oldStatus =
+        item.isEnabled
+            ? 'instock'
+            : 'outofstock';
 
-      final oldStatus =
-      item.isEnabled ? 'instock' : 'outofstock';
+        final newStatus =
+        item.selected
+            ? 'instock'
+            : 'outofstock';
 
-      final newStatus =
-      item.isEnabled ? 'outofstock' : 'instock';
+        debugPrint(
+          'PRODUCT ID: ${item.id} | '
+              '${item.name} | '
+              'OLD: $oldStatus | '
+              'NEW: $newStatus',
+        );
+
+        return {
+          'product_id': item.id,
+          'old_status': oldStatus,
+          'new_status': newStatus,
+        };
+      }).toList();
 
       debugPrint('======================================');
-      debugPrint('UPDATING PRODUCT STOCK');
-      debugPrint('PRODUCT ID: ${item.id}');
-      debugPrint('PRODUCT NAME: ${item.name}');
-      debugPrint('OLD STATUS: $oldStatus');
-      debugPrint('NEW STATUS: $newStatus');
+      debugPrint('BULK STOCK UPDATE');
+      debugPrint(
+        'PRODUCT COUNT: ${products.length}',
+      );
       debugPrint('======================================');
-
-      // ==========================================
-      // CALL UPDATE API
-      // ==========================================
 
       final success =
-      await repository.updateProductStatus(
-        productId: item.id,
-        oldStatus: oldStatus,
-        newStatus: newStatus,
+      await repository.updateMultipleProductStatus(
+        products: products,
         pin: pin,
       );
 
       if (!success) {
         throw Exception(
-          'Failed to update product status',
+          'Failed to update product stock',
         );
       }
-
     } catch (e) {
       debugPrint(
-        'UPDATE STOCK ERROR: $e',
+        'BULK UPDATE STOCK ERROR: $e',
       );
 
       rethrow;
@@ -621,6 +574,9 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   Future<void> _saveAndUpdate() async {
+    // Prevent double click
+    if (_isUpdatingStock) return;
+
     final changedItems = <StockItem>[];
 
     // ==========================================
@@ -666,34 +622,56 @@ class _StockScreenState extends State<StockScreen> {
     }
 
     // ==========================================
-    // PIN ONLY HERE
+    // SHOW PIN
     // ==========================================
 
     final pin = await showStockPinDialog();
 
-    if (pin == null || pin.isEmpty) {
+    if (!mounted) return;
+
+    if (pin == null || pin.trim().isEmpty) {
       return;
     }
 
+    // ==========================================
+    // START LOADER
+    // ==========================================
+
+    setState(() {
+      _isUpdatingStock = true;
+    });
+
     try {
-      // ==========================================
-      // UPDATE ALL CHANGED ITEMS
-      // ==========================================
-
-      for (final item in changedItems) {
-        await updateProductStockStatus(
-          item: item,
-          pin: pin,
-        );
-      }
+      debugPrint('======================================');
+      debugPrint('STARTING STOCK UPDATE API');
+      debugPrint('======================================');
 
       // ==========================================
-      // ONLY ONE RELOAD
+      // ONE BULK API CALL
       // ==========================================
 
-      await loadProducts();
+      await updateMultipleProductStockStatus(
+        items: changedItems,
+        pin: pin.trim(),
+      );
 
       if (!mounted) return;
+
+      // ==========================================
+      // UPDATE LOCAL STATE
+      // ==========================================
+
+      setState(() {
+        for (final item in changedItems) {
+          item.isEnabled = item.selected;
+        }
+
+        _isUpdatingStock = false;
+      });
+
+      // ==========================================
+      // SUCCESS
+      // ==========================================
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -702,8 +680,20 @@ class _StockScreenState extends State<StockScreen> {
           ),
         ),
       );
+
+      debugPrint('======================================');
+      debugPrint('STOCK UPDATE SUCCESS');
+      debugPrint('======================================');
     } catch (e) {
+      debugPrint(
+        'STOCK UPDATE FAILED: $e',
+      );
+
       if (!mounted) return;
+
+      setState(() {
+        _isUpdatingStock = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2235,48 +2225,40 @@ class _StockScreenState extends State<StockScreen> {
 
           child:
           ElevatedButton(
-            onPressed:
-            _hasChanges ? _saveAndUpdate : null,
+            onPressed: _hasChanges && !_isUpdatingStock
+                ? _saveAndUpdate
+                : null,
 
-            style:
-            ElevatedButton.styleFrom(
-              backgroundColor:
-              const Color(
-                0xffff5b4f,
-              ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xffff5b4f),
 
-              disabledBackgroundColor:
-              const Color(
-                0xffD0D5DD,
-              ),
+              disabledBackgroundColor: const Color(0xffD0D5DD),
 
-              foregroundColor:
-              Colors.white,
+              foregroundColor: Colors.white,
 
-              disabledForegroundColor:
-              const Color(
-                0xff98A2B3,
-              ),
+              disabledForegroundColor: const Color(0xff98A2B3),
 
               elevation: 0,
 
-              shape:
-              RoundedRectangleBorder(
-                borderRadius:
-                BorderRadius.circular(
-                  6,
-                ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
               ),
             ),
 
-            child: Text(
+            child: _isUpdatingStock
+                ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Colors.white,
+              ),
+            )
+                : Text(
               'Save & Update',
-
-              style:
-              GoogleFonts.inter(
+              style: GoogleFonts.inter(
                 fontSize: 16,
-                fontWeight:
-                FontWeight.w700,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -2390,6 +2372,72 @@ class _StockScreenState extends State<StockScreen> {
 }
 
 // ============================================================
+// STOCK PIN DIALOG
+// ============================================================
+
+class _StockPinDialog extends StatefulWidget {
+  const _StockPinDialog();
+
+  @override
+  State<_StockPinDialog> createState() => _StockPinDialogState();
+}
+
+class _StockPinDialogState extends State<_StockPinDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    final pin = _controller.text.trim();
+
+    if (pin.isEmpty) {
+      return;
+    }
+
+    Navigator.of(context).pop(pin);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Enter PIN'),
+      content: TextField(
+        controller: _controller,
+        obscureText: true,
+        keyboardType: TextInputType.number,
+        autofocus: true,
+        decoration: const InputDecoration(
+          hintText: 'Enter PIN',
+        ),
+        onSubmitted: (_) => _confirm(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _confirm,
+          child: const Text('Confirm'),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================
 // STOCK CATEGORY MODEL
 // ============================================================
 
@@ -2413,7 +2461,7 @@ class StockItem {
   final int? stockQuantity;
   final String stockStatus;
 
-  final bool isEnabled;
+   bool isEnabled;
 
   // ADD THIS
   final bool isVeg;

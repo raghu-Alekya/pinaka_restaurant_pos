@@ -205,7 +205,7 @@ class _MyAppState extends State<MyApp> {
             await prefs.remove('display_name');
             await prefs.remove('role');
 
-            _orderProvider?.dispose();
+            // _orderProvider?.dispose();
 
             setState(() {
               _orderProvider = null;

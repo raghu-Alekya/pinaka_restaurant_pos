@@ -1,5 +1,6 @@
 
 
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -59,6 +60,10 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 
   // Existing map - used only by the Ready/Running item switches.
   final Map<String, List<bool>> selectedItemsMap = {};
+
+  // Queue is the single source of truth for Active KOT Veg/Non-Veg icons.
+  // Key = product ID, value = true (Veg), false (Non-Veg), null (no icon).
+  Map<String, bool?> _queueItemVegMap = {};
 
   // Separate map for item cancellation so existing switch state is untouched.
   final Map<String, List<bool>> cancelSelectionMap = {};
@@ -1168,45 +1173,45 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     child: filteredActiveOrders.isEmpty
                         ? _buildNoActiveKots()
                         : () {
-                            int maxItemsInView = 5;
-                            for (final order in filteredActiveOrders) {
-                              final kotId = order['id']?.toString() ?? '';
-                              final kotNo = (order['kotNo'] ?? order['kot_no'] ?? order['kot_number'] ?? order['kotNumber'] ?? order['id'] ?? '').toString().replaceAll('KOT#', '').replaceAll('KOT', '').trim();
-                              final parentOrderId = (order['parentOrderId'] ?? order['parent_order_id'] ?? order['order_id'] ?? order['orderId'] ?? '').toString().replaceAll('ORDER#', '').trim();
-                              final switchKey = kotId.isNotEmpty ? kotId : '${kotNo}_$parentOrderId';
+                      int maxItemsInView = 5;
+                      for (final order in filteredActiveOrders) {
+                        final kotId = order['id']?.toString() ?? '';
+                        final kotNo = (order['kotNo'] ?? order['kot_no'] ?? order['kot_number'] ?? order['kotNumber'] ?? order['id'] ?? '').toString().replaceAll('KOT#', '').replaceAll('KOT', '').trim();
+                        final parentOrderId = (order['parentOrderId'] ?? order['parent_order_id'] ?? order['order_id'] ?? order['orderId'] ?? '').toString().replaceAll('ORDER#', '').trim();
+                        final switchKey = kotId.isNotEmpty ? kotId : '${kotNo}_$parentOrderId';
 
-                              if (expandedKotIds.contains(switchKey)) {
-                                final rawItems = _getOrderItems(order);
-                                if (rawItems.length > maxItemsInView) {
-                                  maxItemsInView = rawItems.length;
-                                }
-                              }
-                            }
-                            return MasonryGridView.builder(
-                              padding: const EdgeInsets.only(
-                                left: 0,
-                                right: 0,
-                                bottom: 4,
-                              ),
+                        if (expandedKotIds.contains(switchKey)) {
+                          final rawItems = _getOrderItems(order);
+                          if (rawItems.length > maxItemsInView) {
+                            maxItemsInView = rawItems.length;
+                          }
+                        }
+                      }
+                      return MasonryGridView.builder(
+                        padding: const EdgeInsets.only(
+                          left: 0,
+                          right: 0,
+                          bottom: 4,
+                        ),
 
-                              gridDelegate:
-                              const SliverSimpleGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                              ),
+                        gridDelegate:
+                        const SliverSimpleGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                        ),
 
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
 
-                              itemCount: filteredActiveOrders.length,
+                        itemCount: filteredActiveOrders.length,
 
-                              itemBuilder: (context, index) {
-                                return _buildReferenceKotCard(
-                                  filteredActiveOrders[index],
-                                  orderProvider,
-                                );
-                              },
-                            );
-                          }(),
+                        itemBuilder: (context, index) {
+                          return _buildReferenceKotCard(
+                            filteredActiveOrders[index],
+                            orderProvider,
+                          );
+                        },
+                      );
+                    }(),
                   ),
 
                 ],
@@ -1253,7 +1258,11 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     // null  = No icon
     // ==========================================================
 
+    // Product ID -> Veg/Non-Veg. Active KOT uses this exact map.
     final Map<String, bool?> itemVegMap = {};
+
+    // Queue cards are grouped by item name, so keep a display-only name map.
+    final Map<String, bool?> itemVegNameMap = {};
 
     for (final order in orders) {
       final rawItems = _getOrderItems(order);
@@ -1270,29 +1279,6 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         }
 
         final item = Map<String, dynamic>.from(rawItem);
-        // ==========================================================
-// HIDE ITEM FROM QUEUE WHEN TOGGLE IS ON
-// API status is the source of truth, selectedItemsMap
-// provides immediate UI update until provider refreshes.
-// ==========================================================
-
-        final kotId = order['id']?.toString() ?? '';
-        final kotNo = order['kotNo']?.toString() ?? '';
-        final parentOrderId =
-            order['parentOrderId']?.toString() ?? '';
-
-        final switchKey = kotId.isNotEmpty
-            ? kotId
-            : '${kotNo}_$parentOrderId';
-
-        final switchValues = selectedItemsMap[switchKey];
-
-        if (switchValues != null &&
-            index < switchValues.length &&
-            switchValues[index] == true) {
-          continue;
-        }
-
         final name =
         item['item_name']?.toString().trim().isNotEmpty == true
             ? item['item_name'].toString().trim()
@@ -1361,14 +1347,49 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           isVeg = null;
         }
 
-        itemVegMap[name] = isVeg;
+        final productId =
+        item['product_id']?.toString().trim().isNotEmpty == true
+            ? item['product_id'].toString().trim()
+            : item['productId']?.toString().trim() ?? '';
+
+        if (productId.isNotEmpty) {
+          itemVegMap[productId] = isVeg;
+        }
+
+        itemVegNameMap[name] = isVeg;
+
+        // ==========================================================
+        // HIDE ITEM FROM QUEUE WHEN TOGGLE IS ON
+        // The Veg map is populated BEFORE this check so Active KOT
+        // can still use the same Queue map for ready/toggled items.
+        // ==========================================================
+        final kotId = order['id']?.toString() ?? '';
+        final kotNo = order['kotNo']?.toString() ?? '';
+        final parentOrderId =
+            order['parentOrderId']?.toString() ?? '';
+
+        final switchKey = kotId.isNotEmpty
+            ? kotId
+            : '${kotNo}_$parentOrderId';
+
+        final switchValues = selectedItemsMap[switchKey];
+
+        if (switchValues != null &&
+            index < switchValues.length &&
+            switchValues[index] == true) {
+          continue;
+        }
       }
     }
+
+    // Make the Queue product-ID map available to Active KOT.
+    _queueItemVegMap = Map<String, bool?>.from(itemVegMap);
 
     debugPrint('========== ITEM QUEUE ==========');
     debugPrint('TOTAL ITEMS: $totalItems');
     debugPrint('CATEGORIES: ${entries.length}');
-    debugPrint('VEG MAP: $itemVegMap');
+    debugPrint('QUEUE VEG MAP BY PRODUCT ID: $_queueItemVegMap');
+    debugPrint('QUEUE VEG MAP BY NAME: $itemVegNameMap');
     debugPrint('================================');
 
     return Container(
@@ -1470,7 +1491,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 leftEntries[i].key,
                                 leftEntries[i].value,
                                 i * 2,
-                                itemVegMap,
+                                itemVegNameMap,
                               ),
 
                               if (i < leftEntries.length - 1)
@@ -1502,7 +1523,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                 rightEntries[i].key,
                                 rightEntries[i].value,
                                 i * 2 + 1,
-                                itemVegMap,
+                                itemVegNameMap,
                               ),
 
                               if (i < rightEntries.length - 1)
@@ -2908,21 +2929,21 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
         order['tableNo']?.toString() ??
         '';
     final kotNo = (order['kotNo'] ??
-            order['kot_no'] ??
-            order['kot_number'] ??
-            order['kotNumber'] ??
-            order['id'] ??
-            '')
+        order['kot_no'] ??
+        order['kot_number'] ??
+        order['kotNumber'] ??
+        order['id'] ??
+        '')
         .toString()
         .replaceAll('KOT#', '')
         .replaceAll('KOT', '')
         .trim();
 
     final parentOrderId = (order['parentOrderId'] ??
-            order['parent_order_id'] ??
-            order['order_id'] ??
-            order['orderId'] ??
-            '')
+        order['parent_order_id'] ??
+        order['order_id'] ??
+        order['orderId'] ??
+        '')
         .toString()
         .replaceAll('ORDER#', '')
         .trim();
@@ -3239,127 +3260,106 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
 // 2. KOT INFO
 // =============================================================
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              10,
-              6,
-              10,
-              5,
-            ),
-            child:Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+              padding: const EdgeInsets.fromLTRB(
+                10,
+                6,
+                10,
+                5,
+              ),
+              child:Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
 
-                // ==========================================================
-                // TOP ROW: KOT + ITEMS READY
-                // ==========================================================
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  // ==========================================================
+                  // TOP ROW: KOT + ITEMS READY
+                  // ==========================================================
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
 
-                    // KOT NUMBER
-                    Expanded(
-                      child: Text(
-                        'KOT #$kotNo',
+                      // KOT NUMBER
+                      Expanded(
+                        child: Text(
+                          'KOT #$kotNo',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            height: 1.0,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xff344054),
+                          ),
+                        ),
+                      ),
+
+                      // ITEMS READY + COUNT
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Items Ready',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              height: 1.0,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xff667085),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$readyCount/${items.length}',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              height: 1.0,
+                              fontWeight: FontWeight.w800,
+                              color: allItemsOn
+                                  ? const Color(0xff5B9638)
+                                  : headerColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // ==========================================================
+                  // SECOND ROW: ORDER ID + CAPTAIN + TIME
+                  // ==========================================================
+                  // ==========================================================
+// SECOND ROW: ORDER ID + CAPTAIN + TIME
+// ==========================================================
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // ORDER ID - LEFT
+                      Text(
+                        'Order: #$parentOrderId',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                          fontSize: 16,
+                          fontSize: 10,
                           height: 1.0,
-                          fontWeight: FontWeight.w800,
-                          color: const Color(0xff344054),
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xff667085),
                         ),
                       ),
-                    ),
 
-                    // ITEMS READY + COUNT
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Items Ready',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            height: 1.0,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xff667085),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '$readyCount/${items.length}',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            height: 1.0,
-                            fontWeight: FontWeight.w800,
-                            color: allItemsOn
-                                ? const Color(0xff5B9638)
-                                : headerColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 8),
 
-                const SizedBox(height: 4),
-
-                // ==========================================================
-                // SECOND ROW: ORDER ID + CAPTAIN + TIME
-                // ==========================================================
-                // ==========================================================
-// SECOND ROW: ORDER ID + CAPTAIN + TIME
-// ==========================================================
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // ORDER ID - LEFT
-                    Text(
-                      'Order: #$parentOrderId',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        height: 1.0,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xff667085),
+                      // TIME - BESIDE ORDER ID
+                      const Icon(
+                        Icons.access_time_outlined,
+                        size: 11,
+                        color: Color(0xff98A2B3),
                       ),
-                    ),
 
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 3),
 
-                    // TIME - BESIDE ORDER ID
-                    const Icon(
-                      Icons.access_time_outlined,
-                      size: 11,
-                      color: Color(0xff98A2B3),
-                    ),
-
-                    const SizedBox(width: 3),
-
-                    Text(
-                      date,
-                      maxLines: 1,
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        height: 1.0,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xff667085),
-                      ),
-                    ),
-
-                    // SPACE BETWEEN TIME AND CAPTAIN
-                    const Expanded(
-                      child: SizedBox(),
-                    ),
-
-                    // CAPTAIN - RIGHT MOST
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        order['kot_order_by']?.toString().trim() ?? '',
+                      Text(
+                        date,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           height: 1.0,
@@ -3367,11 +3367,32 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                           color: const Color(0xff667085),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            )
+
+                      // SPACE BETWEEN TIME AND CAPTAIN
+                      const Expanded(
+                        child: SizedBox(),
+                      ),
+
+                      // CAPTAIN - RIGHT MOST
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          order['kot_order_by']?.toString().trim() ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            height: 1.0,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xff667085),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              )
           ),
 
           const Divider(
@@ -3430,422 +3451,475 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
           // =============================================================
           // 3. ITEMS — compact, evenly spaced like reference
           // =============================================================
-         Padding(
-              padding: const EdgeInsets.fromLTRB(
-                10,
-                4,
-                8,
-                4,
-              ),
-              child: Column(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: List.generate(visibleItemsCount, (index) {
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              10,
+              4,
+              8,
+              4,
+            ),
+            child: Column(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: List.generate(visibleItemsCount, (index) {
 
-                        final raw = items[index];
+                    final raw = items[index];
 
-                        if (raw is! Map) {
-                          return const SizedBox.shrink();
-                        }
+                    if (raw is! Map) {
+                      return const SizedBox.shrink();
+                    }
 
-                        final item = Map<String, dynamic>.from(raw);
-                        final itemStatus =
-                            item['status']?.toString().trim().toLowerCase() ?? '';
+                    final item = Map<String, dynamic>.from(raw);
+                    final itemStatus =
+                        item['status']?.toString().trim().toLowerCase() ?? '';
 
-                        final cancelItemKey =
-                        _getCancelItemKey(item, index);
+                    final cancelItemKey =
+                    _getCancelItemKey(item, index);
 
-                        final isCancelled =
-                            itemStatus == 'cancelled' ||
-                                itemStatus == 'cancel' ||
-                                locallyCancelledItemKeys.contains(cancelItemKey);
+                    final isCancelled =
+                        itemStatus == 'cancelled' ||
+                            itemStatus == 'cancel' ||
+                            locallyCancelledItemKeys.contains(cancelItemKey);
 
-                        final isSelectedForCancel =
-                            index < cancelSelections.length &&
-                                cancelSelections[index];
+                    final isSelectedForCancel =
+                        index < cancelSelections.length &&
+                            cancelSelections[index];
 
-                        // ==========================================================
-                        // ITEM NAME
-                        // ==========================================================
-                        final name = item['name']?.toString() ?? '';
+                    // ==========================================================
+                    // ITEM NAME
+                    // ==========================================================
+                    final name = item['name']?.toString() ?? '';
 
-                        // ==========================================================
-                        // QUANTITY
-                        // ==========================================================
-                        final qty =
-                            item['qty'] ??
-                                item['quantity'] ??
-                                1;
+                    // ==========================================================
+                    // QUANTITY
+                    // ==========================================================
+                    final qty =
+                        item['qty'] ??
+                            item['quantity'] ??
+                            1;
+                    // ==========================================================
+                    // VEG / NON-VEG
+                    // USE ITEM QUEUE MAP AS SINGLE SOURCE OF TRUTH
+                    // true  = Veg
+                    // false = Non-Veg
+                    // null  = No icon
+                    // ==========================================================
+                    final productId =
+                    item['product_id']?.toString().trim().isNotEmpty == true
+                        ? item['product_id'].toString().trim()
+                        : item['productId']?.toString().trim() ?? '';
 
-                        // ==========================================================
-                        // VEG / NON-VEG
-                        // ==========================================================
-                        final dynamic vegValue =
-                            item['is_veg'] ??
-                                item['isVeg'] ??
-                                item['is_vegetarian'] ??
-                                item['veg'];
+                    final bool? isVeg =
+                    productId.isEmpty
+                        ? null
+                        : _queueItemVegMap[productId];
 
-                        final bool isVeg =
-                            vegValue == true ||
-                                vegValue == 1 ||
-                                vegValue?.toString().trim().toLowerCase() == 'true' ||
-                                vegValue?.toString().trim() == '1';
+                    debugPrint(
+                      'ACTIVE KOT QUEUE ICON => '
+                          'name=$name | '
+                          'productId=$productId | '
+                          'isVeg=$isVeg',
+                    );
 
-                        // ==========================================================
-                        // MODIFIERS
-                        // ==========================================================
-                        final List<String> modifiers =
-                        item['modifiers'] is List
-                            ? (item['modifiers'] as List)
-                            .map((e) {
-                          if (e is Map) {
-                            return e['name']?.toString() ??
-                                e['modifier_name']?.toString() ??
-                                '';
-                          }
+                    // ==========================================================
+                    // MODIFIERS
+                    // ==========================================================
+                    final List<String> modifiers =
+                    item['modifiers'] is List
+                        ? (item['modifiers'] as List)
+                        .map((e) {
+                      if (e is Map) {
+                        return e['name']?.toString() ??
+                            e['modifier_name']?.toString() ??
+                            '';
+                      }
 
-                          return e.toString();
-                        })
-                            .where((e) => e.isNotEmpty)
-                            .toList()
-                            : [];
+                      return e.toString();
+                    })
+                        .where((e) => e.isNotEmpty)
+                        .toList()
+                        : [];
 
-                        // ==========================================================
-                        // ADD-ONS
-                        // ==========================================================
-                        final dynamic rawAddOns =
-                            item['addOns'] ??
-                                item['addons'] ??
-                                item['add_ons'];
+                    // ==========================================================
+                    // ADD-ONS
+                    // ==========================================================
+                    final dynamic rawAddOns =
+                        item['addOns'] ??
+                            item['addons'] ??
+                            item['add_ons'];
 
-                        final Map<String, dynamic> addOns =
-                        rawAddOns is Map
-                            ? Map<String, dynamic>.from(rawAddOns)
-                            : {};
+                    final Map<String, dynamic> addOns =
+                    rawAddOns is Map
+                        ? Map<String, dynamic>.from(rawAddOns)
+                        : {};
 
-                        // ==========================================================
-                        // NOTE
-                        // ==========================================================
-                        final String note =
-                            item['note']?.toString() ??
-                                item['notes']?.toString() ??
-                                '';
+                    // ==========================================================
+                    // NOTE
+                    // ==========================================================
+                    final String note =
+                        item['note']?.toString() ??
+                            item['notes']?.toString() ??
+                            '';
 
-                        // ==========================================================
-                        // DEBUG
-                        // ==========================================================
-                        debugPrint('========== KDS ITEM ==========');
-                        debugPrint('NAME      : $name');
-                        debugPrint('IS VEG    : $vegValue');
-                        debugPrint('MODIFIERS : $modifiers');
-                        debugPrint('ADDONS    : $addOns');
-                        debugPrint('NOTE      : $note');
-                        debugPrint('==============================');
+                    // ==========================================================
+                    // DEBUG
+                    // ==========================================================
+                    debugPrint('========== KDS ITEM ==========');
+                    debugPrint('NAME      : $name');
+                    // debugPrint('IS VEG    : $vegValue');
+                    debugPrint('MODIFIERS : $modifiers');
+                    debugPrint('ADDONS    : $addOns');
+                    debugPrint('NOTE      : $note');
+                    debugPrint('==============================');
 
-                        // ==========================================================
-                        // SWITCH VALUE
-                        // ==========================================================
-                        final currentValue =
-                        index < switchValues.length
-                            ? switchValues[index]
-                            : false;
+                    // ==========================================================
+                    // SWITCH VALUE
+                    // ==========================================================
+                    final currentValue =
+                    index < switchValues.length
+                        ? switchValues[index]
+                        : false;
 
 // HIDE TOGGLE-ON ITEM WHEN CANCEL MODE IS ACTIVE
 // ==========================================================
-                      if (isCancelMode && currentValue) {
+                    if (isCancelMode && currentValue) {
                       return const SizedBox.shrink();
-                      }
+                    }
 
-                      return InkWell(
-                        onTap: isCancelled
-                            ? null
-                            : () async {
-                          // ==========================================================
-                          // CANCEL MODE
-                          // ==========================================================
-                          if (isCancelMode) {
-                            setState(() {
-                              if (index < cancelSelections.length) {
-                                cancelSelections[index] =
-                                !cancelSelections[index];
-                              }
-                            });
-                            return;
+                    return InkWell(
+                      onTap: isCancelled
+                          ? null
+                          : () async {
+                        // ==========================================================
+                        // CANCEL MODE
+                        // ==========================================================
+                        if (isCancelMode) {
+                          setState(() {
+                            if (index < cancelSelections.length) {
+                              cancelSelections[index] =
+                              !cancelSelections[index];
+                            }
+                          });
+                          return;
+                        }
+
+                        // ==========================================================
+                        // NORMAL MODE
+                        // TAP PRODUCT ROW -> TOGGLE
+                        // ==========================================================
+                        final value = !currentValue;
+
+                        // ==========================================================
+                        // 1. UPDATE LOCAL TOGGLE
+                        // ==========================================================
+                        setState(() {
+                          final values = _getKotSwitchValues(
+                            switchKey,
+                            items,
+                          );
+
+                          while (values.length < items.length) {
+                            values.add(false);
                           }
 
-                          // ==========================================================
-                          // NORMAL MODE
-                          // TAP PRODUCT ROW -> TOGGLE
-                          // ==========================================================
-                          final value = !currentValue;
+                          values[index] = value;
 
-                          // ==========================================================
-                          // 1. UPDATE LOCAL TOGGLE
-                          // ==========================================================
+                          selectedItemsMap[switchKey] = values;
+                        });
+
+                        // If toggle OFF, don't call backend
+                        if (!value) {
+                          return;
+                        }
+
+                        // ==========================================================
+                        // 2. GET CURRENT ITEM
+                        // ==========================================================
+                        final item = items[index];
+
+                        final dynamic rawItemId =
+                            item['id'] ??
+                                item['lineItemId'] ??
+                                item['line_item_id'];
+
+                        final itemId = int.tryParse(
+                          rawItemId?.toString() ?? '',
+                        );
+
+                        if (itemId == null) {
+                          debugPrint(
+                            '❌ Item ID not found: $item',
+                          );
+                          return;
+                        }
+
+                        // ==========================================================
+                        // 3. GET ORDER INFORMATION
+                        // ==========================================================
+                        final parentId = int.tryParse(
+                          (order['parentOrderId'] ??
+                              order['parent_order_id'] ??
+                              '0')
+                              .toString(),
+                        );
+
+                        final orderId = int.tryParse(
+                          (order['kotId'] ??
+                              order['kot_id'] ??
+                              order['orderId'] ??
+                              order['order_id'] ??
+                              '')
+                              .toString(),
+                        );
+
+                        final zoneId = int.tryParse(
+                          (order['zoneId'] ??
+                              order['zone_id'] ??
+                              '0')
+                              .toString(),
+                        ) ??
+                            0;
+
+                        final restaurantId = int.tryParse(
+                          widget.restaurantId.toString(),
+                        );
+
+                        if (parentId == null ||
+                            orderId == null ||
+                            restaurantId == null) {
+                          debugPrint(
+                            '❌ Missing order information: '
+                                'parentId=$parentId '
+                                'orderId=$orderId '
+                                'restaurantId=$restaurantId',
+                          );
+                          return;
+                        }
+
+                        // ==========================================================
+                        // 4. UPDATE INDIVIDUAL ITEM IN BACKEND
+                        // ==========================================================
+                        final success =
+                        await context
+                            .read<OrderProvider>()
+                            .updateKotItemStatus(
+                          token: widget.token,
+                          parentId: parentId,
+                          orderId: orderId,
+                          restaurantId: restaurantId,
+                          zoneId: zoneId,
+                          items: [itemId],
+                        );
+
+                        // ==========================================================
+                        // 5. API FAILED -> ROLLBACK
+                        // ==========================================================
+                        if (!success) {
+                          if (!mounted) return;
+
                           setState(() {
                             final values = _getKotSwitchValues(
                               switchKey,
                               items,
                             );
 
-                            while (values.length < items.length) {
-                              values.add(false);
+                            if (index < values.length) {
+                              values[index] = false;
                             }
-
-                            values[index] = value;
 
                             selectedItemsMap[switchKey] = values;
                           });
 
-                          // If toggle OFF, don't call backend
-                          if (!value) {
-                            return;
+                          return;
+                        }
+
+                        // ==========================================================
+                        // 6. CHECK ALL ITEMS
+                        // ==========================================================
+                        final values = _getKotSwitchValues(
+                          switchKey,
+                          items,
+                        );
+
+                        bool allItemsReady = items.isNotEmpty;
+
+                        for (int i = 0; i < items.length; i++) {
+                          final rawItem = items[i];
+
+                          final itemIsCancelled =
+                          itemStatusIsCancelled(rawItem);
+
+                          final isToggled =
+                              i < values.length &&
+                                  values[i] == true;
+
+                          if (!itemIsCancelled && !isToggled) {
+                            allItemsReady = false;
+                            break;
                           }
+                        }
 
-                          // ==========================================================
-                          // 2. GET CURRENT ITEM
-                          // ==========================================================
-                          final item = items[index];
+                        debugPrint(
+                          '========== ITEM STATUS CHECK ==========',
+                        );
 
-                          final dynamic rawItemId =
-                              item['id'] ??
-                                  item['lineItemId'] ??
-                                  item['line_item_id'];
+                        debugPrint(
+                          'KOT: ${order['kot_number'] ?? order['id']}',
+                        );
 
-                          final itemId = int.tryParse(
-                            rawItemId?.toString() ?? '',
+                        debugPrint(
+                          'Clicked Item ID: $itemId',
+                        );
+
+                        debugPrint(
+                          'Switch Values: $values',
+                        );
+
+                        debugPrint(
+                          'Total Items: ${items.length}',
+                        );
+
+                        debugPrint(
+                          'All Items Ready: $allItemsReady',
+                        );
+
+                        debugPrint(
+                          '=======================================',
+                        );
+
+                        // ==========================================================
+                        // 7. ALL ITEMS COMPLETED
+                        // ==========================================================
+                        if (allItemsReady) {
+                          debugPrint(
+                            '✅ LAST ITEM COMPLETED -> SERVING KOT',
                           );
 
-                          if (itemId == null) {
-                            debugPrint(
-                              '❌ Item ID not found: $item',
-                            );
-                            return;
+                          await provider.updateOrderStatus(
+                            kotId,
+                            'Served',
+                          );
+
+                          if (mounted) {
+                            setState(() {});
                           }
-
-                          // ==========================================================
-                          // 3. GET ORDER INFORMATION
-                          // ==========================================================
-                          final parentId = int.tryParse(
-                            (order['parentOrderId'] ??
-                                order['parent_order_id'] ??
-                                '0')
-                                .toString(),
-                          );
-
-                          final orderId = int.tryParse(
-                            (order['kotId'] ??
-                                order['kot_id'] ??
-                                order['orderId'] ??
-                                order['order_id'] ??
-                                '')
-                                .toString(),
-                          );
-
-                          final zoneId = int.tryParse(
-                            (order['zoneId'] ??
-                                order['zone_id'] ??
-                                '0')
-                                .toString(),
-                          ) ??
-                              0;
-
-                          final restaurantId = int.tryParse(
-                            widget.restaurantId.toString(),
-                          );
-
-                          if (parentId == null ||
-                              orderId == null ||
-                              restaurantId == null) {
-                            debugPrint(
-                              '❌ Missing order information: '
-                                  'parentId=$parentId '
-                                  'orderId=$orderId '
-                                  'restaurantId=$restaurantId',
-                            );
-                            return;
-                          }
-
-                          // ==========================================================
-                          // 4. UPDATE INDIVIDUAL ITEM IN BACKEND
-                          // ==========================================================
-                          final success =
-                          await context
-                              .read<OrderProvider>()
-                              .updateKotItemStatus(
-                            token: widget.token,
-                            parentId: parentId,
-                            orderId: orderId,
-                            restaurantId: restaurantId,
-                            zoneId: zoneId,
-                            items: [itemId],
-                          );
-
-                          // ==========================================================
-                          // 5. API FAILED -> ROLLBACK
-                          // ==========================================================
-                          if (!success) {
-                            if (!mounted) return;
-
-                            setState(() {
-                              final values = _getKotSwitchValues(
-                                switchKey,
-                                items,
-                              );
-
-                              if (index < values.length) {
-                                values[index] = false;
-                              }
-
-                              selectedItemsMap[switchKey] = values;
-                            });
-
-                            return;
-                          }
-
-                          // ==========================================================
-                          // 6. CHECK ALL ITEMS
-                          // ==========================================================
-                          final values = _getKotSwitchValues(
-                            switchKey,
-                            items,
-                          );
-
-                          bool allItemsReady = items.isNotEmpty;
-
-                          for (int i = 0; i < items.length; i++) {
-                            final rawItem = items[i];
-
-                            final itemIsCancelled =
-                            itemStatusIsCancelled(rawItem);
-
-                            final isToggled =
-                                i < values.length &&
-                                    values[i] == true;
-
-                            if (!itemIsCancelled && !isToggled) {
-                              allItemsReady = false;
-                              break;
-                            }
-                          }
-
+                        } else {
                           debugPrint(
-                            '========== ITEM STATUS CHECK ==========',
+                            '⏳ Some items are still preparing',
                           );
 
                           debugPrint(
-                            'KOT: ${order['kot_number'] ?? order['id']}',
+                            '➡️ KOT remains PREPARING',
                           );
+                        }
+                      },
 
-                          debugPrint(
-                            'Clicked Item ID: $itemId',
-                          );
+                      child: Container(
+                        color: isSelectedForCancel
+                            ? const Color(0x14F04438)
+                            : Colors.transparent,
 
-                          debugPrint(
-                            'Switch Values: $values',
-                          );
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 5,
+                          ),
 
-                          debugPrint(
-                            'Total Items: ${items.length}',
-                          );
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
 
-                          debugPrint(
-                            'All Items Ready: $allItemsReady',
-                          );
+                              // ====================================================
+                              // VEG / NON-VEG ICON
+                              // Uses the Item Queue product-ID map.
+                              // ====================================================
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: isVeg == null
+                                    ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                )
+                                    : vegNonVegIcon(isVeg),
+                              ),
 
-                          debugPrint(
-                            '=======================================',
-                          );
+                              const SizedBox(width: 10),
 
-                          // ==========================================================
-                          // 7. ALL ITEMS COMPLETED
-                          // ==========================================================
-                          if (allItemsReady) {
-                            debugPrint(
-                              '✅ LAST ITEM COMPLETED -> SERVING KOT',
-                            );
+                              // ====================================================
+                              // ITEM DETAILS
+                              // ====================================================
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
 
-                            await provider.updateOrderStatus(
-                              kotId,
-                              'Served',
-                            );
+                                    // ==================================================
+                                    // ITEM NAME + QUANTITY
+                                    // ==================================================
+                                    Row(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.center,
+                                      children: [
 
-                            if (mounted) {
-                              setState(() {});
-                            }
-                          } else {
-                            debugPrint(
-                              '⏳ Some items are still preparing',
-                            );
+                                        // ITEM NAME
+                                        Expanded(
+                                          child: Text(
+                                            name,
+                                            maxLines: 1,
+                                            overflow:
+                                            TextOverflow.ellipsis,
+                                            style:
+                                            GoogleFonts.inter(
+                                              fontSize: 14,
+                                              height: 1.0,
+                                              fontWeight:
+                                              FontWeight.w500,
+                                              color: isCancelled
+                                                  ? const Color(
+                                                0xff98A2B3,
+                                              )
+                                                  : const Color(
+                                                0xff475467,
+                                              ),
+                                              decoration: isCancelled
+                                                  ? TextDecoration.lineThrough
+                                                  : TextDecoration.none,
+                                            ),
+                                          ),
+                                        ),
 
-                            debugPrint(
-                              '➡️ KOT remains PREPARING',
-                            );
-                          }
-                        },
+                                        const SizedBox(width: 8),
 
-                        child: Container(
-                          color: isSelectedForCancel
-                              ? const Color(0x14F04438)
-                              : Colors.transparent,
-
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 5,
-                            ),
-
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-
-                                // ====================================================
-                                // VEG / NON-VEG ICON
-                                // ====================================================
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: vegNonVegIcon(isVeg),
-                                ),
-
-                                const SizedBox(width: 10),
-
-                                // ====================================================
-                                // ITEM DETAILS
-                                // ====================================================
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-
-                                      // ==================================================
-                                      // ITEM NAME + QUANTITY
-                                      // ==================================================
-                                      Row(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                        children: [
-
-                                          // ITEM NAME
-                                          Expanded(
+                                        // QUANTITY
+                                        SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: Container(
+                                            alignment:
+                                            Alignment.center,
+                                            decoration:
+                                            const BoxDecoration(
+                                              color:
+                                              Color(0xffF2F4F7),
+                                              shape: BoxShape.circle,
+                                            ),
                                             child: Text(
-                                              name,
-                                              maxLines: 1,
-                                              overflow:
-                                              TextOverflow.ellipsis,
+                                              '$qty',
+                                              textAlign:
+                                              TextAlign.center,
                                               style:
                                               GoogleFonts.inter(
-                                                fontSize: 14,
+                                                fontSize: 11,
                                                 height: 1.0,
                                                 fontWeight:
-                                                FontWeight.w500,
+                                                FontWeight.w700,
                                                 color: isCancelled
                                                     ? const Color(
                                                   0xff98A2B3,
                                                 )
                                                     : const Color(
-                                                  0xff475467,
+                                                  0xff667085,
                                                 ),
                                                 decoration: isCancelled
                                                     ? TextDecoration.lineThrough
@@ -3853,159 +3927,227 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                               ),
                                             ),
                                           ),
+                                        ),
+                                      ],
+                                    ),
 
-                                          const SizedBox(width: 8),
-
-                                          // QUANTITY
-                                          SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: Container(
-                                              alignment:
-                                              Alignment.center,
-                                              decoration:
-                                              const BoxDecoration(
-                                                color:
-                                                Color(0xffF2F4F7),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Text(
-                                                '$qty',
-                                                textAlign:
-                                                TextAlign.center,
-                                                style:
-                                                GoogleFonts.inter(
-                                                  fontSize: 11,
-                                                  height: 1.0,
-                                                  fontWeight:
-                                                  FontWeight.w700,
-                                                  color: isCancelled
-                                                      ? const Color(
-                                                    0xff98A2B3,
-                                                  )
-                                                      : const Color(
-                                                    0xff667085,
-                                                  ),
-                                                  decoration: isCancelled
-                                                      ? TextDecoration.lineThrough
-                                                      : TextDecoration.none,
-                                                ),
-                                              ),
+                                    // ==================================================
+                                    // MODIFIERS
+                                    // ==================================================
+                                    if (modifiers.isNotEmpty)
+                                      Padding(
+                                        padding:
+                                        const EdgeInsets.only(
+                                          top: 4,
+                                        ),
+                                        child: Text(
+                                          'Modifier: ${modifiers.join(', ')}',
+                                          maxLines: 2,
+                                          overflow:
+                                          TextOverflow.ellipsis,
+                                          style:
+                                          GoogleFonts.inter(
+                                            fontSize: 10,
+                                            height: 1.2,
+                                            fontWeight:
+                                            FontWeight.w500,
+                                            color: isCancelled
+                                                ? const Color(
+                                              0xff98A2B3,
+                                            )
+                                                : const Color(
+                                              0xffF04438,
                                             ),
+                                            decoration: isCancelled
+                                                ? TextDecoration.lineThrough
+                                                : TextDecoration.none,
                                           ),
-                                        ],
+                                        ),
                                       ),
 
-                                      // ==================================================
-                                      // MODIFIERS
-                                      // ==================================================
-                                      if (modifiers.isNotEmpty)
-                                        Padding(
-                                          padding:
-                                          const EdgeInsets.only(
-                                            top: 4,
-                                          ),
-                                          child: Text(
-                                            'Modifier: ${modifiers.join(', ')}',
-                                            maxLines: 2,
-                                            overflow:
-                                            TextOverflow.ellipsis,
-                                            style:
-                                            GoogleFonts.inter(
-                                              fontSize: 10,
-                                              height: 1.2,
-                                              fontWeight:
-                                              FontWeight.w500,
-                                              color: isCancelled
-                                                  ? const Color(
-                                                0xff98A2B3,
-                                              )
-                                                  : const Color(
-                                                0xffF04438,
-                                              ),
-                                              decoration: isCancelled
-                                                  ? TextDecoration.lineThrough
-                                                  : TextDecoration.none,
+                                    // ==================================================
+                                    // ADD-ONS
+                                    // ==================================================
+                                    if (addOns.isNotEmpty)
+                                      Padding(
+                                        padding:
+                                        const EdgeInsets.only(
+                                          top: 2,
+                                        ),
+                                        child: Text(
+                                          'Add-on: ${formatAddOns(addOns)}',
+                                          maxLines: 2,
+                                          overflow:
+                                          TextOverflow.ellipsis,
+                                          style:
+                                          GoogleFonts.inter(
+                                            fontSize: 10,
+                                            height: 1.2,
+                                            fontWeight:
+                                            FontWeight.w500,
+                                            color: isCancelled
+                                                ? const Color(
+                                              0xff98A2B3,
+                                            )
+                                                : const Color(
+                                              0xff667085,
                                             ),
+                                            decoration: isCancelled
+                                                ? TextDecoration.lineThrough
+                                                : TextDecoration.none,
                                           ),
                                         ),
+                                      ),
+                                  ],
+                                ),
+                              ),
 
-                                      // ==================================================
-                                      // ADD-ONS
-                                      // ==================================================
-                                      if (addOns.isNotEmpty)
-                                        Padding(
-                                          padding:
-                                          const EdgeInsets.only(
-                                            top: 2,
-                                          ),
-                                          child: Text(
-                                            'Add-on: ${formatAddOns(addOns)}',
-                                            maxLines: 2,
-                                            overflow:
-                                            TextOverflow.ellipsis,
-                                            style:
-                                            GoogleFonts.inter(
-                                              fontSize: 10,
-                                              height: 1.2,
-                                              fontWeight:
-                                              FontWeight.w500,
-                                              color: isCancelled
-                                                  ? const Color(
-                                                0xff98A2B3,
-                                              )
-                                                  : const Color(
-                                                0xff667085,
-                                              ),
-                                              decoration: isCancelled
-                                                  ? TextDecoration.lineThrough
-                                                  : TextDecoration.none,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
+                              const SizedBox(width: 18),
+
+                              // ====================================================
+                              // CANCEL CHECKBOX
+                              // ====================================================
+                              if (isCancelMode)
+                                Padding(
+                                  padding:
+                                  const EdgeInsets.only(top: 2),
+                                  child: Icon(
+                                    isSelectedForCancel
+                                        ? Icons.check_box
+                                        : Icons.check_box_outline_blank,
+                                    size: 18,
+                                    color: isSelectedForCancel
+                                        ? const Color(0xffF04438)
+                                        : const Color(0xff98A2B3),
                                   ),
                                 ),
 
-                                const SizedBox(width: 18),
+                              if (isCancelMode)
+                                const SizedBox(width: 4),
 
-                                // ====================================================
-                                // CANCEL CHECKBOX
-                                // ====================================================
-                                if (isCancelMode)
-                                  Padding(
-                                    padding:
-                                    const EdgeInsets.only(top: 2),
-                                    child: Icon(
-                                      isSelectedForCancel
-                                          ? Icons.check_box
-                                          : Icons.check_box_outline_blank,
-                                      size: 18,
-                                      color: isSelectedForCancel
-                                          ? const Color(0xffF04438)
-                                          : const Color(0xff98A2B3),
-                                    ),
-                                  ),
+                              // ====================================================
+                              // TOGGLE
+                              // ====================================================
+                              if (!isCancelMode)
+                                Padding(
+                                  padding:
+                                  const EdgeInsets.only(top: 2),
+                                  child: _buildCompactItemToggle(
+                                    value: currentValue,
+                                    activeColor:
+                                    const Color(0xff3B923F),
+                                    onChanged: isCancelled
+                                        ? (_) {}
+                                        : (value) async {
+                                      // The same row-tap
+                                      // logic is used here.
 
-                                if (isCancelMode)
-                                  const SizedBox(width: 4),
+                                      setState(() {
+                                        final values =
+                                        _getKotSwitchValues(
+                                          switchKey,
+                                          items,
+                                        );
 
-                                // ====================================================
-                                // TOGGLE
-                                // ====================================================
-                                if (!isCancelMode)
-                                  Padding(
-                                    padding:
-                                    const EdgeInsets.only(top: 2),
-                                    child: _buildCompactItemToggle(
-                                      value: currentValue,
-                                      activeColor:
-                                      const Color(0xff3B923F),
-                                      onChanged: isCancelled
-                                          ? (_) {}
-                                          : (value) async {
-                                        // The same row-tap
-                                        // logic is used here.
+                                        while (values.length <
+                                            items.length) {
+                                          values.add(false);
+                                        }
+
+                                        values[index] = value;
+
+                                        selectedItemsMap[
+                                        switchKey] = values;
+                                      });
+
+                                      if (!value) {
+                                        return;
+                                      }
+
+                                      final item =
+                                      items[index];
+
+                                      final dynamic rawItemId =
+                                          item['id'] ??
+                                              item['lineItemId'] ??
+                                              item[
+                                              'line_item_id'];
+
+                                      final itemId =
+                                      int.tryParse(
+                                        rawItemId?.toString() ??
+                                            '',
+                                      );
+
+                                      if (itemId == null) {
+                                        debugPrint(
+                                          '❌ Item ID not found: $item',
+                                        );
+                                        return;
+                                      }
+
+                                      final parentId =
+                                      int.tryParse(
+                                        (order[
+                                        'parentOrderId'] ??
+                                            order[
+                                            'parent_order_id'] ??
+                                            '0')
+                                            .toString(),
+                                      );
+
+                                      final orderId =
+                                      int.tryParse(
+                                        (order['kotId'] ??
+                                            order['kot_id'] ??
+                                            order['orderId'] ??
+                                            order['order_id'] ??
+                                            '')
+                                            .toString(),
+                                      );
+
+                                      final zoneId =
+                                          int.tryParse(
+                                            (order['zoneId'] ??
+                                                order[
+                                                'zone_id'] ??
+                                                '0')
+                                                .toString(),
+                                          ) ??
+                                              0;
+
+                                      final restaurantId =
+                                      int.tryParse(
+                                        widget.restaurantId
+                                            .toString(),
+                                      );
+
+                                      if (parentId == null ||
+                                          orderId == null ||
+                                          restaurantId ==
+                                              null) {
+                                        debugPrint(
+                                          '❌ Missing order information',
+                                        );
+                                        return;
+                                      }
+
+                                      final success =
+                                      await context
+                                          .read<
+                                          OrderProvider>()
+                                          .updateKotItemStatus(
+                                        token: widget.token,
+                                        parentId: parentId,
+                                        orderId: orderId,
+                                        restaurantId:
+                                        restaurantId,
+                                        zoneId: zoneId,
+                                        items: [itemId],
+                                      );
+
+                                      if (!success) {
+                                        if (!mounted) return;
 
                                         setState(() {
                                           final values =
@@ -4014,182 +4156,75 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                             items,
                                           );
 
-                                          while (values.length <
-                                              items.length) {
-                                            values.add(false);
+                                          if (index <
+                                              values.length) {
+                                            values[index] =
+                                            false;
                                           }
-
-                                          values[index] = value;
 
                                           selectedItemsMap[
                                           switchKey] = values;
                                         });
 
-                                        if (!value) {
-                                          return;
-                                        }
+                                        return;
+                                      }
 
-                                        final item =
-                                        items[index];
+                                      final values =
+                                      _getKotSwitchValues(
+                                        switchKey,
+                                        items,
+                                      );
 
-                                        final dynamic rawItemId =
-                                            item['id'] ??
-                                                item['lineItemId'] ??
-                                                item[
-                                                'line_item_id'];
+                                      bool allItemsReady =
+                                          items.isNotEmpty;
 
-                                        final itemId =
-                                        int.tryParse(
-                                          rawItemId?.toString() ??
-                                              '',
+                                      for (int i = 0;
+                                      i < items.length;
+                                      i++) {
+                                        final rawItem =
+                                        items[i];
+
+                                        final itemIsCancelled =
+                                        itemStatusIsCancelled(
+                                          rawItem,
                                         );
 
-                                        if (itemId == null) {
-                                          debugPrint(
-                                            '❌ Item ID not found: $item',
-                                          );
-                                          return;
-                                        }
+                                        final isToggled =
+                                            i < values.length &&
+                                                values[i] == true;
 
-                                        final parentId =
-                                        int.tryParse(
-                                          (order[
-                                          'parentOrderId'] ??
-                                              order[
-                                              'parent_order_id'] ??
-                                              '0')
-                                              .toString(),
+                                        if (!itemIsCancelled &&
+                                            !isToggled) {
+                                          allItemsReady = false;
+                                          break;
+                                        }
+                                      }
+
+                                      if (allItemsReady) {
+                                        await provider
+                                            .updateOrderStatus(
+                                          kotId,
+                                          'Served',
                                         );
 
-                                        final orderId =
-                                        int.tryParse(
-                                          (order['kotId'] ??
-                                              order['kot_id'] ??
-                                              order['orderId'] ??
-                                              order['order_id'] ??
-                                              '')
-                                              .toString(),
-                                        );
-
-                                        final zoneId =
-                                            int.tryParse(
-                                              (order['zoneId'] ??
-                                                  order[
-                                                  'zone_id'] ??
-                                                  '0')
-                                                  .toString(),
-                                            ) ??
-                                                0;
-
-                                        final restaurantId =
-                                        int.tryParse(
-                                          widget.restaurantId
-                                              .toString(),
-                                        );
-
-                                        if (parentId == null ||
-                                            orderId == null ||
-                                            restaurantId ==
-                                                null) {
-                                          debugPrint(
-                                            '❌ Missing order information',
-                                          );
-                                          return;
+                                        if (mounted) {
+                                          setState(() {});
                                         }
-
-                                        final success =
-                                        await context
-                                            .read<
-                                            OrderProvider>()
-                                            .updateKotItemStatus(
-                                          token: widget.token,
-                                          parentId: parentId,
-                                          orderId: orderId,
-                                          restaurantId:
-                                          restaurantId,
-                                          zoneId: zoneId,
-                                          items: [itemId],
-                                        );
-
-                                        if (!success) {
-                                          if (!mounted) return;
-
-                                          setState(() {
-                                            final values =
-                                            _getKotSwitchValues(
-                                              switchKey,
-                                              items,
-                                            );
-
-                                            if (index <
-                                                values.length) {
-                                              values[index] =
-                                              false;
-                                            }
-
-                                            selectedItemsMap[
-                                            switchKey] = values;
-                                          });
-
-                                          return;
-                                        }
-
-                                        final values =
-                                        _getKotSwitchValues(
-                                          switchKey,
-                                          items,
-                                        );
-
-                                        bool allItemsReady =
-                                            items.isNotEmpty;
-
-                                        for (int i = 0;
-                                        i < items.length;
-                                        i++) {
-                                          final rawItem =
-                                          items[i];
-
-                                          final itemIsCancelled =
-                                          itemStatusIsCancelled(
-                                            rawItem,
-                                          );
-
-                                          final isToggled =
-                                              i < values.length &&
-                                                  values[i] == true;
-
-                                          if (!itemIsCancelled &&
-                                              !isToggled) {
-                                            allItemsReady = false;
-                                            break;
-                                          }
-                                        }
-
-                                        if (allItemsReady) {
-                                          await provider
-                                              .updateOrderStatus(
-                                            kotId,
-                                            'Served',
-                                          );
-
-                                          if (mounted) {
-                                            setState(() {});
-                                          }
-                                        }
-                                      },
-                                    ),
+                                      }
+                                    },
                                   ),
-                              ],
-                            ),
+                                ),
+                            ],
                           ),
                         ),
-                      );
-                      },
-                    ),
+                      ),
+                    );
+                  },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
           // ),
 
           // =============================================================
@@ -4788,3 +4823,4 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     );
   }
 }
+

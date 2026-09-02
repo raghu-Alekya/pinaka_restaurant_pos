@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
+
+import '../widgets/stock_screen.dart';
 
 class ProductRepository {
   final String baseUrl;
@@ -81,10 +84,8 @@ class ProductRepository {
   // UPDATE PRODUCT STOCK STATUS
   // ==========================================================
 
-  Future<bool> updateProductStatus({
-    required int productId,
-    required String oldStatus,
-    required String newStatus,
+  Future<bool> updateMultipleProductStatus({
+    required List<Map<String, dynamic>> products,
     required String pin,
   }) async {
     final url = Uri.parse(
@@ -93,23 +94,18 @@ class ProductRepository {
 
     try {
       final requestBody = {
-        'products': [
-          {
-            'product_id': productId,
-            'old_status': oldStatus,
-            'new_status': newStatus,
-          },
-        ],
+        'products': products,
         'pin': pin,
       };
 
-      print('==========================================');
-      print('UPDATE PRODUCT STATUS API');
-      print('URL: $url');
-      print(
+      debugPrint('==========================================');
+      debugPrint('BULK UPDATE PRODUCT STATUS API');
+      debugPrint('URL: $url');
+      debugPrint('PRODUCT COUNT: ${products.length}');
+      debugPrint(
         'REQUEST BODY: ${jsonEncode(requestBody)}',
       );
-      print('==========================================');
+      debugPrint('==========================================');
 
       final response = await http.post(
         url,
@@ -120,11 +116,11 @@ class ProductRepository {
         body: jsonEncode(requestBody),
       );
 
-      print(
+      debugPrint(
         'UPDATE STATUS CODE: ${response.statusCode}',
       );
 
-      print(
+      debugPrint(
         'UPDATE STATUS RESPONSE: ${response.body}',
       );
 
@@ -139,8 +135,8 @@ class ProductRepository {
             'Response: ${response.body}',
       );
     } catch (e) {
-      print(
-        'UPDATE PRODUCT STATUS ERROR: $e',
+      debugPrint(
+        'BULK UPDATE PRODUCT STATUS ERROR: $e',
       );
 
       rethrow;
