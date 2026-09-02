@@ -80,6 +80,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
   @override
   void initState() {
     if (Platform.isWindows) defaultPrinterType = PrinterType.usb;
+    if (Platform.isIOS) _isBle = true; // iOS only supports BLE, not classic Bluetooth
     super.initState();
     _portController.text = _port;
     _scan();
@@ -602,9 +603,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
   void _scan() {
     devices.clear();
 
-    _subscription = printerManager
+     _subscription = printerManager
         .discovery(type: defaultPrinterType, isBle: _isBle)
-        .listen((device) {
+        .listen(
+            (device) {
       if (kDebugMode) {
         print("device found: ${device.name}, address: ${device.address}");
       }
@@ -1217,7 +1219,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
               setState(() {
                 defaultPrinterType = type;
                 selectedPrinter = null;
-                _isBle = false;
+                _isBle = type == PrinterType.bluetooth && Platform.isIOS ? true : false;
                 _isConnected = false;
                 _networkDevices.clear();
                 devices.clear();
