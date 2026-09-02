@@ -1520,6 +1520,7 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                                                         : orderModel?.zoneId,
                                                                     isTakeAway:
                                                                     isTakeAwayType,
+                                                                    isFromOrderList: true,
                                                                   ),
                                                                 ),
                                                               ),

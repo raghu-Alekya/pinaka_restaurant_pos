@@ -24,7 +24,7 @@ class PaymentScreen extends StatefulWidget {
   final String restaurantName;
   final int? zoneId;
   final bool isTakeAway;
-
+  final bool isFromOrderList;
   const PaymentScreen({
     super.key,
     required this.loadedTables,
@@ -34,6 +34,7 @@ class PaymentScreen extends StatefulWidget {
     required this.restaurantName,
     this.zoneId,
     this.isTakeAway = false,
+    this.isFromOrderList = false,
   });
 
   @override

@@ -2382,6 +2382,7 @@ class _TablesScreenState extends State<TablesScreen> {
             });
           },
         ),
+
         body: Stack(
           children: [
             if (_currentViewMode == ViewMode.normal)
@@ -2789,6 +2790,45 @@ class _TablesScreenState extends State<TablesScreen> {
                       child: _buildSharedAreaFilter(),
                     ),
                   ),
+                  if (!_showPopup) const SizedBox(width: 20),
+
+// Merge table instruction
+                  if (!_showPopup)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF2A2F45)
+                            : const Color(0xFFE8EEFC),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.touch_app_outlined,
+                            size: 18,
+                            color: isDark
+                                ? Colors.white70
+                                : const Color(0xFF15315E),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Merge / Unmerge Table - Long Press',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? Colors.white70
+                                  : const Color(0xFF15315E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   if (!_showPopup) const SizedBox(width: 20),
 

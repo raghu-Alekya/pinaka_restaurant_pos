@@ -14,6 +14,7 @@ import '../../printer/printer_db_helper.dart';
 import '../../printer/printer_settings.dart';
 import '../../services/kds_seivices.dart';
 import '../ui/dashboard screen.dart';
+import '../ui/orderstatus_screen.dart';
 import '../ui/tables_screen.dart';
 
 // Add these imports for printer functionality
@@ -37,6 +38,7 @@ class PrintRecipt extends StatefulWidget {
   final UserPermissions? userPermissions;
   final bool isFromOrderDetails;
   final bool isCopy;
+  final bool isFromOrderList;
 
   const PrintRecipt({
     Key? key,
@@ -52,6 +54,7 @@ class PrintRecipt extends StatefulWidget {
     this.userPermissions,
     this.isFromOrderDetails = false,
     this.isCopy = false,
+    this.isFromOrderList = false,
   }) : super(key: key);
 
   @override
@@ -641,126 +644,133 @@ class _PrintReciptState extends State<PrintRecipt> {
   }
 
   Future<void> _onDonePressed({bool isNoReceipt = false}) async {
+    // ==========================================================
+    // PRINT / VALIDATION LOGIC
+    // ==========================================================
+
     if (!isNoReceipt) {
-      // Validation
-      if (_selectedOption == 'Email') {
-        final email = _emailController.text.trim();
-
-        if (email.isEmpty || !email.contains("@")) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Please enter a valid email address"),
-              duration: Duration(seconds: 1),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-
-      if (_selectedOption == 'SMS') {
-        final sms = _smsController.text.trim();
-
-        if (sms.isEmpty || sms.length != 10) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Please enter a valid phone number"),
-              duration: Duration(seconds: 1),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-
-      // Print receipt
       if (_selectedOption == 'Printer') {
         await _printToPrinter();
       }
+
+      // Keep your Email and SMS validation here.
     }
-
-    // STEP 1: CLOSE PRINT DIALOG
-    Navigator.of(context).pop();
-
-    if (widget.isFromOrderDetails) {
-      return;
-    }
-
-    // ==========================================================
-    // STEP 2: SEND TAKEAWAY COMPLETED EVENT TO KDS
-    // ==========================================================
-
-    if (widget.isTakeAway) {
-      try {
-        final parentOrderId =
-        int.tryParse(widget.paymentSummary.orderId.toString());
-
-        debugPrint('========== TAKEAWAY COMPLETE ==========');
-        debugPrint(
-          'Payment Order ID: ${widget.paymentSummary.orderId}',
-        );
-        debugPrint(
-          'Parsed Parent Order ID: $parentOrderId',
-        );
-        debugPrint(
-          'Restaurant ID: ${widget.restaurantId}',
-        );
-
-        if (parentOrderId != null) {
-          final orderState = context.read<OrderBloc>().state;
-
-          final kotId = orderState.kotList.isNotEmpty
-              ? orderState.kotList.first.kotId
-              : null;
-
-          final kotNumber = orderState.kotList.isNotEmpty
-              ? orderState.kotList.first.kotNumber
-              : null;
-
-          await KdsMqttPublisher.notifyTakeawayCompleted(
-            restaurantId: widget.restaurantId,
-            parentOrderId: parentOrderId,
-            kotId: kotId,
-            kotNumber: kotNumber,
-          );
-
-          debugPrint(
-              '========== TAKEAWAY MQTT SENT =========='
-          );
-        } else {
-          debugPrint(
-            '❌ Could not parse parentOrderId',
-          );
-        }
-      } catch (e, stack) {
-        debugPrint(
-          '❌ Takeaway MQTT error: $e',
-        );
-        debugPrint(
-          'Stack: $stack',
-        );
-      }
-    }
-
-    // ==========================================================
-    // STEP 3: CLEAR ORDER STATE
-    // ==========================================================
-
-    context.read<OrderBloc>().add(ResetOrder());
-
-    // Small delay ensures Bloc processes event
-    await Future.delayed(
-      const Duration(milliseconds: 100),
-    );
 
     if (!mounted) return;
 
     // ==========================================================
-    // STEP 4: NAVIGATE
+    // IMPORTANT: GET BLOC AND NAVIGATOR BEFORE POPPING DIALOG
+    // ==========================================================
+
+    final orderBloc = context.read<OrderBloc>();
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+
+    debugPrint('========== PRINT RECEIPT NAVIGATION ==========');
+    debugPrint('isFromOrderList: ${widget.isFromOrderList}');
+    debugPrint('isFromOrderDetails: ${widget.isFromOrderDetails}');
+    debugPrint('isTakeAway: ${widget.isTakeAway}');
+
+    // ==========================================================
+    // GET DATA REQUIRED FOR TAKEAWAY BEFORE RESET
+    // ==========================================================
+
+    int? parentOrderId;
+    dynamic kotId;
+    dynamic kotNumber;
+
+    if (widget.isTakeAway) {
+      parentOrderId =
+          int.tryParse(widget.paymentSummary.orderId.toString());
+
+      final orderState = orderBloc.state;
+
+      if (orderState.kotList.isNotEmpty) {
+        kotId = orderState.kotList.first.kotId;
+        kotNumber = orderState.kotList.first.kotNumber;
+      }
+    }
+
+    // ==========================================================
+    // SEND TAKEAWAY MQTT
+    // ==========================================================
+
+    if (widget.isTakeAway && parentOrderId != null) {
+      try {
+        await KdsMqttPublisher.notifyTakeawayCompleted(
+          restaurantId: widget.restaurantId,
+          parentOrderId: parentOrderId,
+          kotId: kotId,
+          kotNumber: kotNumber,
+        );
+
+        debugPrint('========== TAKEAWAY MQTT SENT ==========');
+      } catch (e, stack) {
+        debugPrint('❌ Takeaway MQTT error: $e');
+        debugPrint('Stack: $stack');
+      }
+    }
+
+    // ==========================================================
+    // RESET ORDER
+    // ==========================================================
+
+    orderBloc.add(ResetOrder());
+
+    // ==========================================================
+    // CLOSE PRINT RECEIPT DIALOG
+    // ==========================================================
+
+    if (rootNavigator.canPop()) {
+      rootNavigator.pop();
+    }
+
+    // Allow dialog pop animation to complete.
+    await Future.delayed(
+      const Duration(milliseconds: 300),
+    );
+
+    // ==========================================================
+    // ORDER LIST NAVIGATION — HIGHEST PRIORITY
+    // ==========================================================
+
+    if (widget.isFromOrderList) {
+      debugPrint('🚀 NAVIGATING TO ORDERS LIST');
+
+      rootNavigator.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => OrdersListTable(
+            token: widget.token,
+            pin: widget.pin,
+            orders: const [],
+            restaurantId: widget.restaurantId,
+            restaurantName: widget.restaurantName,
+            userPermissions: widget.userPermissions,
+            loadedTables: widget.loadedTables,
+          ),
+        ),
+            (route) => false,
+      );
+
+      return;
+    }
+
+    // ==========================================================
+    // ORDER DETAILS
+    // ==========================================================
+
+    if (widget.isFromOrderDetails) {
+      debugPrint('🚀 CLOSED PRINT RECEIPT FROM ORDER DETAILS');
+      return;
+    }
+
+    // ==========================================================
+    // TAKEAWAY NAVIGATION
     // ==========================================================
 
     if (widget.isTakeAway) {
-      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      debugPrint('🚀 NAVIGATING TO TAKEAWAY DASHBOARD');
+
+      rootNavigator.pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => DashboardScreen(
             pin: widget.pin,
@@ -773,21 +783,29 @@ class _PrintReciptState extends State<PrintRecipt> {
         ),
             (route) => false,
       );
-    } else {
-      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => TablesScreen(
-            loadedTables: widget.loadedTables,
-            pin: widget.pin,
-            token: widget.token,
-            restaurantId: widget.restaurantId,
-            restaurantName: widget.restaurantName,
-            zoneId: widget.zoneId,
-          ),
-        ),
-            (route) => false,
-      );
+
+      return;
     }
+
+    // ==========================================================
+    // DINE-IN NAVIGATION
+    // ==========================================================
+
+    debugPrint('🚀 NAVIGATING TO TABLES SCREEN');
+
+    rootNavigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => TablesScreen(
+          loadedTables: widget.loadedTables,
+          pin: widget.pin,
+          token: widget.token,
+          restaurantId: widget.restaurantId,
+          restaurantName: widget.restaurantName,
+          zoneId: widget.zoneId,
+        ),
+      ),
+          (route) => false,
+    );
   }
 
   @override

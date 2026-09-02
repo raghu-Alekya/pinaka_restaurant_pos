@@ -2921,7 +2921,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                   );
                                 },
                               ),
-
+                              const SizedBox(width: 6),
                               orderButton(
                                 'KOT Print',
                                 canPrintKot
@@ -3199,7 +3199,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                 }
                                     : null,
                               ),
-
+                              const SizedBox(width: 6),
                               orderButton(
                                 'Checkout',
                                 canPay ? const Color(0xFF16A34A) : Colors.grey,
@@ -3253,6 +3253,7 @@ class _OrderPanelState extends State<OrderPanel> {
                                                       zoneId: widget.zoneId,
                                                       isTakeAway:
                                                           false, // ✅ Explicitly false for Dine-In
+                                                      isFromOrderList: false,
                                                     ),
                                                   ),
                                             ),
@@ -3530,6 +3531,7 @@ class _OrderPanelState extends State<OrderPanel> {
                   restaurantName: widget.restaurantName,
                   zoneId: widget.zoneId,
                   isTakeAway: true,
+                  isFromOrderList: false,
                 ),
               ),
             ),
@@ -3594,7 +3596,7 @@ class _OrderPanelState extends State<OrderPanel> {
     Color? textColor,
   }) => Expanded(
     child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 0),
       child: SizedBox(
         height: 55,
         child: ElevatedButton(

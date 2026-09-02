@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:pinaka_restaurant_pos/App%20flow/widgets/print_receipt.dart';
-import 'package:pinaka_restaurant_pos/blocs/Bloc%20Event/order_event.dart';
-import 'package:pinaka_restaurant_pos/blocs/Bloc%20Logic/order_bloc.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/payment/payment_summary_model.dart';
 
-class Paymentsucess extends StatelessWidget {
+class Paymentsucess extends StatefulWidget {
   final String? amount;
   final String? paymentMode;
   final String? changeAmount;
@@ -22,9 +19,9 @@ class Paymentsucess extends StatelessWidget {
   final String restaurantName;
   final int? zoneId;
   final bool isTakeAway;
-
+  final bool isFromOrderList;
   const Paymentsucess({
-    Key? key,
+    super.key,
     this.amount,
     this.paymentMode,
     this.changeAmount,
@@ -39,148 +36,238 @@ class Paymentsucess extends StatelessWidget {
     required this.paymentSummary,
     required this.cashierName,
     this.isTakeAway = false,
-  }) : super(key: key);
+    this.isFromOrderList = false,
+  });
 
   @override
+  State<Paymentsucess> createState() => _PaymentsucessState();
+}
+
+class _PaymentsucessState extends State<Paymentsucess> {
+  bool _hidePaymentSuccess = false;
+  @override
+  void initState() {
+    super.initState();
+
+    debugPrint('========== PAYMENT SUCCESS CREATED ==========');
+    debugPrint('isFromOrderList: ${widget.isFromOrderList}');
+    debugPrint('isTakeAway: ${widget.isTakeAway}');
+    debugPrint('Order ID: ${widget.orderId}');
+  }
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      width: MediaQuery.of(context).size.width * 0.45,
-      height: MediaQuery.of(context).size.height * 0.60,
-      decoration: ShapeDecoration(
-        color: theme.cardColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Center(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomLeft,
-                    colors: isDark
-                        ? [
-                      Colors.green.shade800,
-                      theme.cardColor,
-                    ]
-                        : const [
-                      Color(0xFFBAE8AB),
-                      Colors.white,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(63),
-                ),
-                child: Center(
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/icon/sucess.png',
-                      width: 55,
-                      height: 55,
-                      fit: BoxFit.cover,
+    return IgnorePointer(
+      ignoring: _hidePaymentSuccess,
+      child: Opacity(
+        opacity: _hidePaymentSuccess ? 0 : 1,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.45,
+          height: MediaQuery.of(context).size.height * 0.60,
+          decoration: ShapeDecoration(
+            color: theme.cardColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Center(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // =========================================================
+                  // SUCCESS ICON
+                  // =========================================================
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomLeft,
+                        colors: isDark
+                            ? [
+                          Colors.green.shade800,
+                          theme.cardColor,
+                        ]
+                            : const [
+                          Color(0xFFBAE8AB),
+                          Colors.white,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(63),
+                    ),
+                    child: Center(
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/icon/sucess.png',
+                          width: 55,
+                          height: 55,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
 
-              Text(
-                'Your transaction is successfully Done!',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                  height: 1.5,
-                ),
-              ),
+                  const SizedBox(height: 12),
 
-              const SizedBox(height: 15),
-
-              _buildInfoRow(context, paymentMode, amount),
-
-              const SizedBox(height: 15),
-
-              _buildChangeRow(context, changeAmount),
-
-              const SizedBox(height: 25),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildActionButton(
-                    context,
-                    label: 'Void',
-                    color: Colors.red.shade400,
-                    onTap: () async {
-                      final shouldVoid =
-                      await _showVoidConfirmation(context);
-                      if (shouldVoid == true) {
-                        if (!context.mounted) return;
-                        Navigator.pop(context, "void");
-                      }
-                    },
+                  // =========================================================
+                  // TITLE
+                  // =========================================================
+                  Text(
+                    'Your transaction is successfully Done!',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                    ),
                   ),
 
-                  const SizedBox(width: 30),
+                  const SizedBox(height: 15),
 
-                  _buildActionButton(
+                  // =========================================================
+                  // PAYMENT INFORMATION
+                  // =========================================================
+                  _buildInfoRow(
                     context,
-                    label: 'Print',
-                    color: Colors.green.shade600,
-                    onTap: () {
-                      Navigator.pop(context);
+                    widget.paymentMode,
+                    widget.amount,
+                  ),
 
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => Dialog(
-                          backgroundColor: Colors.transparent,
-                          insetPadding: EdgeInsets.zero,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                left: 330,
-                                top: 60,
-                                bottom: 60,
-                              ),
-                              child: PrintRecipt(
-                                loadedTables: loadedTables,
-                                pin: pin,
-                                token: token,
-                                restaurantId: restaurantId,
-                                restaurantName: restaurantName,
-                                zoneId: zoneId,
-                                paymentSummary: paymentSummary,
-                                cashierName: cashierName,
-                                isTakeAway: isTakeAway,
+                  const SizedBox(height: 15),
+
+                  // =========================================================
+                  // CHANGE AMOUNT
+                  // =========================================================
+                  _buildChangeRow(
+                    context,
+                    widget.changeAmount,
+                  ),
+
+                  const SizedBox(height: 25),
+
+                  // =========================================================
+                  // ACTION BUTTONS
+                  // =========================================================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // =====================================================
+                      // VOID BUTTON
+                      // =====================================================
+                      _buildActionButton(
+                        context,
+                        label: 'Void',
+                        color: Colors.red.shade400,
+                        onTap: () async {
+                          // Hide Payment Success UI.
+                          setState(() {
+                            _hidePaymentSuccess = true;
+                          });
+
+                          // Wait for UI rebuild.
+                          await Future.delayed(
+                            const Duration(milliseconds: 100),
+                          );
+
+                          if (!mounted) return;
+
+                          // Show Void Confirmation.
+                          final shouldVoid =
+                          await _showVoidConfirmation(context);
+
+                          if (!mounted) return;
+
+                          // ===============================================
+                          // YES, VOID
+                          // ===============================================
+                          if (shouldVoid == true) {
+                            // Preserve your original navigation logic.
+                            Navigator.pop(context, "void");
+                            return;
+                          }
+
+                          // ===============================================
+                          // CANCEL
+                          // ===============================================
+                          if (shouldVoid == false) {
+                            // Show Payment Success UI again.
+                            setState(() {
+                              _hidePaymentSuccess = false;
+                            });
+                          }
+                        },
+                      ),
+
+                      const SizedBox(width: 30),
+
+                      // =====================================================
+                      // PRINT BUTTON
+                      // =====================================================
+                      _buildActionButton(
+                        context,
+                        label: 'Print',
+                        color: Colors.green.shade600,
+                        onTap: () {
+                          Navigator.pop(context);
+
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (context) => Dialog(
+                              backgroundColor: Colors.transparent,
+                              insetPadding: EdgeInsets.zero,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 330,
+                                    top: 60,
+                                    bottom: 60,
+                                  ),
+                                  child: PrintRecipt(
+                                    loadedTables: widget.loadedTables,
+                                    pin: widget.pin,
+                                    token: widget.token,
+                                    restaurantId: widget.restaurantId,
+                                    restaurantName: widget.restaurantName,
+                                    zoneId: widget.zoneId,
+                                    paymentSummary:
+                                    widget.paymentSummary,
+                                    cashierName: widget.cashierName,
+                                    isTakeAway: widget.isTakeAway,
+                                    isFromOrderList: widget.isFromOrderList,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, String? mode, String? amount) {
+  // =============================================================
+  // PAYMENT INFO ROW
+  // =============================================================
+
+  Widget _buildInfoRow(
+      BuildContext context,
+      String? mode,
+      String? amount,
+      ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -217,19 +304,18 @@ class Paymentsucess extends StatelessWidget {
               fontWeight: FontWeight.w700,
               fontSize: 20,
               color: isDark
-                  ? const Color(0xFF498FFF) // Dark mode
-                  : theme.colorScheme.onSurface, // Light mode
+                  ? const Color(0xFF498FFF)
+                  : theme.colorScheme.onSurface,
             ),
           ),
-
           Text(
             "₹$formattedAmount",
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               fontSize: 20,
               color: isDark
-                  ? const Color(0xFF498FFF) // Dark mode
-                  : theme.colorScheme.onSurface, // Light mode
+                  ? const Color(0xFF498FFF)
+                  : theme.colorScheme.onSurface,
             ),
           ),
         ],
@@ -237,9 +323,14 @@ class Paymentsucess extends StatelessWidget {
     );
   }
 
-  Widget _buildChangeRow(BuildContext context, String? change) {
-    debugPrint("🟢 Change received in UI = $change");
+  // =============================================================
+  // CHANGE ROW
+  // =============================================================
 
+  Widget _buildChangeRow(
+      BuildContext context,
+      String? change,
+      ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -290,6 +381,10 @@ class Paymentsucess extends StatelessWidget {
     );
   }
 
+  // =============================================================
+  // ACTION BUTTON
+  // =============================================================
+
   Widget _buildActionButton(
       BuildContext context, {
         required String label,
@@ -331,7 +426,13 @@ class Paymentsucess extends StatelessWidget {
     );
   }
 
-  Future<bool?> _showVoidConfirmation(BuildContext context) {
+  // =============================================================
+  // VOID CONFIRMATION POPUP
+  // =============================================================
+
+  Future<bool?> _showVoidConfirmation(
+      BuildContext context,
+      ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -343,11 +444,12 @@ class Paymentsucess extends StatelessWidget {
         return Dialog(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+          insetPadding:
+          const EdgeInsets.symmetric(horizontal: 30),
           child: Container(
             width: 500,
             constraints: const BoxConstraints(maxWidth: 556),
-            padding: const EdgeInsets.fromLTRB(30, 30, 30, 30),
+            padding: const EdgeInsets.all(30),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
@@ -383,13 +485,13 @@ class Paymentsucess extends StatelessWidget {
                 ),
               ],
             ),
-
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ============================================================
-                // ICON + TITLE + MESSAGE
-                // ============================================================
+                // =========================================================
+                // ICON + TEXT
+                // =========================================================
+
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -459,25 +561,20 @@ class Paymentsucess extends StatelessWidget {
 
                 const SizedBox(height: 30),
 
-                // ============================================================
+                // =========================================================
                 // BUTTONS
-                // Starts aligned with the text, not the warning icon
-                // ============================================================
+                // =========================================================
+
                 Padding(
                   padding: const EdgeInsets.only(left: 100),
                   child: Row(
                     children: [
-                      // ------------------------------------------------------
-                      // CANCEL
-                      // ------------------------------------------------------
                       Expanded(
                         child: SizedBox(
                           height: 48,
                           child: OutlinedButton(
                             onPressed: () {
-                              Navigator.of(
-                                dialogContext,
-                              ).pop(false);
+                              Navigator.of(dialogContext).pop(false);
                             },
                             style: OutlinedButton.styleFrom(
                               backgroundColor: isDark
@@ -496,7 +593,6 @@ class Paymentsucess extends StatelessWidget {
                                 borderRadius:
                                 BorderRadius.circular(15),
                               ),
-                              padding: EdgeInsets.zero,
                             ),
                             child: Text(
                               'Cancel',
@@ -515,17 +611,12 @@ class Paymentsucess extends StatelessWidget {
 
                       const SizedBox(width: 20),
 
-                      // ------------------------------------------------------
-                      // VOID
-                      // ------------------------------------------------------
                       Expanded(
                         child: SizedBox(
                           height: 48,
                           child: ElevatedButton(
                             onPressed: () {
-                              Navigator.of(
-                                dialogContext,
-                              ).pop(true);
+                              Navigator.of(dialogContext).pop(true);
                             },
                             style: ElevatedButton.styleFrom(
                               elevation: 0,
@@ -536,7 +627,6 @@ class Paymentsucess extends StatelessWidget {
                                 borderRadius:
                                 BorderRadius.circular(15),
                               ),
-                              padding: EdgeInsets.zero,
                             ),
                             child: const Text(
                               'Yes, Void',

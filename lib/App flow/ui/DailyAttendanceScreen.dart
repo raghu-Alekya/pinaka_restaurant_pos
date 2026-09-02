@@ -48,7 +48,6 @@ class _AttendancePopupState extends State<AttendancePopup> {
   String currentTime = '';
   String currentDate = '';
   bool _isSaving = false;
-  bool _hasChanges = false;
 
   @override
   void initState() {
@@ -79,7 +78,6 @@ class _AttendancePopupState extends State<AttendancePopup> {
   void _updateStatus(Employee emp, String status) {
     setState(() {
       emp.status = emp.status == status ? '' : status;
-      _hasChanges = true;
     });
   }
 
@@ -204,11 +202,8 @@ class _AttendancePopupState extends State<AttendancePopup> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
-                          onPressed: (_isSaving || (widget.isUpdateMode && !_hasChanges))
-                              ? null
-                              : () async {
+                          onPressed: () async {
                             if (_isSaving) return;
-                            // if (_isSaving) return;
 
                             if (selectedShift.isEmpty) {
                               AreaMovementNotifier.showPopup(
