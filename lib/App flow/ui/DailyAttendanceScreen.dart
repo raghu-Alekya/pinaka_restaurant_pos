@@ -77,7 +77,7 @@ class _AttendancePopupState extends State<AttendancePopup> {
 
   void _updateStatus(Employee emp, String status) {
     setState(() {
-      emp.status = emp.status == status ? '' : status;
+      emp.status = status;
     });
   }
 

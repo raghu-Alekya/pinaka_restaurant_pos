@@ -39,6 +39,7 @@ class paymentsummary extends StatefulWidget {
   final int? zoneId;
   final int orderId;
   final bool isTakeAway; // ➕ NEW — defaults to false so no existing call breaks
+  final bool isFromOrderList;
   final ValueChanged<double> onMerchantDiscountChanged;
   final ValueChanged<double> onTipChanged;
   final Function(double)? onCouponAmountChanged;
@@ -54,6 +55,7 @@ class paymentsummary extends StatefulWidget {
     required this.restaurantName,
     this.zoneId,
     this.isTakeAway = false, // ➕ NEW
+    this.isFromOrderList = false,
     required PaymentSummary,
     required this.orderId,
     required this.onMerchantDiscountChanged,
@@ -1152,6 +1154,7 @@ class _paymentsummaryState extends State<paymentsummary> {
                       paymentSummary: summary,
                       cashierName: _cashierName,
                       isTakeAway: widget.isTakeAway,
+                      isFromOrderList: widget.isFromOrderList,
                     ),
                   ),
                 ),

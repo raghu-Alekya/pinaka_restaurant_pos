@@ -304,6 +304,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   grandTotal: _grandTotal,
                   isTakeAway:
                   widget.isTakeAway, // ✅ Pass isTakeAway to paymentsummary
+                  isFromOrderList: widget.isFromOrderList,
                   onMerchantDiscountChanged: (double value) {
                     debugPrint(
                       "💳 Merchant discount changed: $value (isTakeAway: ${widget.isTakeAway})",

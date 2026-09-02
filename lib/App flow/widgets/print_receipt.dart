@@ -16,6 +16,8 @@ import '../../services/kds_seivices.dart';
 import '../ui/dashboard screen.dart';
 import '../ui/orderstatus_screen.dart';
 import '../ui/tables_screen.dart';
+import '../../blocs/Bloc Logic/order_list_bloc.dart';
+import '../../repositories/order_list_repository.dart';
 
 // Add these imports for printer functionality
 import 'package:thermal_printer/esc_pos_utils_platform/src/capability_profile.dart';
@@ -738,17 +740,22 @@ class _PrintReciptState extends State<PrintRecipt> {
 
       rootNavigator.pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (_) => OrdersListTable(
-            token: widget.token,
-            pin: widget.pin,
-            orders: const [],
-            restaurantId: widget.restaurantId,
-            restaurantName: widget.restaurantName,
-            userPermissions: widget.userPermissions,
-            loadedTables: widget.loadedTables,
+          builder: (_) => BlocProvider(
+            create: (_) => OrderstatusBloc(
+              OrderstatusRepository(),
+            ),
+            child: OrdersListTable(
+              token: widget.token,
+              pin: widget.pin,
+              orders: const [],
+              restaurantId: widget.restaurantId,
+              restaurantName: widget.restaurantName,
+              userPermissions: widget.userPermissions,
+              loadedTables: widget.loadedTables,
+            ),
           ),
         ),
-            (route) => false,
+        (route) => false,
       );
 
       return;
