@@ -48,6 +48,43 @@ class KdsMqttService {
 
   String get ordersTopic => 'store/$restaurantId/kitchen/orders';
   String get statusTopic => 'store/$restaurantId/kitchen/status';
+  String get stockTopic => 'store/$restaurantId/kitchen/stock';
+  void sendStockUpdate({
+    required int productId,
+    required String oldStatus,
+    required String newStatus,
+  }) {
+    if (_state != KdsConnectionState.connected || _client == null) {
+      KdsDebugLog.warn('Cannot send stock update — MQTT not connected');
+      return;
+    }
+
+    final payload = {
+      'event': 'stock_updated',
+      'restaurant_id': restaurantId,
+      'store_id': storeId,
+      'product_id': productId,
+      'old_status': oldStatus,
+      'new_status': newStatus,
+    };
+
+    KdsDebugLog.info(
+      'MQTT STOCK PAYLOAD => ${jsonEncode(payload)}',
+    );
+
+    final builder = MqttClientPayloadBuilder()
+      ..addString(jsonEncode(payload));
+
+    _client!.publishMessage(
+      stockTopic,
+      MqttQos.atLeastOnce,
+      builder.payload!,
+    );
+
+    KdsDebugLog.info(
+      'Sent stock update for product=$productId → $newStatus',
+    );
+  }
 
   Future<void> connect() async {
     if (_state == KdsConnectionState.connecting) {
@@ -153,6 +190,14 @@ class KdsMqttService {
       statusTopic,
       MqttQos.atLeastOnce,
     );
+    KdsDebugLog.info(
+      'Subscribing to stock topic: $stockTopic',
+    );
+
+    _client!.subscribe(
+      stockTopic,
+      MqttQos.atLeastOnce,
+    );
 
     if (_listenerAttached) return;
 
@@ -194,7 +239,9 @@ class KdsMqttService {
       );
 
       // Accept BOTH order and status topics
-      if (topic != ordersTopic && topic != statusTopic) {
+      if (topic != ordersTopic &&
+          topic != statusTopic &&
+          topic != stockTopic) {
         KdsDebugLog.warn(
           'Topic mismatch — ignoring: $topic',
         );

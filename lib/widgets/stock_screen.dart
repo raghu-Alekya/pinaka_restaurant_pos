@@ -1,5 +1,8 @@
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +10,7 @@ import '../kitchen_display_screen.dart';
 import '../models/Stock_model.dart';
 // import '../repositories/product_repository.dart';
 import '../services/STOCK PRODUCT _REPOSITIORY.dart';
+import '../services/kds_mqtt_service.dart';
 import '../top_bar.dart';
 import 'completed_orders.dart';
 import 'login_screen.dart';
@@ -35,6 +39,8 @@ class _StockScreenState extends State<StockScreen> {
 
   final TextEditingController _searchController =
   TextEditingController();
+  late KdsMqttService _mqttService;
+  StreamSubscription<Map<String, dynamic>>? _stockSubscription;
 
   final GlobalKey<ScaffoldState> _scaffoldKey =
   GlobalKey<ScaffoldState>();
@@ -64,22 +70,40 @@ class _StockScreenState extends State<StockScreen> {
   // INIT
   // ==========================================================
 
+
+
   @override
   void initState() {
     super.initState();
 
+    _mqttService = KdsMqttService(
+      brokerHost: '178.16.140.169',
+      brokerPort: 1883,
+      restaurantId: widget.restaurantId.toString(),
+      storeId: '',
+    );
+
+    _mqttService.connect();
+    _stockSubscription = _mqttService.messages.listen(
+      _handleStockUpdate,
+    );
+
     loadProducts();
   }
-
   // ==========================================================
   // DISPOSE
   // ==========================================================
 
+
   @override
   void dispose() {
+    _stockSubscription?.cancel();
     _searchController.dispose();
+    _mqttService.dispose();
+
     super.dispose();
   }
+
   void _saveCurrentState() {
     _previousCategory = _selectedCategory;
     _previousItem = null;
@@ -96,6 +120,46 @@ class _StockScreenState extends State<StockScreen> {
 
       // Also clear the search
       _searchController.clear();
+    });
+  }
+  void _handleStockUpdate(Map<String, dynamic> message) {
+    if (!mounted) return;
+
+    // Only handle stock MQTT events
+    if (message['event'] != 'stock_updated') {
+      return;
+    }
+
+    final productId =
+    int.tryParse(message['product_id'].toString());
+
+    if (productId == null) return;
+
+    final newStatus =
+    message['new_status']?.toString().toLowerCase();
+
+    final bool inStock = newStatus == 'instock';
+
+    debugPrint('======================================');
+    debugPrint('📦 POS → KDS STOCK UPDATE');
+    debugPrint('Product ID : $productId');
+    debugPrint('New Status : $newStatus');
+    debugPrint('In Stock   : $inStock');
+    debugPrint('======================================');
+
+    setState(() {
+      for (final category in _stockCategories) {
+        for (final item in category.items) {
+          if (item.id == productId) {
+            item.isEnabled = inStock;
+            item.selected = inStock;
+
+            debugPrint(
+              '✅ KDS updated: ${item.name} → $newStatus',
+            );
+          }
+        }
+      }
     });
   }
 
@@ -412,27 +476,25 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   List<StockItem> get _filteredItems {
-    final category = _currentCategory;
+    final search = _searchController.text.trim().toLowerCase();
 
-    if (category == null) {
-      return [];
-    }
-
-    final search = _searchController.text
-        .trim()
-        .toLowerCase();
-
+    // No search → show items from selected category
     if (search.isEmpty) {
-      return category.items;
+      final category = _currentCategory;
+      return category?.items ?? [];
     }
 
-    return category.items.where((item) {
-      return item.name
-          .toLowerCase()
-          .contains(search);
+    // Search → search ALL categories
+    final allItems = <StockItem>[];
+
+    for (final category in _stockCategories) {
+      allItems.addAll(category.items);
+    }
+
+    return allItems.where((item) {
+      return item.name.toLowerCase().contains(search);
     }).toList();
   }
-
   // ==========================================================
   // TOTAL ITEMS
   // ==========================================================
@@ -574,14 +636,15 @@ class _StockScreenState extends State<StockScreen> {
   // ==========================================================
 
   Future<void> _saveAndUpdate() async {
-    // Prevent double click
+    // ==========================================
+    // PREVENT DOUBLE CLICK
+    // ==========================================
     if (_isUpdatingStock) return;
-
-    final changedItems = <StockItem>[];
 
     // ==========================================
     // FIND CHANGED ITEMS
     // ==========================================
+    final changedItems = <StockItem>[];
 
     for (final category in _stockCategories) {
       for (final item in category.items) {
@@ -591,6 +654,9 @@ class _StockScreenState extends State<StockScreen> {
       }
     }
 
+    // ==========================================
+    // DEBUG
+    // ==========================================
     debugPrint('======================================');
     debugPrint('STOCK SAVE & UPDATE');
     debugPrint('CHANGED ITEMS: ${changedItems.length}');
@@ -598,6 +664,7 @@ class _StockScreenState extends State<StockScreen> {
     for (final item in changedItems) {
       debugPrint(
         '${item.name} | '
+            'Product ID: ${item.id} | '
             'Old: ${item.isEnabled} | '
             'New: ${item.selected}',
       );
@@ -608,7 +675,6 @@ class _StockScreenState extends State<StockScreen> {
     // ==========================================
     // NO CHANGES
     // ==========================================
-
     if (changedItems.isEmpty) {
       if (!mounted) return;
 
@@ -624,7 +690,6 @@ class _StockScreenState extends State<StockScreen> {
     // ==========================================
     // SHOW PIN
     // ==========================================
-
     final pin = await showStockPinDialog();
 
     if (!mounted) return;
@@ -636,7 +701,6 @@ class _StockScreenState extends State<StockScreen> {
     // ==========================================
     // START LOADER
     // ==========================================
-
     setState(() {
       _isUpdatingStock = true;
     });
@@ -649,7 +713,6 @@ class _StockScreenState extends State<StockScreen> {
       // ==========================================
       // ONE BULK API CALL
       // ==========================================
-
       await updateMultipleProductStockStatus(
         items: changedItems,
         pin: pin.trim(),
@@ -657,10 +720,64 @@ class _StockScreenState extends State<StockScreen> {
 
       if (!mounted) return;
 
-      // ==========================================
-      // UPDATE LOCAL STATE
-      // ==========================================
+      debugPrint('======================================');
+      debugPrint('STOCK API SUCCESS');
+      debugPrint('======================================');
 
+      // ==========================================
+      // SEND MQTT STOCK UPDATE
+      // ==========================================
+      //
+      // IMPORTANT:
+      // item.isEnabled is still the OLD status here.
+      //
+      // DO NOT update item.isEnabled before this loop.
+      //
+      for (final item in changedItems) {
+        final oldStatus =
+        item.isEnabled ? 'instock' : 'outofstock';
+
+        final newStatus =
+        item.selected ? 'instock' : 'outofstock';
+
+        debugPrint(
+          '======================================',
+        );
+
+        debugPrint(
+          'MQTT STOCK UPDATE',
+        );
+
+        debugPrint(
+          'Product ID : ${item.id}',
+        );
+
+        debugPrint(
+          'Product    : ${item.name}',
+        );
+
+        debugPrint(
+          'Old Status : $oldStatus',
+        );
+
+        debugPrint(
+          'New Status : $newStatus',
+        );
+
+        debugPrint(
+          '======================================',
+        );
+
+        _mqttService.sendStockUpdate(
+          productId: item.id,
+          oldStatus: oldStatus,
+          newStatus: newStatus,
+        );
+      }
+
+      // ==========================================
+      // UPDATE LOCAL KDS STATE
+      // ==========================================
       setState(() {
         for (final item in changedItems) {
           item.isEnabled = item.selected;
@@ -670,9 +787,8 @@ class _StockScreenState extends State<StockScreen> {
       });
 
       // ==========================================
-      // SUCCESS
+      // SUCCESS MESSAGE
       // ==========================================
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -683,11 +799,16 @@ class _StockScreenState extends State<StockScreen> {
 
       debugPrint('======================================');
       debugPrint('STOCK UPDATE SUCCESS');
+      debugPrint('API + MQTT COMPLETED');
       debugPrint('======================================');
     } catch (e) {
-      debugPrint(
-        'STOCK UPDATE FAILED: $e',
-      );
+      // ==========================================
+      // ERROR
+      // ==========================================
+      debugPrint('======================================');
+      debugPrint('STOCK UPDATE FAILED');
+      debugPrint('ERROR: $e');
+      debugPrint('======================================');
 
       if (!mounted) return;
 
@@ -788,23 +909,17 @@ class _StockScreenState extends State<StockScreen> {
 
       decoration: BoxDecoration(
         color: Colors.white,
-
-        borderRadius:
-        BorderRadius.circular(10),
-
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color:
-          const Color(0xffE4E7EC),
+          color: const Color(0xffE4E7EC),
         ),
       ),
 
       child: Padding(
-        padding:
-        const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(14),
 
         child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
 
           children: [
             // =================================================
@@ -813,22 +928,14 @@ class _StockScreenState extends State<StockScreen> {
 
             Text(
               'STOCK',
-
-              style:
-              GoogleFonts.inter(
+              style: GoogleFonts.inter(
                 fontSize: 18,
-                fontWeight:
-                FontWeight.w800,
-                color:
-                const Color(
-                  0xff172033,
-                ),
+                fontWeight: FontWeight.w800,
+                color: const Color(0xff172033),
               ),
             ),
 
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
 
             // =================================================
             // MAIN STOCK AREA
@@ -836,33 +943,26 @@ class _StockScreenState extends State<StockScreen> {
 
             Expanded(
               child: Row(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
                   // LEFT CATEGORY
                   SizedBox(
                     width: 105,
-                    child:
-                    _buildCategorySidebar(),
+                    child: _buildCategorySidebar(),
                   ),
 
-                  const SizedBox(
-                    width: 14,
-                  ),
+                  const SizedBox(width: 14),
 
                   // RIGHT PRODUCTS
                   Expanded(
-                    child:
-                    _buildStockItemsArea(),
+                    child: _buildStockItemsArea(),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(
-              height: 10,
-            ),
+            const SizedBox(height: 10),
 
             // =================================================
             // SUMMARY
@@ -1515,24 +1615,26 @@ class _StockScreenState extends State<StockScreen> {
         ),
 
         decoration: BoxDecoration(
-          // ==================================================
-          // OUT OF STOCK = GREY
-          // IN STOCK     = WHITE
-          // ==================================================
-
-          color: enabled
+          color: selected
+              ? (item.isVeg
+              ? const Color(0xffFAFFF9) // Veg
+              : const Color(0xffFEF8F8)) // Non-Veg
+              : (enabled
               ? Colors.white
-              : const Color(0xffE5E5E5),
+              : const Color(0xffE5E5E5)),
 
           borderRadius: BorderRadius.circular(5),
 
           border: Border.all(
-            color: enabled
+            color: selected
+                ? (item.isVeg
+                ? const Color(0xffCDEBD4) // Veg
+                : const Color(0xffF5C6CB)) // Non-Veg
+                : (enabled
                 ? const Color(0xffCDEBD4)
-                : const Color(0xffBDBDBD),
+                : const Color(0xffBDBDBD)),
           ),
         ),
-
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -2400,12 +2502,19 @@ class _StockPinDialogState extends State<_StockPinDialog> {
   void _confirm() {
     final pin = _controller.text.trim();
 
-    if (pin.isEmpty) {
+    // PIN must be exactly 6 digits
+    if (pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('PIN must be exactly 6 digits'),
+        ),
+      );
       return;
     }
 
     Navigator.of(context).pop(pin);
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -2415,6 +2524,11 @@ class _StockPinDialogState extends State<_StockPinDialog> {
         controller: _controller,
         obscureText: true,
         keyboardType: TextInputType.number,
+        // Only numbers and maximum 6 digits
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(6),
+        ],
         autofocus: true,
         decoration: const InputDecoration(
           hintText: 'Enter PIN',

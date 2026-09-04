@@ -57,6 +57,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _checkMerchantStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
       final baseUrl = prefs.getString('store_base_url');
       final name = prefs.getString('store_name');
       final id = prefs.getString('store_id');
@@ -64,8 +65,6 @@ class _MyAppState extends State<MyApp> {
       if (baseUrl != null && baseUrl.isNotEmpty) {
         AppConstants.updateBaseUrl(baseUrl);
       }
-
-      final config = await KdsConfig.load();
 
       if (mounted) {
         setState(() {
@@ -76,11 +75,11 @@ class _MyAppState extends State<MyApp> {
         });
       }
 
-      if (config.isValid && config.apiToken.isNotEmpty) {
-        _startWithConfig(config);
-      }
+      // Do NOT automatically start KDS from saved config.
+      // Fresh launch should show Merchant Validation.
     } catch (e) {
       KdsDebugLog.error("Error checking merchant status: $e");
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -88,7 +87,6 @@ class _MyAppState extends State<MyApp> {
       }
     }
   }
-
   void _startWithConfig(KdsConfig config) {
     final mqttService = KdsMqttService(
       brokerHost: config.brokerHost,

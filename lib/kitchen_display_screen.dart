@@ -281,20 +281,23 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final result = <String>[];
 
     addOns.forEach((name, value) {
-      if (value is Map) {
-        final quantity =
-            value['quantity'] ??
-                value['qty'] ??
-                1;
+      int quantity = 1;
 
-        result.add('$name x$quantity');
+      if (value is Map) {
+        quantity = int.tryParse(
+          (value['quantity'] ?? value['qty'] ?? 1).toString(),
+        ) ??
+            1;
       } else {
-        result.add('$name x$value');
+        quantity = int.tryParse(value.toString()) ?? 1;
       }
+
+      result.add('$name x$quantity');
     });
 
     return result.join(', ');
-  }String _getItemNote(dynamic rawItem) {
+  }
+  String _getItemNote(dynamic rawItem) {
     if (rawItem is! Map) {
       return '';
     }
@@ -2950,11 +2953,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
     final switchKey = kotId.isNotEmpty
         ? kotId
         : '${kotNo}_$parentOrderId';
-
-    final bool isExpanded = expandedKotIds.contains(switchKey);
-    final bool hasMoreThanFive = items.length > 5;
-    final int visibleItemsCount = (hasMoreThanFive && !isExpanded) ? 5 : items.length;
-
+    final int visibleItemsCount = items.length;
 
     // Cancellation state is kept separately so the existing switch state
     // and status flow are not changed.
@@ -3538,15 +3537,47 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                     // ==========================================================
                     // ADD-ONS
                     // ==========================================================
+                    // ==========================================================
+// ADD-ONS
+// ==========================================================
                     final dynamic rawAddOns =
                         item['addOns'] ??
                             item['addons'] ??
-                            item['add_ons'];
+                            item['add_ons'] ??
+                            item['addOn'] ??
+                            item['addon'];
 
-                    final Map<String, dynamic> addOns =
-                    rawAddOns is Map
-                        ? Map<String, dynamic>.from(rawAddOns)
-                        : {};
+                    final Map<String, dynamic> addOns = {};
+
+                    if (rawAddOns is Map) {
+                      addOns.addAll(
+                        Map<String, dynamic>.from(rawAddOns),
+                      );
+                    } else if (rawAddOns is List) {
+                      for (final addon in rawAddOns) {
+                        if (addon is Map) {
+                          final name =
+                              addon['name'] ??
+                                  addon['addon_name'] ??
+                                  addon['add_on_name'] ??
+                                  addon['item_name'] ??
+                                  addon['title'];
+
+                          final quantity =
+                              addon['quantity'] ??
+                                  addon['qty'] ??
+                                  1;
+
+                          if (name != null && name.toString().trim().isNotEmpty) {
+                            addOns[name.toString().trim()] = quantity;
+                          }
+                        } else if (addon != null) {
+                          addOns[addon.toString().trim()] = 1;
+                        }
+                      }
+                    }
+
+                    debugPrint('ADDONS => $addOns');
 
                     // ==========================================================
                     // NOTE
@@ -3964,28 +3995,16 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                                     // ==================================================
                                     if (addOns.isNotEmpty)
                                       Padding(
-                                        padding:
-                                        const EdgeInsets.only(
-                                          top: 2,
-                                        ),
+                                        padding: const EdgeInsets.only(top: 2),
                                         child: Text(
                                           'Add-on: ${formatAddOns(addOns)}',
                                           maxLines: 2,
-                                          overflow:
-                                          TextOverflow.ellipsis,
-                                          style:
-                                          GoogleFonts.inter(
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.inter(
                                             fontSize: 10,
                                             height: 1.2,
-                                            fontWeight:
-                                            FontWeight.w500,
-                                            color: isCancelled
-                                                ? const Color(
-                                              0xff98A2B3,
-                                            )
-                                                : const Color(
-                                              0xff667085,
-                                            ),
+                                            fontWeight: FontWeight.w500,
+                                            color: const Color(0xffF04438),
                                             decoration: isCancelled
                                                 ? TextDecoration.lineThrough
                                                 : TextDecoration.none,
@@ -4312,9 +4331,8 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
             padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
             child: Row(
               children: [
-                Expanded(
-                  flex: 1,
-                  child: SizedBox(
+                SizedBox(
+                    width: 160,
                     height: 36,
                     child: OutlinedButton.icon(
                       onPressed: () {
@@ -4367,14 +4385,13 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       ),
                     ),
                   ),
-                ),
 
-                const SizedBox(width: 10),
 
-                Expanded(
-                  flex: 2,
-                  child: SizedBox(
-                    height: 38,
+                const Spacer(),
+
+                SizedBox(
+                    width: 160,
+                    height: 36,
                     child: ElevatedButton(
                       onPressed: () async {
                         if (kotId.isEmpty) return;
@@ -4593,7 +4610,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
                       ),
                     ),
                   ),
-                ),
+
               ],
             ),
           ),
@@ -4730,7 +4747,7 @@ class _KitchenDashboardScreenState extends State<KitchenDashboardScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
         curve: Curves.easeOut,
-        width: 58,
+        width: 48,
         height: 24,
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
