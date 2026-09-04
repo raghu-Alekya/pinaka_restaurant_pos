@@ -165,96 +165,209 @@ class KdsMqttService {
     _scheduleReconnect();
   }
 
+//   void _subscribeAndListen() {
+//     if (_client == null) {
+//       KdsDebugLog.error(
+//         '_subscribeAndListen: client is null',
+//       );
+//       return;
+//     }
+//
+//     KdsDebugLog.info(
+//       'Subscribing to orders topic: $ordersTopic',
+//     );
+//
+//     _client!.subscribe(
+//       ordersTopic,
+//       MqttQos.atLeastOnce,
+//     );
+//
+//     KdsDebugLog.info(
+//       'Subscribing to status topic: $statusTopic',
+//     );
+//
+//     _client!.subscribe(
+//       statusTopic,
+//       MqttQos.atLeastOnce,
+//     );
+//     KdsDebugLog.info(
+//       'Subscribing to stock topic: $stockTopic',
+//     );
+//
+//     _client!.subscribe(
+//       stockTopic,
+//       MqttQos.atLeastOnce,
+//     );
+//
+//     if (_listenerAttached) return;
+//
+//     if (_client!.updates == null) {
+//       KdsDebugLog.error(
+//         'client.updates stream is NULL!',
+//       );
+//       return;
+//     }
+//
+//     _subscription = _client!.updates!.listen(
+//       _onMessages,
+//       onError: (e) {
+//         KdsDebugLog.error(
+//           'updates stream error: $e',
+//         );
+//       },
+//     );
+//
+//     _listenerAttached = true;
+//
+//     KdsDebugLog.info(
+//       'Message listener attached',
+//     );
+//   }
+//
+//   void _onMessages(
+//       List<MqttReceivedMessage<MqttMessage>> messages,
+//       ) {
+//     KdsDebugLog.info(
+//       'Received ${messages.length} MQTT packet(s)',
+//     );
+//
+//     for (final message in messages) {
+//       final topic = message.topic;
+//
+//       KdsDebugLog.info(
+//         'Raw topic="$topic"',
+//       );
+//
+//       // Accept BOTH order and status topics
+//       if (topic != ordersTopic &&
+//           topic != statusTopic &&
+//           topic != stockTopic) {
+//         KdsDebugLog.warn(
+//           'Topic mismatch — ignoring: $topic',
+//         );
+//         continue;
+//       }
+//
+//       final payload = message.payload;
+//
+//       if (payload is! MqttPublishMessage) {
+//         KdsDebugLog.warn(
+//           'Payload is not MqttPublishMessage: '
+//               '${payload.runtimeType}',
+//         );
+//         continue;
+//       }
+//
+//       final body = MqttPublishPayload.bytesToStringAsString(
+//         payload.payload.message,
+//       );
+//
+//       KdsDebugLog.info(
+//         'Payload (${body.length} chars): '
+//             '${body.length > 200 ? '${body.substring(0, 200)}...' : body}',
+//       );
+//
+//       try {
+//         final decoded = jsonDecode(body);
+//
+//         if (decoded is! Map) {
+//           KdsDebugLog.warn(
+//             'Decoded JSON is not a Map: '
+//                 '${decoded.runtimeType}',
+//           );
+//           continue;
+//         }
+//
+//         final map = Map<String, dynamic>.from(decoded);
+//
+//         messagesReceived++;
+//         final event = map['event']?.toString() ?? '';
+//
+//         final messageStoreId = map['store_id']?.toString();
+//
+//         KdsDebugLog.info(
+//           'Parsed event="$event" '
+//               'storeId=$messageStoreId '
+//               'currentStoreId=$storeId '
+//               'kot=${map['kot']?['kot_number']} '
+//               'kotId=${map['kot_id']} '
+//               'parentOrderId=${map['parent_order_id']} '
+//               'status=${map['status']} '
+//               'total=$messagesReceived',
+//         );
+//
+// // Only restrict KOT/order messages
+//         if (event == 'kot_created') {
+//           if (messageStoreId == null ||
+//               messageStoreId != storeId.toString()) {
+//             KdsDebugLog.warn(
+//               '🚫 KOT ignored — store mismatch '
+//                   '(messageStoreId=$messageStoreId, '
+//                   'currentStoreId=$storeId)',
+//             );
+//             continue;
+//           }
+//         }
+//
+//         _incomingController.add(map);
+//       } catch (e) {
+//         KdsDebugLog.error(
+//           'JSON parse error: $e',
+//         );
+//       }
+//     }
+//   }
+
   void _subscribeAndListen() {
     if (_client == null) {
-      KdsDebugLog.error(
-        '_subscribeAndListen: client is null',
-      );
+      KdsDebugLog.error('_subscribeAndListen: client is null');
       return;
     }
 
-    KdsDebugLog.info(
-      'Subscribing to orders topic: $ordersTopic',
-    );
+    KdsDebugLog.info('Subscribing to orders topic: $ordersTopic');
+    _client!.subscribe(ordersTopic, MqttQos.atLeastOnce);
 
-    _client!.subscribe(
-      ordersTopic,
-      MqttQos.atLeastOnce,
-    );
+    KdsDebugLog.info('Subscribing to status topic: $statusTopic');
+    _client!.subscribe(statusTopic, MqttQos.atLeastOnce);
 
-    KdsDebugLog.info(
-      'Subscribing to status topic: $statusTopic',
-    );
-
-    _client!.subscribe(
-      statusTopic,
-      MqttQos.atLeastOnce,
-    );
-    KdsDebugLog.info(
-      'Subscribing to stock topic: $stockTopic',
-    );
-
-    _client!.subscribe(
-      stockTopic,
-      MqttQos.atLeastOnce,
-    );
+    KdsDebugLog.info('Subscribing to stock topic: $stockTopic');
+    _client!.subscribe(stockTopic, MqttQos.atLeastOnce);
 
     if (_listenerAttached) return;
 
     if (_client!.updates == null) {
-      KdsDebugLog.error(
-        'client.updates stream is NULL!',
-      );
+      KdsDebugLog.error('client.updates stream is NULL!');
       return;
     }
 
     _subscription = _client!.updates!.listen(
       _onMessages,
       onError: (e) {
-        KdsDebugLog.error(
-          'updates stream error: $e',
-        );
+        KdsDebugLog.error('updates stream error: $e');
       },
     );
 
     _listenerAttached = true;
-
-    KdsDebugLog.info(
-      'Message listener attached',
-    );
+    KdsDebugLog.info('Message listener attached');
   }
 
-  void _onMessages(
-      List<MqttReceivedMessage<MqttMessage>> messages,
-      ) {
-    KdsDebugLog.info(
-      'Received ${messages.length} MQTT packet(s)',
-    );
+  void _onMessages(List<MqttReceivedMessage<MqttMessage>> messages) {
+    KdsDebugLog.info('Received ${messages.length} MQTT packet(s)');
 
     for (final message in messages) {
       final topic = message.topic;
+      KdsDebugLog.info('Raw topic="$topic"');
 
-      KdsDebugLog.info(
-        'Raw topic="$topic"',
-      );
-
-      // Accept BOTH order and status topics
       if (topic != ordersTopic &&
           topic != statusTopic &&
           topic != stockTopic) {
-        KdsDebugLog.warn(
-          'Topic mismatch — ignoring: $topic',
-        );
+        KdsDebugLog.warn('Topic mismatch — ignoring: $topic');
         continue;
       }
 
       final payload = message.payload;
-
       if (payload is! MqttPublishMessage) {
-        KdsDebugLog.warn(
-          'Payload is not MqttPublishMessage: '
-              '${payload.runtimeType}',
-        );
+        KdsDebugLog.warn('Payload is not MqttPublishMessage: ${payload.runtimeType}');
         continue;
       }
 
@@ -264,56 +377,49 @@ class KdsMqttService {
 
       KdsDebugLog.info(
         'Payload (${body.length} chars): '
-            '${body.length > 200 ? '${body.substring(0, 200)}...' : body}',
+            '${body.length > 300 ? '${body.substring(0, 300)}...' : body}',
       );
 
       try {
         final decoded = jsonDecode(body);
-
         if (decoded is! Map) {
-          KdsDebugLog.warn(
-            'Decoded JSON is not a Map: '
-                '${decoded.runtimeType}',
-          );
+          KdsDebugLog.warn('Decoded JSON is not a Map: ${decoded.runtimeType}');
           continue;
         }
 
         final map = Map<String, dynamic>.from(decoded);
-
         messagesReceived++;
-        final event = map['event']?.toString() ?? '';
 
+        final event = map['event']?.toString() ?? '';
         final messageStoreId = map['store_id']?.toString();
 
         KdsDebugLog.info(
           'Parsed event="$event" '
-              'storeId=$messageStoreId '
-              'currentStoreId=$storeId '
-              'kot=${map['kot']?['kot_number']} '
+              'storeId=$messageStoreId currentStoreId=$storeId '
+              'kot=${map['kot_number'] ?? map['kot']?['kot_number']} '
               'kotId=${map['kot_id']} '
               'parentOrderId=${map['parent_order_id']} '
-              'status=${map['status']} '
-              'total=$messagesReceived',
+              'status=${map['status']} total=$messagesReceived',
         );
 
-// Only restrict KOT/order messages
+        // Only filter kot_created by store_id
         if (event == 'kot_created') {
-          if (messageStoreId == null ||
+          if (messageStoreId != null &&
+              messageStoreId.isNotEmpty &&
               messageStoreId != storeId.toString()) {
             KdsDebugLog.warn(
               '🚫 KOT ignored — store mismatch '
-                  '(messageStoreId=$messageStoreId, '
-                  'currentStoreId=$storeId)',
+                  '(messageStoreId=$messageStoreId, currentStoreId=$storeId)',
             );
             continue;
           }
+          // If store_id is missing we still accept (backward compatible)
         }
 
+        // Always forward to OrderProvider
         _incomingController.add(map);
       } catch (e) {
-        KdsDebugLog.error(
-          'JSON parse error: $e',
-        );
+        KdsDebugLog.error('JSON parse error: $e');
       }
     }
   }
