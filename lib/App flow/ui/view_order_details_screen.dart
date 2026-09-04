@@ -4494,42 +4494,54 @@ amount: ${item.amount}
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
+                        child: DropdownButton<int>(
                           value: selectedKotId,
+
                           hint: const Text(
                             "Select KOT",
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
                           ),
+
                           icon: const Icon(
                             Icons.keyboard_arrow_down,
                             color: Colors.white,
-                          ), // white icon
-                          dropdownColor: const Color(
-                            0xFF125BCE,
-                          ), // dropdown menu blue
+                          ),
+
+                          dropdownColor: const Color(0xFF125BCE),
+
                           style: const TextStyle(
                             color: Colors.white,
-                          ), // selected text white
-                          items:
-                          kots.map((kot) {
+                          ),
+
+                          items: kots.map((kot) {
+                            final String currentKotNumber =
+                                kot["kotNumber"]?.toString() ??
+                                    kot["kotNo"]?.toString() ??
+                                    "-";
+
                             return DropdownMenuItem<int>(
                               value: kot["kotNo"],
                               child: Text(
-                                "${kotNumber}",
+                                currentKotNumber,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                ), // dropdown items text
+                                ),
                               ),
                             );
                           }).toList(),
+
                           onChanged: (value) {
+                            if (value == null) return;
+
                             setState(() {
                               selectedKotId = value;
                             });
-                            loadVoidedItems(value!);
-                          }
 
-                      ),
+                            loadVoidedItems(value);
+                          },
+                        )
                     ),
                   ),
                 ],

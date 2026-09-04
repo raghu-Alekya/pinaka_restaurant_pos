@@ -1130,12 +1130,10 @@ class _TopBarState extends State<TopBar> {
                         height: 40,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color:
-                              isDark ? Colors.black : const Color(0xFFF9FBFF),
+                          color: isDark ? Colors.black : const Color(0xFFF9FBFF),
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color:
-                            isDark
+                            color: isDark
                                 ? Colors.grey.shade700
                                 : const Color(0xFFE6E6E6),
                             width: 1,
@@ -1154,26 +1152,25 @@ class _TopBarState extends State<TopBar> {
                               fontSize: 14,
                             ),
                             hint: Text(
-                              "Dine In",
+                              widget.isTakeAway ? "Takeaway" : "Dine In",
                               style: TextStyle(
                                 color: isDark ? Colors.white70 : Colors.black54,
                               ),
                             ),
-                            items:
-                            orderTypes.map((type) {
+
+                            // Use only relevant order types
+                            items: _filteredOrderTypes.map((type) {
                               return DropdownMenuItem<String>(
                                 value: type,
                                 child: Text(
                                   type,
                                   style: TextStyle(
-                                    color:
-                                    isDark
-                                        ? Colors.white
-                                        : Colors.black,
+                                    color: isDark ? Colors.white : Colors.black,
                                   ),
                                 ),
                               );
                             }).toList(),
+
                             onChanged: (value) async {
                               if (value == null) return;
 
@@ -1182,14 +1179,13 @@ class _TopBarState extends State<TopBar> {
                               });
 
                               final result =
-                              await OrderTypesInPaymentScreenRepository()
-                                  .updateOrderType(
+                              await OrderTypesInPaymentScreenRepository().updateOrderType(
                                 token: widget.token,
                                 orderId: widget.paymentSummary!.orderId,
                                 orderType: value,
                               );
 
-                              if (result?.success == true) {
+                              if (result?.success == true && mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(result!.message),
