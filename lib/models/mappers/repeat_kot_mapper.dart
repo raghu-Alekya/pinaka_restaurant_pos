@@ -17,33 +17,40 @@ extension RepeatKotMapper on RepeatKotModel {
       items: lineItems.map((item) {
         final baseAmount = item.price * item.quantity;
 
+        OrderItems? parsedFromRaw;
+        if (item.rawJson.isNotEmpty) {
+          try {
+            parsedFromRaw = OrderItems.fromJson(item.rawJson);
+          } catch (_) {}
+        }
+
+        final bool originalHasOptions = item.hasOptions ||
+            (parsedFromRaw?.hasOptions ?? false) ||
+            item.modifiers.isNotEmpty ||
+            (parsedFromRaw?.modifiers.isNotEmpty ?? false) ||
+            item.addOns.isNotEmpty ||
+            (parsedFromRaw?.addOns.isNotEmpty ?? false);
+
         return OrderItems(
           productId: item.productId,
-          // variationId: -1,/ // or item.variantId if exists
-
           name: item.name,
           price: item.price,
           quantity: item.quantity,
-
           section: Category(
             id: '0',
             name: 'Unknown',
             imagepath: '',
             subCategories: const [],
           ),
-
-          // optional fields
+          // ✅ Repeat ONLY base items without previous modifiers/add-ons/notes
           modifiers: const [],
           addOns: const {},
           note: '',
-          hasOptions: false,
-          // ✅ amount should be base or API amount if exists
+          // ✅ Keep hasOptions enabled so user can re-select modifiers if desired
+          hasOptions: originalHasOptions,
           amount: baseAmount,
-          // variantId: -1,
         );
       }).toList(),
-
-
 
       kotItems: [], // safe default
     );

@@ -1921,7 +1921,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisExtent: 138,
+        mainAxisExtent: 185,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
@@ -2154,7 +2154,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     return Container(
       constraints: const BoxConstraints(minHeight: 100),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: cardBgColor,
         borderRadius: BorderRadius.circular(6),
@@ -2162,7 +2162,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
 
           // ───────── Order Type + Table ─────────
           Row(
@@ -2194,7 +2194,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             ],
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
           // ───────── Order ID + Zone + Date + Time + KOT ─────────
           Row(
@@ -2203,43 +2203,48 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             children: [
               // LEFT SIDE
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Order ID: ${order['order_id']}",
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(fontSize: 13, color: bodyTextColor),
-                    ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.topLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Order ID: ${order['order_id']}",
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(fontSize: 13, color: bodyTextColor),
+                      ),
 
-                    const SizedBox(height: 6),
+                      const SizedBox(height: 3),
 
-                    Text(
-                      displayZone,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(fontSize: 13, color: bodyTextColor),
-                    ),
+                      Text(
+                        displayZone,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(fontSize: 13, color: bodyTextColor),
+                      ),
 
-                    const SizedBox(height: 6),
+                      const SizedBox(height: 3),
 
-                    Text(
-                      "Date: ${dateStr.isNotEmpty ? dateStr : '-'}",
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(fontSize: 13, color: bodyTextColor),
-                    ),
+                      Text(
+                        "Date: ${dateStr.isNotEmpty ? dateStr : '-'}",
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(fontSize: 13, color: bodyTextColor),
+                      ),
 
-                    const SizedBox(height: 6),
+                      const SizedBox(height: 3),
 
-                    Text(
-                      "Time: ${timeStr.isNotEmpty ? timeStr : '-'}",
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(fontSize: 13, color: bodyTextColor),
-                    ),
-                  ],
+                      Text(
+                        "Time: ${timeStr.isNotEmpty ? timeStr : '-'}",
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(fontSize: 13, color: bodyTextColor),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 

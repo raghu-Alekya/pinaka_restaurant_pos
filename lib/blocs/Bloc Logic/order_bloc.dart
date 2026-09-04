@@ -451,11 +451,34 @@ class OrderBloc extends Bloc<OrderEvent, OrderState> {
 
       final kot = result.toKotModel();
 
+      final updatedItems = kot.items.map((newItem) {
+        bool hasOpt = newItem.hasOptions;
+        if (!hasOpt) {
+          final existingMatch = state.orderItems.firstWhere(
+            (existing) =>
+                (existing.productId == newItem.productId ||
+                 existing.name.toLowerCase() == newItem.name.toLowerCase()) &&
+                existing.hasOptions,
+            orElse: () => newItem,
+          );
+          if (existingMatch.hasOptions) {
+            hasOpt = true;
+          }
+        }
+        return newItem.copyWith(
+          modifiers: const [],
+          addOns: const {},
+          note: '',
+          hasOptions: hasOpt,
+          amount: newItem.price * newItem.quantity,
+        );
+      }).toList();
+
       emit(state.copyWith(
         isLoading: false,
 
         // ✅ ONLY add items
-        orderItems: [...state.orderItems, ...kot.items],
+        orderItems: [...state.orderItems, ...updatedItems],
       ));
 
       AppLogger.info("✅ Repeat applied once for this KOT");

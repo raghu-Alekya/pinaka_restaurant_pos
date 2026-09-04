@@ -2561,6 +2561,7 @@ class _OrderPanelState extends State<OrderPanel> {
                       /// KOT Dropdown - Always shows the header bar
                       if (!widget.isTakeAway && state.kotList.isNotEmpty)
                         MultiBlocProvider(
+                          key: const ValueKey('view_all_kot_provider'),
                           providers: [
                             BlocProvider<KotLineItemsBloc>(
                               create:
@@ -2574,7 +2575,6 @@ class _OrderPanelState extends State<OrderPanel> {
                                     repository: UpdatekotRepository(),
                                   ),
                             ),
-                            BlocProvider.value(value: context.read<KotBloc>()),
                           ],
                           child: ViewAllKOTDropdown(
                             kots: state.kotList,
@@ -2588,11 +2588,13 @@ class _OrderPanelState extends State<OrderPanel> {
                             token: widget.token,
                             tableNo: state.tableName,
                             onToggle: (isExpanded) {
-                              if (_showKotList != isExpanded && mounted) {
-                                setState(() {
-                                  _showKotList = isExpanded;
-                                });
-                              }
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (_showKotList != isExpanded && mounted) {
+                                  setState(() {
+                                    _showKotList = isExpanded;
+                                  });
+                                }
+                              });
                             },
                           ),
                         ),
@@ -3057,6 +3059,9 @@ class _OrderPanelState extends State<OrderPanel> {
                                       orderBloc.add(
                                         AddKOT(updatedKot),
                                       );
+                                      context.read<KotBloc>().add(
+                                        AddKotToList(updatedKot),
+                                      );
 
                                       orderBloc.add(
                                         ClearOrder(),
@@ -3493,6 +3498,7 @@ class _OrderPanelState extends State<OrderPanel> {
             // ==========================================================
 
             orderBloc.add(AddKOT(kot));
+            context.read<KotBloc>().add(AddKotToList(kot));
             orderBloc.add(SetTakeAwayKotId(kot.kotId));
 
             // ==========================================================

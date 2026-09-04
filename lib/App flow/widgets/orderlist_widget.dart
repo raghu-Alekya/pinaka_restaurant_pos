@@ -88,6 +88,9 @@ class OrderPanelList extends StatelessWidget {
           (_, __) => Divider(height: 0, color: Theme.of(context).dividerColor),
       itemBuilder: (context, index) {
         final item = orderItems[index];
+        final bool canShowModifiers = item.hasOptions ||
+            item.modifiers.isNotEmpty ||
+            item.addOns.isNotEmpty;
         print("Item Name: ${item.name}");
         // print("Variation Name: ${item.variationName}");
         // print("Product Name: ${item.productName}");
@@ -220,7 +223,7 @@ class OrderPanelList extends StatelessWidget {
 
                   // Modifier Button
                   GestureDetector(
-                    onTap: item.hasOptions
+                    onTap: canShowModifiers
                         ? () => _showModifierPopup(context, index)
                         : null,
                     child: Container(
@@ -234,7 +237,7 @@ class OrderPanelList extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           side: BorderSide(
                             width: 1,
-                            color: item.hasOptions
+                            color: canShowModifiers
                                 ? const Color(0xFFFFB820)
                                 : (isDark
                                 ? Colors.white38
@@ -246,7 +249,7 @@ class OrderPanelList extends StatelessWidget {
                           BoxShadow(
                             color: isDark
                                 ? Colors.black26
-                                : (item.hasOptions
+                                : (canShowModifiers
                                 ? const Color(0xFFFFFFFF)
                                 : Colors.black12),
                             blurRadius: 2,
@@ -259,7 +262,7 @@ class OrderPanelList extends StatelessWidget {
                           "+",
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: item.hasOptions
+                            color: canShowModifiers
                                 ? const Color(0xFFFFB820)
                                 : (isDark ? Colors.white54 : Colors.grey),
                             fontSize: 18,

@@ -146,12 +146,21 @@ class _ViewAllKOTDropdownState extends State<ViewAllKOTDropdown> {
       _kots = widget.kots; // 🔴 FIX: reseed local mirror on order change
       _fetchKots();
       _kotExpanded.clear();
-      _expanded = false;
-      // ✅ NEW: keep parent in sync when we reset expansion on order change
-      widget.onToggle?.call(_expanded);
+      _expanded = true; // ✅ Auto-expand so KOT list shows automatically
+      // ✅ keep parent in sync when we reset expansion on order change
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onToggle?.call(_expanded);
+      });
     } else if (!identical(oldWidget.kots, widget.kots)) {
       // 🔴 FIX: parent handed us a fresh list (e.g. it refetched) — take it.
       _kots = widget.kots;
+      // ✅ Auto-expand when a new KOT is added (e.g. 2nd/subsequent KOT print)
+      if (widget.kots.length > oldWidget.kots.length) {
+        _expanded = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) widget.onToggle?.call(_expanded);
+        });
+      }
     }
   }
 

@@ -57,12 +57,22 @@ class KotBloc extends Bloc<KotEvent, KotState> {
   }
 
   void _onAddKotToList(AddKotToList event, Emitter<KotState> emit) {
-    if (state is KotLoaded && event.kot.parentOrderId == currentParentOrderId) {
+    if (currentParentOrderId == 0 && event.kot.parentOrderId > 0) {
+      currentParentOrderId = event.kot.parentOrderId;
+    }
+    if (state is KotLoaded) {
       final current = state as KotLoaded;
-      final updatedList = List<KotModel>.from(current.kots)..add(event.kot);
-
-      // Keep current dropdown state
+      final seen = <String>{};
+      final updatedList = <KotModel>[];
+      for (final k in [...current.kots, event.kot]) {
+        final key = k.kotNumber ?? k.kotId?.toString() ?? '';
+        if (key.isEmpty || seen.add(key)) {
+          updatedList.add(k);
+        }
+      }
       emit(current.copyWith(kots: updatedList));
+    } else {
+      emit(KotLoaded([event.kot]));
     }
   }
 
