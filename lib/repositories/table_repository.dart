@@ -42,9 +42,75 @@ class TableRepository {
   }
 
   static List<Map<String, dynamic>>? _memoryTableCache;
+  static final Map<String, String> _statusOverrides = {};
 
   static void clearMemoryCache() {
     _memoryTableCache = null;
+  }
+
+  static String? getLocalStatusOverride(dynamic tableId, String? tableName) {
+    if (tableId != null && tableId != 0 && _statusOverrides.containsKey(tableId.toString())) {
+      return _statusOverrides[tableId.toString()];
+    }
+    if (tableName != null && tableName.isNotEmpty && _statusOverrides.containsKey(tableName.toLowerCase())) {
+      return _statusOverrides[tableName.toLowerCase()];
+    }
+    return null;
+  }
+
+  /// Update table status in memory cache, SharedPreferences cache, and SQLite DB
+  static Future<void> updateLocalTableStatus({
+    required int tableId,
+    required String tableName,
+    required String newStatus,
+  }) async {
+    try {
+      if (tableId != 0) {
+        _statusOverrides[tableId.toString()] = newStatus;
+      }
+      if (tableName.isNotEmpty) {
+        _statusOverrides[tableName.toLowerCase()] = newStatus;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+
+      if (_memoryTableCache != null && _memoryTableCache!.isNotEmpty) {
+        for (var t in _memoryTableCache!) {
+          final tId = t['table_id'] ?? t['id'];
+          final tName = t['tableName'] ?? t['table_name'] ?? t['name'];
+          if ((tableId != 0 && (tId == tableId || tId.toString() == tableId.toString())) ||
+              (tableName.isNotEmpty && tName.toString().toLowerCase() == tableName.toLowerCase())) {
+            t['status'] = newStatus;
+          }
+        }
+        await prefs.setString('tables_cache', jsonEncode(_memoryTableCache));
+      } else {
+        final cachedStr = prefs.getString('tables_cache');
+        if (cachedStr != null && cachedStr.isNotEmpty) {
+          final List decoded = jsonDecode(cachedStr);
+          final List<Map<String, dynamic>> cached =
+              decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+          for (var t in cached) {
+            final tId = t['table_id'] ?? t['id'];
+            final tName = t['tableName'] ?? t['table_name'] ?? t['name'];
+            if ((tableId != 0 && (tId == tableId || tId.toString() == tableId.toString())) ||
+                (tableName.isNotEmpty && tName.toString().toLowerCase() == tableName.toLowerCase())) {
+              t['status'] = newStatus;
+            }
+          }
+          _memoryTableCache = cached;
+          await prefs.setString('tables_cache', jsonEncode(cached));
+        }
+      }
+
+      // Update SQLite DB
+      final tableDao = TableDao();
+      if (tableId != 0) {
+        await tableDao.updateTable(tableId, {'status': newStatus});
+      }
+    } catch (e) {
+      debugPrint("Error updating local table status: $e");
+    }
   }
 
   /// Get all tables (cache first for instant rendering, then API)
@@ -95,6 +161,14 @@ class TableRepository {
         if (tableList != null && tableList is List) {
           final List<Map<String, dynamic>> tables =
           List<Map<String, dynamic>>.from(tableList);
+          for (var t in tables) {
+            final tId = t['table_id'] ?? t['id'];
+            final tName = t['table_name'] ?? t['tableName'] ?? t['name'];
+            final override = getLocalStatusOverride(tId, tName);
+            if (override != null) {
+              t['status'] = override;
+            }
+          }
           _memoryTableCache = tables;
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('tables_cache', jsonEncode(tables));

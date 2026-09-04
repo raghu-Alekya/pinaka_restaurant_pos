@@ -43,6 +43,9 @@ import '../../blocs/Bloc Event/order_event.dart';
 import '../../blocs/Bloc Logic/order_bloc.dart';
 import '../../constants/constants.dart';
 import '../../repositories/order_repository.dart';
+import '../../repositories/table_repository.dart';
+import '../../repositories/order_list_repository.dart';
+import '../../services/kds_seivices.dart';
 import 'confirmation_pop_up.dart';
 
 class TopBar extends StatefulWidget implements PreferredSizeWidget {
@@ -239,17 +242,7 @@ class _TopBarState extends State<TopBar> {
               isLoading: isLoading,
 
               onCancel: () {
-                Navigator.of(dialogContext).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (_) => HomeScreen(
-                      pin: widget.pin,
-                      token: widget.token,
-                      restaurantId: widget.restaurantId,
-                      restaurantName: widget.restaurantName,
-                    ),
-                  ),
-                      (route) => false,
-                );
+                Navigator.pop(dialogContext);
               },
               onConfirm: () async {
                 setState(() {
@@ -462,6 +455,33 @@ class _TopBarState extends State<TopBar> {
     setState(() => _isPrinting = true);
 
     try {
+      // ✅ Update order and table status to 'ready to pay'
+      final orderId = summaryToPrint.orderId;
+      final tableId = summaryToPrint.tableId;
+      final tableName = summaryToPrint.tableName;
+
+      if (orderId != 0) {
+        OrderstatusRepository.updateCachedOrderStatus(orderId, 'ready to pay');
+      }
+
+      await TableRepository.updateLocalTableStatus(
+        tableId: tableId,
+        tableName: tableName,
+        newStatus: 'ready to pay',
+      );
+
+      try {
+        await KdsMqttPublisher.notifyBillPrinted(
+          restaurantId: summaryToPrint.restaurantId.toString(),
+          orderId: orderId,
+          tableId: tableId.toString(),
+          tableName: tableName,
+          orderType: summaryToPrint.orderType?.toString() ?? 'Dine In',
+        );
+      } catch (e) {
+        debugPrint('MQTT notify bill printed error: $e');
+      }
+
       debugPrint("========== BILL DATA ==========");
       debugPrint("Order ID: ${summaryToPrint.orderId}");
       debugPrint("Table Name: ${summaryToPrint.tableName}");

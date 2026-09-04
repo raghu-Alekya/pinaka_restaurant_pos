@@ -104,6 +104,10 @@ class TableBloc extends Bloc<TableEvent, TableState> {
 
         final zoneName = zoneIdToName[zoneId]!;
 
+        final tId = table['table_id'] ?? table['id'];
+        final tName = table['table_name'] ?? table['tableName'];
+        final overrideStatus = TableRepository.getLocalStatusOverride(tId, tName);
+
         return {
           ...table,
           'tableName': table['table_name'],
@@ -112,7 +116,7 @@ class TableBloc extends Bloc<TableEvent, TableState> {
             double.tryParse(table['pos_x'].toString()) ?? 0.0,
             double.tryParse(table['pos_y'].toString()) ?? 0.0,
           ),
-          'status': table['status'] ?? 'Available',
+          'status': overrideStatus ?? table['status'] ?? 'Available',
           'reservationDate': table['reservation_date'],
           'reservationTime': table['reservation_time'],
           'rotation':

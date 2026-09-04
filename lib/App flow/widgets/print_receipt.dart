@@ -18,6 +18,7 @@ import '../ui/orderstatus_screen.dart';
 import '../ui/tables_screen.dart';
 import '../../blocs/Bloc Logic/order_list_bloc.dart';
 import '../../repositories/order_list_repository.dart';
+import '../../repositories/table_repository.dart';
 
 // Add these imports for printer functionality
 import 'package:thermal_printer/esc_pos_utils_platform/src/capability_profile.dart';
@@ -327,6 +328,33 @@ class _PrintReciptState extends State<PrintRecipt> {
     setState(() => _isPrinting = true);
 
     try {
+      // ✅ Update order and table status to 'ready to pay'
+      final orderId = widget.paymentSummary.orderId;
+      final tableId = widget.paymentSummary.tableId;
+      final tableName = widget.paymentSummary.tableName;
+
+      if (orderId != 0) {
+        OrderstatusRepository.updateCachedOrderStatus(orderId, 'ready to pay');
+      }
+
+      await TableRepository.updateLocalTableStatus(
+        tableId: tableId,
+        tableName: tableName,
+        newStatus: 'ready to pay',
+      );
+
+      try {
+        await KdsMqttPublisher.notifyBillPrinted(
+          restaurantId: widget.paymentSummary.restaurantId.toString(),
+          orderId: orderId,
+          tableId: tableId.toString(),
+          tableName: tableName,
+          orderType: widget.paymentSummary.orderType?.toString() ?? 'Dine In',
+        );
+      } catch (e) {
+        debugPrint('MQTT notify bill printed error: $e');
+      }
+
       debugPrint("========== PRINTING BILL FROM PRINT RECEIPT ==========");
       debugPrint("Order ID: ${widget.paymentSummary.orderId}");
       debugPrint("Table Name: ${widget.paymentSummary.tableName}");

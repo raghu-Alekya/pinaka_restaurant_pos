@@ -571,6 +571,55 @@ class KdsMqttPublisher {
     }
   }
 
+  // ─── NEW: Notify Captain – Bill Printed / Ready to Pay ────────────
+  static Future<void> notifyBillPrinted({
+    required String restaurantId,
+    required int orderId,
+    String? tableId,
+    String? tableName,
+    String? orderType,
+  }) async {
+    try {
+      await _ensureConnected();
+
+      if (!_connected || _client == null) {
+        print('MQTT not connected - cannot notify Captain (Bill printed)');
+        return;
+      }
+
+      final payload = {
+        'event': 'bill_printed',
+        'restaurant_id': restaurantId,
+        'parent_order_id': orderId,
+        'order_type': orderType ?? 'Dine In',
+        'table_id': tableId ?? '',
+        'table_name': tableName ?? '',
+        'status': 'ready to pay',
+        'table_status': 'ready to pay',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('========== PUBLISH BILL PRINTED (READY TO PAY) → CAPTAIN ==========');
+      print('Topic  : ${_captainOrdersTopic(restaurantId)}');
+      print('Payload: ${jsonEncode(payload)}');
+      print('===================================================================');
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _captainOrdersTopic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print('✅ Bill printed (ready to pay) event sent successfully');
+    } catch (e, stack) {
+      print('Captain MQTT publish (Bill printed) failed: $e');
+      print(stack);
+    }
+  }
+
   // ─── NEW: Notify Captain – Tables Merged ────────────────────────
   static Future<void> notifyTablesMerged({
     required String restaurantId,

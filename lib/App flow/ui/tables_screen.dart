@@ -1022,7 +1022,9 @@ class _TablesScreenState extends State<TablesScreen> {
     final bool isMerged = tableData['is_merged'] ?? false;
 
     final size = TableHelpers.getPlacedTableSize(capacity, shape);
-    final String status = tableData['status'] ?? 'Available';
+    final tId = tableData['table_id'] ?? tableData['id'];
+    final tName = tableData['tableName'] ?? tableData['table_name'];
+    final String status = TableRepository.getLocalStatusOverride(tId, tName) ?? (tableData['status'] ?? 'Available');
     Widget tableContent =
     PlacedTableBuilder.buildPlacedTableWidget(
       name: mergedTables,
@@ -1108,6 +1110,9 @@ class _TablesScreenState extends State<TablesScreen> {
         }
         if (statusLower == 'dine' ||
             statusLower == 'dine in' ||
+            statusLower == 'ready to pay' ||
+            statusLower == 'ready_to_pay' ||
+            statusLower == 'running' ||
             statusLower == 'occupied') {
           final orderRepository = OrderRepository(
             baseUrl: 'https://merchantrestaurant.alektasolutions.com',
@@ -1313,8 +1318,10 @@ class _TablesScreenState extends State<TablesScreen> {
     final int capacity =
         int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
+    final tId13 = tableData['table_id'] ?? tableData['id'];
+    final tName13 = tableData['tableName'] ?? tableData['table_name'];
     final String status =
-        tableData['status']?.toString().toLowerCase().trim() ?? 'available';
+        (TableRepository.getLocalStatusOverride(tId13, tName13) ?? tableData['status']?.toString() ?? 'available').toLowerCase().trim();
 
     final bool isChildTable =
         tableData['is_child'] == true ||
@@ -1558,8 +1565,10 @@ class _TablesScreenState extends State<TablesScreen> {
     final int capacity =
         int.tryParse(tableData['capacity']?.toString() ?? '0') ?? 0;
 
+    final tId15 = tableData['table_id'] ?? tableData['id'];
+    final tName15 = tableData['tableName'] ?? tableData['table_name'];
     final String status =
-        tableData['status']?.toString().toLowerCase().trim() ?? 'available';
+        (TableRepository.getLocalStatusOverride(tId15, tName15) ?? tableData['status']?.toString() ?? 'available').toLowerCase().trim();
 
     final bool isChildTable =
         tableData['is_child'] == true ||
@@ -1919,7 +1928,6 @@ class _TablesScreenState extends State<TablesScreen> {
       Map<String, dynamic> tableData,
       String token, // ✅ Added token parameter
       ) async {
-    final tableStatus = (tableData['status'] ?? '').toString().toLowerCase().trim();
     final tableId = tableData['id'] ?? 0;
     final zoneId = tableData['zone_id'] ?? 0;
     final tableName = tableData['name'] ?? 'Table';

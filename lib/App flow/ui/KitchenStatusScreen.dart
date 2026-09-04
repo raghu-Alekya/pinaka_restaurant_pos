@@ -2148,7 +2148,9 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     final bool hasValidZone = rawZoneName.isNotEmpty && rawZoneName != '-';
     final displayZone = hasValidZone ? "Zone: $rawZoneName" : "Zone: N/A";
 
-    final timeStr = (order["order_time"] ?? '').toString().trim();
+    final dateTimeMap = _extractDateAndTime(order);
+    final dateStr = dateTimeMap['date'] ?? '';
+    final timeStr = dateTimeMap['time'] ?? '-';
 
     return Container(
       constraints: const BoxConstraints(minHeight: 100),
@@ -2194,7 +2196,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
           const SizedBox(height: 6),
 
-          // ───────── Order ID + Zone + Time + KOT ─────────
+          // ───────── Order ID + Zone + Date + Time + KOT ─────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2215,6 +2217,15 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
                     Text(
                       displayZone,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(fontSize: 13, color: bodyTextColor),
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    Text(
+                      "Date: ${dateStr.isNotEmpty ? dateStr : '-'}",
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: TextStyle(fontSize: 13, color: bodyTextColor),
@@ -2981,7 +2992,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
             ),
             headingRowHeight: 52,
             dataRowMinHeight: 56,
-            dataRowMaxHeight: 60,
+            dataRowMaxHeight: double.infinity,
             columnSpacing: 40,
             horizontalMargin: 24,
             columns: [
@@ -3044,6 +3055,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
               final qty = ((item['quantity'] ?? item['qty'] ?? item['count'] ?? 0) as num).toDouble();
               final price = ((item['price'] ?? item['rate'] ?? item['unit_price'] ?? item['amount'] ?? 0) as num).toDouble();
               final total = price != 0 ? (qty * price) : (((item['total'] ?? item['total_price'] ?? item['amount'] ?? 0) as num).toDouble());
+              final modifiersList = _extractModifiersFromItem(item);
 
               return DataRow(
                 cells: [
@@ -3057,11 +3069,33 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                     ),
                   ),
                   DataCell(
-                    Text(
-                      itemName,
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black,
-                        fontSize: 15,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            itemName,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (modifiersList.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              modifiersList.map((m) => "+ $m").join('\n'),
+                              style: TextStyle(
+                                color: isDark ? const Color(0xFF64B5F6) : const Color(0xFF1565C0),
+                                fontSize: 13,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -3102,6 +3136,210 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
         ),
       ),
     );
+  }
+
+  Map<String, String> _extractDateAndTime(Map<String, dynamic> order) {
+    String dateStr = '';
+    String timeStr = '';
+
+    final rawDate = (order['order_date'] ??
+            order['date'] ??
+            order['date_created'] ??
+            '')
+        .toString()
+        .trim();
+
+    final rawTime =
+        (order['order_time'] ?? order['time'] ?? '').toString().trim();
+    final rawCreatedAt =
+        (order['created_at'] ?? order['date_created'] ?? '').toString().trim();
+
+    // 1. Try parsing created_at / date_created if it's a full ISO or MySQL datetime string
+    if (rawCreatedAt.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(rawCreatedAt).toLocal();
+        dateStr = DateFormat('dd/MM/yyyy').format(dt);
+        if (rawTime.isEmpty) {
+          timeStr = DateFormat('hh:mm a').format(dt);
+        }
+      } catch (_) {}
+    }
+
+    // 2. Parse rawDate if dateStr is still empty
+    if (dateStr.isEmpty && rawDate.isNotEmpty) {
+      try {
+        final dt = DateTime.parse(rawDate).toLocal();
+        dateStr = DateFormat('dd/MM/yyyy').format(dt);
+      } catch (_) {
+        if (rawDate.contains('-')) {
+          final parts = rawDate.split(' ')[0].split('-');
+          if (parts.length == 3) {
+            if (parts[0].length == 4) {
+              dateStr = "${parts[2]}/${parts[1]}/${parts[0]}";
+            } else {
+              dateStr = rawDate.split(' ')[0];
+            }
+          } else {
+            dateStr = rawDate;
+          }
+        } else {
+          dateStr = rawDate;
+        }
+      }
+    }
+
+    // 3. Fallback date to today if dateStr is empty
+    if (dateStr.isEmpty) {
+      dateStr = DateFormat('dd/MM/yyyy').format(DateTime.now());
+    }
+
+    // 4. Time resolution
+    if (timeStr.isEmpty) {
+      if (rawTime.isNotEmpty) {
+        timeStr = rawTime;
+      } else {
+        timeStr = '-';
+      }
+    }
+
+    return {
+      'date': dateStr,
+      'time': timeStr,
+    };
+  }
+
+  List<String> _extractModifiersFromItem(Map<String, dynamic> item) {
+    List<String> results = [];
+
+    // 1. Direct modifiers list/string/map
+    final directModifiers = item['modifiers'] ??
+        item['item_modifiers'] ??
+        item['selected_modifiers'] ??
+        item['modifier_names'];
+    if (directModifiers is List) {
+      for (var m in directModifiers) {
+        if (m is Map) {
+          final name = (m['name'] ??
+                  m['modifier_name'] ??
+                  m['title'] ??
+                  m['label'] ??
+                  '')
+              .toString()
+              .trim();
+          if (name.isNotEmpty) results.add(name);
+        } else if (m != null) {
+          final str = m.toString().trim();
+          if (str.isNotEmpty) results.add(str);
+        }
+      }
+    } else if (directModifiers is String && directModifiers.trim().isNotEmpty) {
+      results.add(directModifiers.trim());
+    }
+
+    // 2. Add-ons map or list
+    final addOns = item['addOns'] ?? item['addons'] ?? item['add_ons'];
+    if (addOns is Map) {
+      addOns.forEach((key, val) {
+        final name = key.toString().trim();
+        if (name.isNotEmpty) {
+          if (val is Map &&
+              val['quantity'] != null &&
+              (val['quantity'] as num) > 1) {
+            results.add("$name (x${val['quantity']})");
+          } else {
+            results.add(name);
+          }
+        }
+      });
+    } else if (addOns is List) {
+      for (var a in addOns) {
+        if (a is Map) {
+          final name = (a['name'] ?? a['addon_name'] ?? '').toString().trim();
+          if (name.isNotEmpty) results.add(name);
+        } else if (a != null) {
+          final str = a.toString().trim();
+          if (str.isNotEmpty) results.add(str);
+        }
+      }
+    }
+
+    // 3. Check meta_data array
+    final metaData = item['meta_data'] ?? item['metadata'];
+    if (metaData is List) {
+      for (final meta in metaData) {
+        if (meta is Map) {
+          final key = meta['key']?.toString() ?? '';
+          final value = meta['value'];
+
+          if ((key == '_modifiers' || key == 'modifiers') && value != null) {
+            if (value is List) {
+              for (var m in value) {
+                if (m is Map) {
+                  final name =
+                      (m['name'] ?? m['modifier_name'] ?? '').toString().trim();
+                  if (name.isNotEmpty && !results.contains(name)) {
+                    results.add(name);
+                  }
+                } else {
+                  final str = m.toString().trim();
+                  if (str.isNotEmpty && !results.contains(str)) {
+                    results.add(str);
+                  }
+                }
+              }
+            } else if (value is String &&
+                value.trim().isNotEmpty &&
+                !results.contains(value.trim())) {
+              results.add(value.trim());
+            }
+          } else if ((key == '_addons' || key == 'addons') && value != null) {
+            if (value is List) {
+              for (var a in value) {
+                if (a is Map) {
+                  final name = (a['name'] ?? '').toString().trim();
+                  if (name.isNotEmpty && !results.contains(name)) {
+                    results.add(name);
+                  }
+                }
+              }
+            }
+          } else if ((key == '_modifier_notes' ||
+                  key == 'note' ||
+                  key == 'notes') &&
+              value != null) {
+            final noteStr = value.toString().trim();
+            if (noteStr.isNotEmpty && !results.contains("Note: $noteStr")) {
+              results.add("Note: $noteStr");
+            }
+          }
+        }
+      }
+    }
+
+    // 4. Direct note / notes / instruction
+    final note = (item['note'] ?? item['notes'] ?? item['instruction'] ?? '')
+        .toString()
+        .trim();
+    if (note.isNotEmpty) {
+      final noteFormatted = "Note: $note";
+      if (!results.contains(noteFormatted) && !results.contains(note)) {
+        results.add(noteFormatted);
+      }
+    }
+
+    // 5. Variant / Variation name
+    final variant = (item['variant'] ??
+            item['variation'] ??
+            item['variant_name'] ??
+            item['variation_name'] ??
+            '')
+        .toString()
+        .trim();
+    if (variant.isNotEmpty && !results.contains(variant)) {
+      results.insert(0, variant);
+    }
+
+    return results;
   }
 
   Color _getStatusColor(String status) {
