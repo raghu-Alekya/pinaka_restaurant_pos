@@ -19,6 +19,7 @@ import '../../blocs/Bloc Logic/zone_bloc.dart';
 import '../../blocs/Bloc State/ZoneState.dart';
 import '../../blocs/Bloc State/attendance_state.dart';
 import '../../blocs/Bloc State/table_state.dart';
+import '../../constants/constants.dart';
 import '../../local database/area_dao.dart';
 import '../../local database/login_dao.dart';
 import '../../local database/table_dao.dart';
@@ -101,7 +102,7 @@ late ViewMode _currentViewMode;
 class _TablesScreenState extends State<TablesScreen> {
 
   final OrderRepository orderRepository = OrderRepository(
-    baseUrl: "https://merchantrestaurant.alektasolutions.com", // Replace with your backend URL
+    baseUrl: AppConstants.baseDomain, // Replace with your backend URL
   );
 
   /// Current zoom scale applied to the floor plan canvas.
@@ -1115,7 +1116,7 @@ class _TablesScreenState extends State<TablesScreen> {
             statusLower == 'running' ||
             statusLower == 'occupied') {
           final orderRepository = OrderRepository(
-            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+            baseUrl:  AppConstants.baseDomain,
           );
 
           OrderModel? existingOrder;
@@ -1418,7 +1419,7 @@ class _TablesScreenState extends State<TablesScreen> {
             status == 'occupied') {
           final orderRepository = OrderRepository(
             baseUrl:
-            'https://merchantrestaurant.alektasolutions.com',
+            AppConstants.baseDomain,
           );
 
           OrderModel? existingOrder;
@@ -1643,7 +1644,7 @@ class _TablesScreenState extends State<TablesScreen> {
             status == 'ready to pay' ||
             status == 'occupied') {
           final orderRepository = OrderRepository(
-            baseUrl: 'https://merchantrestaurant.alektasolutions.com',
+            baseUrl:  AppConstants.baseDomain,
           );
 
           OrderModel? existingOrder;
@@ -1933,7 +1934,7 @@ class _TablesScreenState extends State<TablesScreen> {
     final tableName = tableData['name'] ?? 'Table';
     final zoneName = tableData['zone_name'] ?? 'Main Zone';
 
-    final orderRepo = OrderRepository(baseUrl: 'https://merchantrestaurant.alektasolutions.com');
+    final orderRepo = OrderRepository(baseUrl:  AppConstants.baseDomain,);
 
     showGeneralDialog(
       context: context,

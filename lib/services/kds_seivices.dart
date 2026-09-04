@@ -10,12 +10,19 @@ class KdsMqttPublisher {
 
   static StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>?
   _statusSubscription;
+  static StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>?
+  _stockSubscription;
   static final _statusController =
   StreamController<Map<String, dynamic>>.broadcast();
 
   /// Stream of KDS → POS status updates (`kot_status_updated`).
   static Stream<Map<String, dynamic>> get statusUpdates =>
       _statusController.stream;
+  static final _stockController =
+  StreamController<Map<String, dynamic>>.broadcast();
+
+  static Stream<Map<String, dynamic>> get stockUpdates =>
+      _stockController.stream;
 
   static const String _brokerHost = String.fromEnvironment(
     'MQTT_BROKER_HOST',
@@ -32,6 +39,11 @@ class KdsMqttPublisher {
 
   static String _statusTopic(String restaurantId) =>
       'store/$restaurantId/kitchen/status';
+
+  static String _stockTopic(String restaurantId) =>
+      'store/$restaurantId/kitchen/stock';
+
+
 
   static String _captainOrdersTopic(String restaurantId) =>
       'store/$restaurantId/captain/orders';
@@ -80,6 +92,126 @@ class KdsMqttPublisher {
       _connected = false;
     }
   }
+  // ─── POS ← KDS Stock Updates ─────────────────────────────────
+
+  static Future<void> listenForStockUpdates({
+    required String restaurantId,
+  }) async {
+    try {
+      await _ensureConnected();
+
+      if (!_connected || _client == null) {
+        print('MQTT not connected - cannot subscribe to stock updates');
+        return;
+      }
+
+      final topic = _stockTopic(restaurantId);
+
+      _client!.subscribe(
+        topic,
+        MqttQos.atLeastOnce,
+      );
+
+      print('📦 POS subscribed to KDS stock → $topic');
+
+      await _stockSubscription?.cancel();
+
+      if (_client!.updates == null) {
+        print('MQTT updates stream is null');
+        return;
+      }
+
+      _stockSubscription = _client!.updates!.listen((messages) {
+        for (final message in messages) {
+          if (message.topic != topic) continue;
+
+          final payload = message.payload;
+
+          if (payload is! MqttPublishMessage) continue;
+
+          final body = MqttPublishPayload.bytesToStringAsString(
+            payload.payload.message,
+          );
+
+          try {
+            final decoded = jsonDecode(body);
+
+            if (decoded is! Map) continue;
+
+            final map = Map<String, dynamic>.from(decoded);
+
+            if (map['event'] != 'stock_updated') {
+              continue;
+            }
+
+            print('========== POS RECEIVED STOCK UPDATE ==========');
+            print('Product ID : ${map['product_id']}');
+            print('Old Status : ${map['old_status']}');
+            print('New Status : ${map['new_status']}');
+            print('================================================');
+
+            _stockController.add(map);
+          } catch (e) {
+            print('❌ POS stock MQTT parse error: $e');
+          }
+        }
+      });
+    } catch (e) {
+      print('❌ POS stock MQTT subscribe failed: $e');
+    }
+  }
+
+  // ─── Publish POS → KDS Stock Update ─────────────────────────
+
+  static Future<void> notifyStockUpdated({
+    required String restaurantId,
+    required String storeId,
+    required int productId,
+    required String oldStatus,
+    required String newStatus,
+  }) async {
+    try {
+      await _ensureConnected();
+
+      if (!_connected || _client == null) {
+        print('MQTT not connected - cannot publish stock update');
+        return;
+      }
+
+      final payload = {
+        'event': 'stock_updated',
+        'restaurant_id': restaurantId,
+        'store_id': storeId,
+        'product_id': productId,
+        'old_status': oldStatus,
+        'new_status': newStatus,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('========== POS → KDS STOCK UPDATE ==========');
+      print('Topic      : ${_stockTopic(restaurantId)}');
+      print('Product ID : $productId');
+      print('Old Status : $oldStatus');
+      print('New Status : $newStatus');
+      print('Payload    : ${jsonEncode(payload)}');
+      print('=============================================');
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _stockTopic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print('✅ POS stock update published successfully');
+    } catch (e, stack) {
+      print('❌ POS stock MQTT publish failed: $e');
+      print(stack);
+    }
+  }
+
 
   // ─── Subscribe to KDS status updates ──────────────────────────
   static Future<void> listenForKdsStatusUpdates({
