@@ -2358,6 +2358,7 @@ import '../../addons/addons_domin/fetch_addons_usecase.dart';
 import '../../kots_list/kots_list_bloc/kots_list_bloc.dart';
 import '../../kots_list/kots_list_bloc/kots_list_event.dart';
 import '../../kots_list/kots_list_bloc/kots_list_state.dart';
+import '../../mqtt_servers/captain_mqtt_publisher.dart';
 import '../../search_products/search_screen.dart';
 import '../../variations/variations_domain/fetch_variations_usecase.dart';
 import '../../variations/variations_domain/variation_entity.dart';
@@ -2441,6 +2442,13 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
     final bloc = context.read<CategoryBloc>();
     if (bloc.state is CategoryInitial) {
       bloc.add(LoadCategories());
+    } else if (bloc.state is CategoryLoaded) {
+      // 👈 NEW: always reset to the 1st category whenever this screen opens,
+      // regardless of whatever category was left selected by another screen.
+      final loaded = bloc.state as CategoryLoaded;
+      if (loaded.categories.isNotEmpty) {
+        bloc.add(SelectCategory(categoryId: loaded.categories.first.id));
+      }
     }
     _loadCurrencySymbol();
 
@@ -2872,6 +2880,7 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
   //     _isCartActionBusy = false;
   //   }
   // }
+
   Future<void> _showVariantAndAddOnSheet(ProductEntity product) async {
     if (_isCartActionBusy) return;
     _isCartActionBusy = true;
@@ -2973,40 +2982,92 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: s(10),
-                                height: s(10),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: nonVeg ? Colors.red : Colors.green,
-                                ),
-                              ),
-                              SizedBox(width: s(8)),
-                              Expanded(
-                                child: Text(
-                                  product.name,
-                                  // 👈 CHANGED: 18 -> 20
-                                  style: TextStyle(fontSize: s(20), fontWeight: FontWeight.bold),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => Navigator.pop(sheetContext),
-                                child: Container(
-                                  padding: EdgeInsets.all(s(4)),
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Color(0xFFFFEAEA),
+                          // Row(
+                          //   crossAxisAlignment: CrossAxisAlignment.center,
+                          //   children: [
+                          //     Container(
+                          //       width: s(10),
+                          //       height: s(10),
+                          //       decoration: BoxDecoration(
+                          //         shape: BoxShape.circle,
+                          //         color: nonVeg ? Colors.red : Colors.green,
+                          //       ),
+                          //     ),
+                          //     SizedBox(width: s(8)),
+                          //     Expanded(
+                          //       child: Text(
+                          //         product.name,
+                          //         textAlign: TextAlign.center,
+                          //         // 👈 CHANGED: 18 -> 20
+                          //         style: TextStyle(fontSize: s(20), fontWeight: FontWeight.bold),
+                          //         maxLines: 1,
+                          //         overflow: TextOverflow.ellipsis,
+                          //       ),
+                          //     ),
+                          //     GestureDetector(
+                          //       onTap: () => Navigator.pop(sheetContext),
+                          //       child: Container(
+                          //         padding: EdgeInsets.all(s(4)),
+                          //         decoration: const BoxDecoration(
+                          //           shape: BoxShape.circle,
+                          //           color: Color(0xFFFFEAEA),
+                          //         ),
+                          //         child: Icon(Icons.close, size: s(18), color: Colors.red),
+                          //       ),
+                          //     ),
+                          //   ],
+                          // ),
+
+                          SizedBox(
+                            width: double.infinity,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Padding(
+                                  padding: EdgeInsets.only(left: s(15), right: s(30)),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        width: s(10),
+                                        height: s(10),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: nonVeg ? Colors.red : Colors.green,
+                                        ),
+                                      ),
+                                      SizedBox(width: s(8)),
+                                      Flexible(
+                                        child: Text(
+                                          product.name,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(fontSize: s(20), fontWeight: FontWeight.bold),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  child: Icon(Icons.close, size: s(18), color: Colors.red),
                                 ),
-                              ),
-                            ],
+                                Positioned(
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: () => Navigator.pop(sheetContext),
+                                    child: Container(
+                                      padding: EdgeInsets.all(s(4)),
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Color(0xFFFFEAEA),
+                                      ),
+                                      child: Icon(Icons.close, size: s(18), color: Colors.red),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+
                           SizedBox(height: s(14)),
 
                           // ── Variations ──
@@ -3032,92 +3093,87 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                                   if (!isSelected) quantity = 1;
                                 }),
                                 child: Container(
-                                  padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(8)),
+                                  padding: EdgeInsets.symmetric(horizontal: s(12), vertical: s(10)),
                                   decoration: BoxDecoration(
                                     color: isSelected
                                         ? ColorConstants.primaryColor.withOpacity(0.06)
                                         : Colors.white,
-                                    borderRadius: BorderRadius.circular(s(10)),
+                                    borderRadius: BorderRadius.circular(s(12)),
                                     border: Border.all(
                                       color: isSelected ? ColorConstants.primaryColor : Colors.grey.shade300,
                                       width: isSelected ? s(1.4) : s(1),
                                     ),
                                   ),
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    alignment: Alignment.topLeft,
-                                    child: SizedBox(
-                                      width: cardContentWidth,
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // ── Title block (top): product name (small grey) + variant name (bold, up to 2 lines) ──
+                                      SizedBox(
+                                        height: s(58), // 👈 increased to fit product name (1 line) + variant name (up to 2 lines)
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              product.name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: s(12), color: Colors.grey.shade600),
+                                            ),
+                                            SizedBox(height: s(2)),
+                                            Text(
+                                              variant.name,
+                                              maxLines: 2, // 👈 CHANGED: 1 -> 2, so long names wrap instead of truncating
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: s(15), fontWeight: FontWeight.w600, height: 1.15),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // ── Price + stepper/add (bottom, pinned) ──
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
                                         children: [
-                                          Text(
-                                            product.name,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            // 👈 CHANGED: 11 -> 12
-                                            style: TextStyle(fontSize: s(12), color: Colors.grey.shade600),
-                                          ),
-                                          SizedBox(height: s(4)),
-                                          Row(
-                                            crossAxisAlignment: CrossAxisAlignment.center,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  variant.name,
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                  // 👈 CHANGED: 13 -> 15
-                                                  style: TextStyle(fontSize: s(15), fontWeight: FontWeight.w600),
-                                                ),
+                                          Flexible(
+                                            child: Text(
+                                              '$currencySymbol${variant.price}',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: ColorConstants.primaryColor,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: s(16),
                                               ),
-                                              SizedBox(width: s(6)),
-                                              isSelected
-                                                  ? _VariantStepper(
-                                                quantity: quantity,
-                                                scale: scale,
-                                                // 👈 CHANGED: 22 -> 34, bigger touch target,
-                                                // fills the extra card space we freed up.
-                                                diameter: 34,
-                                                onAdd: () => setSheetState(() => quantity++),
-                                                onRemove: () => setSheetState(() {
-                                                  if (quantity > 1) quantity--;
-                                                }),
-                                              )
-                                                  : GestureDetector(
-                                                behavior: HitTestBehavior.opaque,
-                                                onTap: () => setSheetState(() {
-                                                  selectedVariation = variant;
-                                                  quantity = 1;
-                                                }),
-                                                child: Padding(
-                                                  padding: EdgeInsets.all(s(2)),
-                                                  child: Icon(
-                                                    Icons.add_circle,
-                                                    color: ColorConstants.primaryColor,
-                                                    // 👈 CHANGED: 22 -> 30
-                                                    size: s(30),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
-                                          SizedBox(height: s(6)),
-                                          Text(
-                                            '$currencySymbol${variant.price}',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
+                                          SizedBox(width: s(6)),
+                                          isSelected
+                                              ? _VariantStepper(
+                                            quantity: quantity,
+                                            scale: scale,
+                                            diameter: 30,
+                                            onAdd: () => setSheetState(() => quantity++),
+                                            onRemove: () => setSheetState(() {
+                                              if (quantity > 1) quantity--;
+                                            }),
+                                          )
+                                              : GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () => setSheetState(() {
+                                              selectedVariation = variant;
+                                              quantity = 1;
+                                            }),
+                                            child: Icon(
+                                              Icons.add_circle,
                                               color: ColorConstants.primaryColor,
-                                              fontWeight: FontWeight.bold,
-                                              // 👈 CHANGED: 14 -> 16
-                                              fontSize: s(16),
+                                              size: s(28),
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
+                                    ],
                                   ),
                                 ),
                               );
@@ -3145,10 +3201,10 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                                 controlAffinity: ListTileControlAffinity.leading,
                                 value: isChecked,
                                 // 👈 CHANGED: 14 -> 15
-                                title: Text(addOn.name, style: TextStyle(fontSize: s(15))),
+                                title: Text(addOn.name, style: TextStyle(fontSize: s(16))),
                                 secondary: Text(
                                   '+ $currencySymbol${addOn.price.toStringAsFixed(2)}',
-                                  style: TextStyle(fontSize: s(14)),
+                                  style: TextStyle(fontSize: s(16)),
                                 ),
                                 onChanged: (checked) {
                                   setSheetState(() {
@@ -3270,7 +3326,9 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(product.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(product.name,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
                     '$currencySymbol${basePrice.toStringAsFixed(2)}', // 👈 dynamic
@@ -3425,38 +3483,90 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Header ──
-                    Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: nonVeg ? Colors.red : Colors.green,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            product.name,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(sheetContext),
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFFFFEAEA),
+                    // Row(
+                    //   children: [
+                    //     Container(
+                    //       width: 10,
+                    //       height: 10,
+                    //       decoration: BoxDecoration(
+                    //         shape: BoxShape.circle,
+                    //         color: nonVeg ? Colors.red : Colors.green,
+                    //       ),
+                    //     ),
+                    //     const SizedBox(width: 8),
+                    //     Expanded(
+                    //       child: Text(
+                    //         product.name,
+                    //         textAlign: TextAlign.center,
+                    //         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    //         maxLines: 1,
+                    //         overflow: TextOverflow.ellipsis,
+                    //       ),
+                    //     ),
+                    //     GestureDetector(
+                    //       onTap: () => Navigator.pop(sheetContext),
+                    //       child: Container(
+                    //         padding: const EdgeInsets.all(4),
+                    //         decoration: const BoxDecoration(
+                    //           shape: BoxShape.circle,
+                    //           color: Color(0xFFFFEAEA),
+                    //         ),
+                    //         child: const Icon(Icons.close, size: 18, color: Colors.red),
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 15, right: 32),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: nonVeg ? Colors.red : Colors.green,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    product.name,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: const Icon(Icons.close, size: 18, color: Colors.red),
                           ),
-                        ),
-                      ],
+                          Positioned(
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(sheetContext),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Color(0xFFFFEAEA),
+                                ),
+                                child: const Icon(Icons.close, size: 18, color: Colors.red),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+
                     const SizedBox(height: 16),
 
                     // ── Price & Stepper ──
@@ -3499,9 +3609,13 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
                           controlAffinity: ListTileControlAffinity.leading,
                           dense: true,
                           value: isChecked,
-                          title: Text(addOn.name, style: const TextStyle(fontSize: 14)),
+                          title: Text(addOn.name, style: const TextStyle(fontSize: 16,fontWeight: FontWeight.w600,)),
                           secondary: Text(
-                            '+ $currencySymbol${addOn.price.toStringAsFixed(2)}', // 👈 dynamic
+                            '+ $currencySymbol${addOn.price.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           onChanged: (checked) {
                             setSheetState(() {
@@ -3618,8 +3732,17 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       );
 
       if (!mounted) return;
+      unawaited(
+        CaptainMqttPublisher.notifyOrderCancelled(
+          restaurantId: widget.restaurantId.toString(),
+          orderId: widget.orderId,
+          orderType: widget.orderType,
+          zoneId: widget.zoneId,
+          tableName: widget.tableName,
 
-      // ─── ✅ Refresh tables & zones instantly ──────────────
+        ),
+      );
+
       context.read<AllTablesBloc>().add(FetchAllTables());
       context.read<ZoneBloc>().add(FetchZones());
 
@@ -3689,7 +3812,8 @@ class _OrderMenuScreenState extends State<OrderMenuScreen> {
       appBar: AppBar(
         // toolbarHeight: 32,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         elevation: 0.5,
         centerTitle: true,
 

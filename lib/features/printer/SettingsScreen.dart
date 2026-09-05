@@ -517,6 +517,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, size: 20),
           onPressed: () => Navigator.pop(context),
@@ -531,7 +534,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: primaryTextColor,
           ),
         ),
-        backgroundColor: cardColor,
         elevation: 0,
         centerTitle: true,
         foregroundColor: primaryTextColor,

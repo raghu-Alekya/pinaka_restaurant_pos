@@ -1,6 +1,3 @@
-
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
@@ -91,25 +88,44 @@ class _KotsListWidgetState extends State<KotsListWidget> {
             return _emptyBox('No KOTs found for this order.');
           }
 
-          return Container(
-            clipBehavior: Clip.antiAlias, // 👈 clips children so header corners follow the container radius instead of showing white square corners
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              // 👈 Fixed: border removed entirely per request — no border color, just white
-            ),
-            child: Column(
-              children: [
-                for (int i = 0; i < kots.length; i++) ...[
-                  if (i > 0) Divider(height: 1, color: Colors.grey.shade200),
-                  _KotExpansionTile(
-                    kot: kots[i],
-                    currencySymbol: _currencySymbol, // 👈 pass symbol
+          // return Container(
+          //   clipBehavior: Clip.antiAlias, // 👈 clips children so header corners follow the container radius instead of showing white square corners
+          //   decoration: BoxDecoration(
+          //     color: Colors.white,
+          //     borderRadius: BorderRadius.circular(8),
+          //     // 👈 Fixed: border removed entirely per request — no border color, just white
+          //   ),
+          //   child: Column(
+          //     children: [
+          //       for (int i = 0; i < kots.length; i++) ...[
+          //         if (i > 0) Divider(height: 1, color: Colors.grey.shade200),
+          //         _KotExpansionTile(
+          //           kot: kots[i],
+          //           currencySymbol: _currencySymbol, // 👈 pass symbol
+          //         ),
+          //       ],
+          //     ],
+          //   ),
+          // );
+          return Column(
+            children: [
+              for (int i = 0; i < kots.length; i++) ...[
+                if (i > 0) const SizedBox(height: 2),
+                Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
+                  child: _KotExpansionTile(
+                    kot: kots[i],
+                    currencySymbol: _currencySymbol,
+                  ),
+                ),
               ],
-            ),
+            ],
           );
+
         }
 
         if (state is KotsListError) {

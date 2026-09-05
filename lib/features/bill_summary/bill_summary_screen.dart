@@ -645,7 +645,8 @@ class _BillSummaryScreenState extends State<BillSummaryScreen> {
       backgroundColor: const Color(0xFFFDFDFD),
       appBar: AppBar(
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(

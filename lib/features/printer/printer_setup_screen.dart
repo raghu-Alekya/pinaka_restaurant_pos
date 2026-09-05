@@ -326,6 +326,130 @@ class _PrinterSetupState extends State<PrinterSetup> {
     return _selectedPrinters.any((p) => p.address == device.address);
   }
 
+  // Future<void> _handleConnectPrinter(BluetoothPrinter device) async {
+  //   if (_isPrinterSelected(device)) {
+  //     await _handleDisconnectPrinter(device);
+  //     return;
+  //   }
+  //
+  //   if (device.typePrinter == PrinterType.usb) {
+  //     setState(() => _selectedPrinters.add(device));
+  //     try {
+  //       final printerDb = PrinterDBHelper();
+  //       await printerDb.addPrinterToDB(device);
+  //       await printerDb.updatePrinterSelection(
+  //         device.address ?? '',
+  //         true,
+  //         deviceName: device.deviceName,
+  //       );
+  //     } catch (e) {
+  //       print('Error persisting USB printer selection: $e');
+  //     }
+  //     //// ─── Check printer is connected ─────────────────────────────────
+  //
+  //     // try {
+  //     //   final printerDb = PrinterDBHelper();
+  //     //   final printers = await printerDb.getAllPrintersFromDB();
+  //     //   // Also check legacy network printers in prefs if you use them
+  //     //   final prefs = await SharedPreferences.getInstance();
+  //     //   final savedNetwork = prefs.getString('network_printers');
+  //     //   final hasNetwork = savedNetwork != null &&
+  //     //       savedNetwork.isNotEmpty &&
+  //     //       (jsonDecode(savedNetwork) as List).isNotEmpty;
+  //     //
+  //     //   if ((printers.isEmpty) && !hasNetwork) {
+  //     //     if (!context.mounted) return;
+  //     //     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  //     //     ScaffoldMessenger.of(context).showSnackBar(
+  //     //       const SnackBar(
+  //     //         content: Text(
+  //     //           'No printer connected. Please connect a printer and try again.',
+  //     //         ),
+  //     //         backgroundColor: Colors.red,
+  //     //         duration: Duration(seconds: 3),
+  //     //       ),
+  //     //     );
+  //     //     debugPrint('════════════ PRINT BILL ERROR ═════════════');
+  //     //     debugPrint('Error: No printer connected / selected');
+  //     //     debugPrint('═══════════════════════════════════════════');
+  //     //     return;
+  //     //   }
+  //     // } catch (e) {
+  //     //   debugPrint('Printer check error: $e');
+  //     // }
+  //   } else if (device.typePrinter == PrinterType.network) {
+  //     setState(() => _selectedPrinters.add(device));
+  //
+  //     final exists = _networkPrinters.any((p) => p.ipAddress == device.address);
+  //     if (!exists) {
+  //       setState(() {
+  //         _networkPrinters.add(
+  //           NetworkPrinterConfig(
+  //             ipAddress: device.address ?? '',
+  //             port: (device.port == null || device.port!.isEmpty)
+  //                 ? '9100'
+  //                 : device.port!,
+  //             name: device.deviceName ??
+  //                 _getPrinterName(_networkPrinters.length, ''),
+  //           ),
+  //         );
+  //       });
+  //       _saveNetworkPrinters();
+  //     }
+  //   } else {
+  //     // ─── Bluetooth ───────────────────────────────────────────────
+  //     try {
+  //       await _printerSettings.selectDevice(device);
+  //
+  //       final connected = await _printerSettings.connectDevice();
+  //       if (!connected && mounted) {
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           const SnackBar(
+  //             content: Text(
+  //               "Printer does not have required details. Please select another printer.",
+  //             ),
+  //             backgroundColor: Colors.red,
+  //             duration: Duration(seconds: 3),
+  //           ),
+  //         );
+  //         return;
+  //       }
+  //
+  //       // ★★★ KEY FIX – put it into the list that the print path uses ★★★
+  //       setState(() {
+  //         selectedPrinter = device;
+  //         _isConnected = true;
+  //         if (!_selectedPrinters.any((p) => p.address == device.address)) {
+  //           _selectedPrinters.add(device);
+  //         }
+  //       });
+  //
+  //       try {
+  //         final printerDb = PrinterDBHelper();
+  //         final existing = await printerDb.getPrinterFromDB();
+  //         if (existing.isEmpty) {
+  //           await printerDb.addPrinterToDB(device);
+  //         } else {
+  //           await printerDb.updatePrinterToDB(device);
+  //         }
+  //       } catch (dbError) {
+  //         print("DB save error (non-fatal): $dbError");
+  //       }
+  //     } catch (e, s) {
+  //       print("Exception: $e, Stack: $s");
+  //       if (mounted) {
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           const SnackBar(
+  //             content: Text("Error connecting to printer."),
+  //             backgroundColor: Colors.red,
+  //             duration: Duration(seconds: 3),
+  //           ),
+  //         );
+  //       }
+  //     }
+  //   }
+  // }
+
   Future<void> _handleConnectPrinter(BluetoothPrinter device) async {
     if (_isPrinterSelected(device)) {
       await _handleDisconnectPrinter(device);
@@ -336,9 +460,10 @@ class _PrinterSetupState extends State<PrinterSetup> {
       setState(() => _selectedPrinters.add(device));
       try {
         final printerDb = PrinterDBHelper();
+        await printerDb.clearAllSelections(); // ← new helper (see below)
         await printerDb.addPrinterToDB(device);
         await printerDb.updatePrinterSelection(
-          device.address ?? '',
+          device.address ?? device.deviceName ?? '',
           true,
           deviceName: device.deviceName,
         );
@@ -364,6 +489,20 @@ class _PrinterSetupState extends State<PrinterSetup> {
         });
         _saveNetworkPrinters();
       }
+
+      // Also save to DB so PrinterSettings can find it
+      try {
+        final printerDb = PrinterDBHelper();
+        await printerDb.clearAllSelections();
+        await printerDb.addPrinterToDB(device);
+        await printerDb.updatePrinterSelection(
+          device.address ?? '',
+          true,
+          deviceName: device.deviceName,
+        );
+      } catch (e) {
+        print('Error persisting network printer: $e');
+      }
     } else {
       // ─── Bluetooth ───────────────────────────────────────────────
       try {
@@ -383,7 +522,6 @@ class _PrinterSetupState extends State<PrinterSetup> {
           return;
         }
 
-        // ★★★ KEY FIX – put it into the list that the print path uses ★★★
         setState(() {
           selectedPrinter = device;
           _isConnected = true;
@@ -394,12 +532,18 @@ class _PrinterSetupState extends State<PrinterSetup> {
 
         try {
           final printerDb = PrinterDBHelper();
+          await printerDb.clearAllSelections();
           final existing = await printerDb.getPrinterFromDB();
           if (existing.isEmpty) {
             await printerDb.addPrinterToDB(device);
           } else {
             await printerDb.updatePrinterToDB(device);
           }
+          await printerDb.updatePrinterSelection(
+            device.address ?? '',
+            true,
+            deviceName: device.deviceName,
+          );
         } catch (dbError) {
           print("DB save error (non-fatal): $dbError");
         }
@@ -431,7 +575,7 @@ class _PrinterSetupState extends State<PrinterSetup> {
       });
       try {
         await PrinterDBHelper().updatePrinterSelection(
-          device.address ?? '',
+          device.address ?? device.deviceName ?? '',
           false,
           deviceName: device.deviceName,
         );
@@ -442,6 +586,15 @@ class _PrinterSetupState extends State<PrinterSetup> {
       setState(() {
         _selectedPrinters.removeWhere((p) => p.address == device.address);
       });
+      try {
+        await PrinterDBHelper().updatePrinterSelection(
+          device.address ?? '',
+          false,
+          deviceName: device.deviceName,
+        );
+      } catch (e) {
+        print('Error un-persisting network printer: $e');
+      }
     } else {
       // Bluetooth
       printerManager.disconnect(type: PrinterType.bluetooth);
@@ -452,8 +605,54 @@ class _PrinterSetupState extends State<PrinterSetup> {
           _selectedPrinters.removeWhere((p) => p.address == device.address);
         });
       }
+      try {
+        await PrinterDBHelper().updatePrinterSelection(
+          device.address ?? '',
+          false,
+          deviceName: device.deviceName,
+        );
+      } catch (e) {
+        print('Error un-persisting Bluetooth printer: $e');
+      }
     }
   }
+
+  // Future<void> _handleDisconnectPrinter(BluetoothPrinter device) async {
+  //   if (device.typePrinter == PrinterType.usb) {
+  //     setState(() {
+  //       _selectedPrinters.removeWhere(
+  //             (p) =>
+  //         p.deviceName == device.deviceName &&
+  //             p.vendorId == device.vendorId &&
+  //             p.productId == device.productId &&
+  //             p.typePrinter == PrinterType.usb,
+  //       );
+  //     });
+  //     try {
+  //       await PrinterDBHelper().updatePrinterSelection(
+  //         device.address ?? '',
+  //         false,
+  //         deviceName: device.deviceName,
+  //       );
+  //     } catch (e) {
+  //       print('Error un-persisting USB printer selection: $e');
+  //     }
+  //   } else if (device.typePrinter == PrinterType.network) {
+  //     setState(() {
+  //       _selectedPrinters.removeWhere((p) => p.address == device.address);
+  //     });
+  //   } else {
+  //     // Bluetooth
+  //     printerManager.disconnect(type: PrinterType.bluetooth);
+  //     if (mounted) {
+  //       setState(() {
+  //         _isConnected = false;
+  //         selectedPrinter = null;
+  //         _selectedPrinters.removeWhere((p) => p.address == device.address);
+  //       });
+  //     }
+  //   }
+  // }
 
 
 
@@ -1091,6 +1290,8 @@ class _PrinterSetupState extends State<PrinterSetup> {
       backgroundColor: _screenBg,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         elevation: 0.5,
         foregroundColor: Colors.black,
         centerTitle: true,

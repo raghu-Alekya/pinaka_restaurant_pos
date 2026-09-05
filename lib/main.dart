@@ -1,4 +1,6 @@
 
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -81,15 +83,27 @@ import 'features/variations/variations_data_layer/variation_remote_data_source.d
 import 'features/variations/variations_data_layer/variation_repository_impl.dart';
 import 'features/variations/variations_domain/fetch_variations_usecase.dart';
 import 'features/variations/variations_domain/variation_repository.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+// Future<void> main() async {
+//   WidgetsFlutterBinding.ensureInitialized();
+//
+//
+//   runApp(const MyApp());
+// }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 👈 NEW: sqflite needs an ffi-based factory on Windows/Linux/macOS desktop.
+  // Android/iOS keep using the default sqflite factory untouched.
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
 
   runApp(const MyApp());
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);

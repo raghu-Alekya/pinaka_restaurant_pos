@@ -1,11 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../ captain_pin_login/captain_login_data_layer/captain_local_storage.dart';
+import '../../ merchant_login/merchant_login_data_layer/merchant_local_storage.dart';
 import '../../../constants/color_constants.dart';
 import '../../bill_summary/bill_summary_domain/bill_summary_usecase.dart';
+import '../../mqtt_servers/captain_mqtt_publisher.dart';
 import '../../printer/printer_service.dart';
 import '../../transfer_kot/transfer_kot_bottom_sheet.dart';
 import '../Zones/Zones_bloc/zone_state.dart';
@@ -469,18 +475,104 @@ class _TableCard extends StatelessWidget {
   bool get _isAvailable =>
       _statusKind(status) == _TableStatusKind.available;
 
+  String get _displayTableName {
+    if (isMerged && mergedTables != null && mergedTables!.isNotEmpty) {
+      return mergedTables!;
+    }
+    return tableName;
+  }
+
+// 👈 NEW: same "update generate bill status" API that BillSummaryScreen
+// calls, added here so Print Bill (long-press sheet) also notifies the
+// server / POS that this order's bill was generated.
+  Future<void> _updateGenerateBillStatus(BuildContext context, int activeOrderId) async {
+    try {
+      final merchantStorage = context.read<MerchantLocalStorage>();
+      final captainStorage = context.read<CaptainLocalStorage>();
+
+      final baseUrl = await merchantStorage.getStoreBaseUrl();
+      if (baseUrl == null || baseUrl.isEmpty) {
+        throw Exception('Failed to update bill status.');
+      }
+
+      final captainData = await captainStorage.getCaptainData();
+      final token = captainData?.data?.token;
+      if (token == null || token.isEmpty) {
+        throw Exception('Captain token not found.');
+      }
+
+      final role = captainData?.data?.role ?? '';
+      final captainId = captainData?.data?.id ?? 0;
+
+      final url =
+          '$baseUrl/wp-json/pinaka-restaurant-pos/v1/kot/update-generate-bill-status';
+
+      final requestBody = {
+        'order_id': activeOrderId,
+        'restaurant_id': restaurantId,
+        'role': role,
+        'zone_id': zoneId,
+        'captain_id': captainId,
+      };
+
+      debugPrint('===== [TableCard] UPDATE GENERATE BILL STATUS REQUEST =====');
+      debugPrint('URL: $url');
+      debugPrint('Request Body: ${jsonEncode(requestBody)}');
+
+      final response = await http.put(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      debugPrint('===== [TableCard] UPDATE GENERATE BILL STATUS RESPONSE =====');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        debugPrint('[TableCard] Failed to update bill status: ${response.body}');
+        return;
+      }
+
+      final data = jsonDecode(response.body);
+      if (data['success'] != true) {
+        debugPrint('[TableCard] Bill status API returned success=false: ${data['message']}');
+      }
+    } catch (e) {
+      // 👈 Fail silently — this must never block the actual bill printing flow.
+      debugPrint('[TableCard] Error updating generate bill status: $e');
+    }
+  }
   @override
   Widget build(BuildContext context) {
+
+//     final kind = _statusKind(status);
+//     final isAvailable = kind == _TableStatusKind.available;
+//     // final color = _statusColor(kind);
+//
+//     // ─── Child merged tables → force black color (any status) ────
+//     Color color = _statusColor(kind);
+//     if (isMerged && mergeRole?.toLowerCase() == 'child') {
+//       color = Colors.black;   // ← always black for child tables
+//     }
+// // ────────────────────────────────────────────────────────────
+//
+//     final label = _statusLabel(kind);
+
     final kind = _statusKind(status);
     final isAvailable = kind == _TableStatusKind.available;
-    // final color = _statusColor(kind);
 
-    // ─── Child merged tables → force black color (any status) ────
     Color color = _statusColor(kind);
-    if (isMerged && mergeRole?.toLowerCase() == 'child') {
-      color = Colors.black;   // ← always black for child tables
+    if (isMerged) {
+      final role = mergeRole?.toLowerCase();
+      if (role == 'child') {
+        color = isAvailable ? Colors.grey : Colors.black;
+      }
     }
-// ────────────────────────────────────────────────────────────
+    /////// ──────────────
 
     final label = _statusLabel(kind);
 
@@ -512,17 +604,34 @@ class _TableCard extends StatelessWidget {
           );
 
           return Container(
+            // decoration: BoxDecoration(
+            //   color: Colors.white,
+            //   borderRadius: BorderRadius.circular(14),
+            //   border: isAvailable
+            //       ? Border.all(
+            //     color: color.withOpacity(0.5),
+            //   )
+            //       : null,
+            // ),
+            // child: CustomPaint(
+            //   painter: isAvailable
+            //       ? null
+            //       : _DashedBorderPainter(
+            //     color: color,
+            //   ),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: isAvailable
+              // Merged tables always show a dashed border, even when
+              // Available — solid border stays only for normal tables.
+              border: (isAvailable && !isMerged)
                   ? Border.all(
                 color: color.withOpacity(0.5),
               )
                   : null,
             ),
             child: CustomPaint(
-              painter: isAvailable
+              painter: (isAvailable && !isMerged)
                   ? null
                   : _DashedBorderPainter(
                 color: color,
@@ -535,9 +644,7 @@ class _TableCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // ─────────────────────────────────────
-                    // Table name
-                    // ─────────────────────────────────────
+
                     // Row(
                     //   mainAxisAlignment: isAvailable
                     //       ? MainAxisAlignment.end
@@ -567,21 +674,12 @@ class _TableCard extends StatelessWidget {
                     // ),
 
                     Row(
-                      mainAxisAlignment: isAvailable
-                          ? MainAxisAlignment.end
-                          : MainAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (!isAvailable) ...[
-                          Icon(
-                            Icons.person_outline,
-                            size: 13,
-                            color: color,
-                          ),
-                          const SizedBox(width: 2),
-                        ],
                         Flexible(
                           child: Text(
-                            tableName,
+                            _displayTableName,
+                            textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -662,15 +760,44 @@ class _TableCard extends StatelessWidget {
                     // ─────────────────────────────────────
                     // Status
                     // ─────────────────────────────────────
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    // Text(
+                    //   label,
+                    //   maxLines: 1,
+                    //   overflow: TextOverflow.ellipsis,
+                    //   style: TextStyle(
+                    //     color: color,
+                    //     fontSize: 12,
+                    //     fontWeight: FontWeight.w500,
+                    //   ),
+                    // ),
+                    // ─────────────────────────────────────
+                    // Status (+ link icon for merged tables)
+                    // ─────────────────────────────────────
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        if (isMerged) ...[
+                          const SizedBox(width: 3),
+                          Icon(
+                            Icons.link,
+                            size: 12,
+                            color: color,
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -979,6 +1106,7 @@ class _TableCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Table No $tableName',
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1257,7 +1385,23 @@ class _TableCard extends StatelessWidget {
           'modifiers': item.modifiers.map((m) => m.toString()).toList(),
         };
       }).toList();
-
+      await _updateGenerateBillStatus(context, activeOrderId);
+      // 🔥 Notify POS + other Captains → Ready to Pay
+      unawaited(
+        CaptainMqttPublisher.notifyBillGenerated(
+          restaurantId: restaurantId.toString(),
+          orderId: activeOrderId,
+          orderType: 'Dine In',
+          zoneId: zoneId,
+          zoneName: zoneName,
+          tableName: tableName,
+          tableId: tableId.toString(),
+          netTotal: orderTotal,
+        ),
+      );
+      if (context.mounted) {
+        onOrderAction.call();
+      }
       await Printer.printBill(
         orderId: billData.orderId.toString(),
         tableName: billData.tableName,
@@ -1274,11 +1418,32 @@ class _TableCard extends StatelessWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
+      debugPrint('════════════ PRINT BILL ERROR ═════════════');
+      debugPrint('Error: $e');
+      debugPrint('Error toString: ${e.toString()}');
+      debugPrint('═══════════════════════════════════════════');
+
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      final errorMsg = e.toString().toLowerCase();
+      final isNoPrinter = errorMsg.contains('no printer') ||
+          errorMsg.contains('printer not') ||
+          errorMsg.contains('not connected') ||
+          errorMsg.contains('disconnected') ||
+          errorMsg.contains('no device') ||
+          errorMsg.contains('bluetooth') && errorMsg.contains('connect') ||
+          errorMsg.contains('unable to connect') ||
+          errorMsg.contains('connection failed');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to print bill: ${e.toString()}'),
+          content: Text(
+            isNoPrinter
+                ? 'No printer connected. Please connect a printer and try again.'
+                : 'Failed to print bill Try it again',
+          ),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
         ),
       );
     }

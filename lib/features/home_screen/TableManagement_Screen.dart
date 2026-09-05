@@ -100,25 +100,69 @@ class _TableManagementScreenState extends State<TableManagementScreen>
         restaurantId: restaurantId,
       );
 
+      // _mqttSubscription = _mqttService!.messages.listen((map) {
+      //   final event = map['event']?.toString();
+      //   print('🔔 MQTT message received in UI: $event');
+      //
+      //   if (event == 'payment_completed' ||
+      //       event == 'order_cancelled' ||
+      //       event == 'order_created' ||
+      //       event == 'kot_printed' ||
+      //       event == 'bill_generated' ||
+      //       event == 'tables_merged' ||
+      //       event == 'tables_merge_updated' ||
+      //       event == 'tables_unmerged') {
+      //     print('Handling $event → refreshing tables');
+      //     if (mounted) {
+      //       context.read<AllTablesBloc>().add(FetchAllTables());
+      //     }
+      //   }
+      //
+      // });
+
       _mqttSubscription = _mqttService!.messages.listen((map) {
         final event = map['event']?.toString();
         print('🔔 MQTT message received in UI: $event');
 
+        // Tables
         if (event == 'payment_completed' ||
             event == 'order_created' ||
+            event == 'order_cancelled' ||
             event == 'kot_printed' ||
+            event == 'bill_generated' ||
             event == 'tables_merged' ||
             event == 'tables_merge_updated' ||
             event == 'tables_unmerged') {
-          print(' Handling $event → refreshing tables');
-          print('   Table: ${map['table_name']} (${map['table_id']})');
-          print('   Status: ${map['table_status']}');
-
           if (mounted) {
             context.read<AllTablesBloc>().add(FetchAllTables());
           }
         }
+
+        // 🔥 Menu stock (POS long-press OR other Captain Edit Menu)
+        if (event == 'menu_stock_updated') {
+          final products = map['products'];
+          if (products is! List || !mounted) return;
+
+          final Map<int, bool> stockById = {};
+          for (final p in products) {
+            if (p is! Map) continue;
+            final id = p['product_id'];
+            final newStatus = p['new_status']?.toString().toLowerCase();
+            if (id == null || newStatus == null) continue;
+            final productId = id is int ? id : int.tryParse(id.toString());
+            if (productId == null) continue;
+            stockById[productId] = newStatus == 'instock';
+          }
+
+          if (stockById.isNotEmpty) {
+            print('🔔 Applying menu stock to CategoryBloc: $stockById');
+            context.read<CategoryBloc>().add(
+              UpdateProductsStock(stockById: stockById),
+            );
+          }
+        }
       });
+
 
       await _mqttService!.connect();
     } catch (e, stack) {
@@ -522,7 +566,8 @@ class _TableManagementScreenState extends State<TableManagementScreen>
         // toolbarHeight: 38,
         elevation: 0.5,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         centerTitle: true,
 
         leading: IconButton(
@@ -1085,6 +1130,7 @@ class _AppDrawer extends StatelessWidget {
   final String storeLogo;
   final String storeName;
   final VoidCallback onSyncData;
+  final String selectedLabel;
 
   const _AppDrawer({
     required this.captainName,
@@ -1093,6 +1139,7 @@ class _AppDrawer extends StatelessWidget {
     required this.storeLogo,
     required this.storeName,
     required this.onSyncData,
+    this.selectedLabel = 'Table Management',
   });
 
   @override
@@ -1185,6 +1232,8 @@ class _AppDrawer extends StatelessWidget {
                 icon: Icons.receipt_outlined,
                 label: 'Update Menu',
                 onTap: () {
+                  Navigator.of(context).pop(); // close drawer first
+
                   Navigator.push(context, MaterialPageRoute(builder: (_)=> MenuManagementScreen(restaurantId: 1,)));
 
                 },
@@ -1193,6 +1242,8 @@ class _AppDrawer extends StatelessWidget {
                 icon: Icons.settings_outlined,
                 label: 'Settings',
                 onTap: () {
+                  Navigator.of(context).pop(); // close drawer first
+
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const SettingsScreen()),
                   );

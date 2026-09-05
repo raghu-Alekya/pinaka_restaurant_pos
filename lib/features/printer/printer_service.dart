@@ -55,6 +55,8 @@ class Printer {
     required String cashierName,
     required List<Map<String, dynamic>> items,
     required BuildContext context,
+    String? kotNumber,   // 👈 NEW
+    int? kotId,
   }) async {
     try {
       final store = await _getStoreDetails();
@@ -72,13 +74,28 @@ class Printer {
       final generator = Generator(PaperSize.mm80, profile);
 
       // Header
+      // bytes += generator.text(
+      //   '**** KOT ****',
+      //   styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2),
+      // );
+      // bytes += generator.text(restaurantName, styles: const PosStyles(align: PosAlign.center, bold: true));
+      // bytes += generator.hr(ch: '=');
+// Header
       bytes += generator.text(
         '**** KOT ****',
         styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2),
       );
       bytes += generator.text(restaurantName, styles: const PosStyles(align: PosAlign.center, bold: true));
-      bytes += generator.hr(ch: '=');
 
+// 👈 NEW: print the KOT number prominently, if available
+      if (kotNumber != null && kotNumber.isNotEmpty) {
+        bytes += generator.text(
+          'KOT No: $kotNumber',
+          styles: const PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size2),
+        );
+      }
+
+      bytes += generator.hr(ch: '=');
       // Order Info
       bytes += generator.row([
         PosColumn(width: 6, text: 'Order: $orderId'),
@@ -132,12 +149,12 @@ class Printer {
       final printerSettings = PrinterSettings();
       await printerSettings.loadPrinter();
 
-      // if (printerSettings.selectedPrinter == null) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     const SnackBar(content: Text('No printer selected'), backgroundColor: Colors.red),
-      //   );
-      //   return;
-      // }
+      if (printerSettings.selectedPrinter == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No printer selected'), backgroundColor: Colors.red),
+        );
+        return;
+      }
 
       await printerSettings.printTicket(bytes, generator);
     } catch (e) {

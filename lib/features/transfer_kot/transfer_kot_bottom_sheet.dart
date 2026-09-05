@@ -262,9 +262,18 @@ class _TransferKotBottomSheetState extends State<TransferKotBottomSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Transfer failed: $e'), backgroundColor: Colors.red),
-      );
+      debugPrint('════════════ TRANSFER KOT ERROR ═════════════');
+      debugPrint('Error: $e');
+      debugPrint('orderId: ${widget.orderId}');
+      debugPrint('kotId: $_selectedKotId');
+      debugPrint('fromTableId: ${widget.fromTableId}');
+      debugPrint('toTableId: $toTableId');
+      debugPrint('restaurantId: ${widget.restaurantId}');
+      debugPrint('zoneId: ${widget.zoneId}');
+      debugPrint('════════════════════════════════════════════');
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('Transfer failed: $e'), backgroundColor: Colors.red),
+      // );
     } finally {
       if (mounted) setState(() => _transferring = false);
     }

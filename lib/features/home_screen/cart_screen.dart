@@ -910,9 +910,11 @@ class _CartScreenState extends State<CartScreen> {
   bool _hasPrintedKot = false;
   bool _hasAnyKots = false;
   bool _initialAutoExpandDone = false;
+  bool _isEditSheetOpen = false;
+  final Set<int> _productsWithNoAddOns = {};
+
   late final StreamSubscription<KotsListState> _kotsSubscription;
   final ValueNotifier<String> _currencySymbolNotifier = ValueNotifier<String>('\$');
-  bool _isEditSheetOpen = false;
 
   int _lastRepeatedKotIndex = -1;
 
@@ -1063,28 +1065,209 @@ class _CartScreenState extends State<CartScreen> {
     }).toList();
   }
 
+  // Future<void> _showEditAddOnsSheet(CartItem oldItem) async {
+  //   // 👇 Prevent multiple sheets from opening
+  //   if (_isEditSheetOpen) return;
+  //
+  //   setState(() => _isEditSheetOpen = true);
+  //
+  //   try {
+  //     final addOns = await context.read<FetchAddOnsUseCase>()(oldItem.product.id);
+  //
+  //     // If the API returns no add-ons, inform the user and unlock
+  //     if (addOns.isEmpty) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('No add-ons available for this item.')),
+  //       );
+  //       if (mounted) setState(() => _isEditSheetOpen = false);
+  //       return;
+  //     }
+  //
+  //     // ─── Pre-select the item's current add-ons ──────────────────────
+  //     final selectedAddOns = <AddOnEntity>{};
+  //     for (final currentAddOn in oldItem.addOns) {
+  //       final name = currentAddOn['name'] as String;
+  //       final price = currentAddOn['price'] as double;
+  //       final matching = addOns.firstWhere(
+  //             (a) => a.name == name && a.price == price,
+  //         orElse: () => AddOnEntity(
+  //           name: name,
+  //           price: price,
+  //           id: 0,
+  //           restaurantId: 0,
+  //           type: '',
+  //         ),
+  //       );
+  //       // If we found a matching add-on (i.e., it's not the dummy), select it.
+  //       if (matching.id != 0 || matching.name == name) {
+  //         selectedAddOns.add(matching);
+  //       }
+  //     }
+  //
+  //     final currencySymbol = _currencySymbolNotifier.value;
+  //
+  //     // ─── Show the bottom sheet ──────────────────────────────────────
+  //     await showModalBottomSheet(
+  //       context: context,
+  //       isScrollControlled: true,
+  //       backgroundColor: Colors.white,
+  //       shape: const RoundedRectangleBorder(
+  //         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  //       ),
+  //       builder: (sheetContext) {
+  //         return StatefulBuilder(
+  //           builder: (context, setSheetState) {
+  //             return SingleChildScrollView(
+  //               padding: EdgeInsets.only(
+  //                 left: 20,
+  //                 right: 20,
+  //                 top: 20,
+  //                 bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+  //               ),
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   // ── Header ──
+  //                   Row(
+  //                     children: [
+  //                       const Text(
+  //                         'Edit Add-ons',
+  //                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  //                       ),
+  //                       const Spacer(),
+  //                       GestureDetector(
+  //                         onTap: () => Navigator.pop(sheetContext),
+  //                         child: Container(
+  //                           padding: const EdgeInsets.all(4),
+  //                           decoration: const BoxDecoration(
+  //                             shape: BoxShape.circle,
+  //                             color: Color(0xFFFFEAEA),
+  //                           ),
+  //                           child: const Icon(Icons.close, size: 18, color: Colors.red),
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                   const SizedBox(height: 16),
+  //
+  //                   // ── Add‑on list ──
+  //                   ...addOns.map((addOn) {
+  //                     final isChecked = selectedAddOns.contains(addOn);
+  //                     return CheckboxListTile(
+  //                       contentPadding: EdgeInsets.zero,
+  //                       controlAffinity: ListTileControlAffinity.leading,
+  //                       value: isChecked,
+  //                       title: Text(
+  //                         addOn.name,
+  //                         style: const TextStyle(
+  //                           fontSize: 16,
+  //                           fontWeight: FontWeight.w600,
+  //                         ),
+  //                       ),
+  //                       secondary: Text(
+  //                         '+ $currencySymbol${addOn.price.toStringAsFixed(2)}',
+  //                         style: const TextStyle(
+  //                           fontSize: 16,
+  //                           fontWeight: FontWeight.w600,
+  //                         ),
+  //                       ),
+  //                       onChanged: (checked) {
+  //                         setSheetState(() {
+  //                           if (checked == true) {
+  //                             selectedAddOns.add(addOn);
+  //                           } else {
+  //                             selectedAddOns.remove(addOn);
+  //                           }
+  //                         });
+  //                       },
+  //                     );
+  //                   }),
+  //                   const SizedBox(height: 16),
+  //
+  //                   // ── Save button ──
+  //                   SizedBox(
+  //                     width: double.infinity,
+  //                     child: ElevatedButton(
+  //                       onPressed: () {
+  //                         final newAddOns = selectedAddOns.map((a) {
+  //                           return {'name': a.name, 'price': a.price};
+  //                         }).toList();
+  //                         final newItem = CartItem(
+  //                           product: oldItem.product,
+  //                           addOns: newAddOns,
+  //                           quantity: oldItem.quantity,
+  //                         );
+  //                         // Notify parent and update local list
+  //                         widget.onEditItem?.call(oldItem, newItem);
+  //                         setState(() {
+  //                           final index = cartItems.indexOf(oldItem);
+  //                           if (index != -1) {
+  //                             cartItems[index] = newItem;
+  //                           }
+  //                         });
+  //                         Navigator.pop(sheetContext);
+  //
+  //                       },
+  //                       style: ElevatedButton.styleFrom(
+  //                         backgroundColor: ColorConstants.primaryColor,
+  //                         foregroundColor: Colors.white,
+  //                         padding: const EdgeInsets.symmetric(vertical: 14),
+  //                         shape: RoundedRectangleBorder(
+  //                           borderRadius: BorderRadius.circular(10),
+  //                         ),
+  //                       ),
+  //                       child: const Text(
+  //                         'Save Changes',
+  //                         style: TextStyle(fontWeight: FontWeight.bold),
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             );
+  //           },
+  //         );
+  //       },
+  //     ).whenComplete(() {
+  //       // 👇 Unlock when the sheet is dismissed
+  //       if (mounted) setState(() => _isEditSheetOpen = false);
+  //     });
+  //   } catch (e) {
+  //     // ─── Error handling ──────────────────────────────────────────────
+  //     if (mounted) setState(() => _isEditSheetOpen = false);
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Failed to load add-ons: $e'),
+  //         backgroundColor: Colors.red,
+  //       ),
+  //     );
+  //   }
+  // }
+
+  // ─── KOT Print ────────────────────────────────────────────────────────────
+
   Future<void> _showEditAddOnsSheet(CartItem oldItem) async {
     // 👇 Prevent multiple sheets from opening
     if (_isEditSheetOpen) return;
-    // 👇 Only show if the item actually has add-ons to edit
-    if (oldItem.addOns.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No add-ons to edit.')),
-      );
-      return;
-    }
 
     setState(() => _isEditSheetOpen = true);
 
     try {
       final addOns = await context.read<FetchAddOnsUseCase>()(oldItem.product.id);
 
-      // If the API returns no add-ons, inform the user and unlock
+      // If the API returns no add-ons, inform the user, remember it so the
+      // edit icon hides for this product going forward, and unlock.
       if (addOns.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No add-ons available for this item.')),
         );
-        if (mounted) setState(() => _isEditSheetOpen = false);
+        if (mounted) {
+          setState(() {
+            _isEditSheetOpen = false;
+            _productsWithNoAddOns.add(oldItem.product.id); // 👈 NEW
+          });
+        }
         return;
       }
 
@@ -1163,9 +1346,19 @@ class _CartScreenState extends State<CartScreen> {
                         contentPadding: EdgeInsets.zero,
                         controlAffinity: ListTileControlAffinity.leading,
                         value: isChecked,
-                        title: Text(addOn.name),
+                        title: Text(
+                          addOn.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         secondary: Text(
                           '+ $currencySymbol${addOn.price.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         onChanged: (checked) {
                           setSheetState(() {
@@ -1202,12 +1395,7 @@ class _CartScreenState extends State<CartScreen> {
                             }
                           });
                           Navigator.pop(sheetContext);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Add-ons updated successfully'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: ColorConstants.primaryColor,
@@ -1245,7 +1433,6 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  // ─── KOT Print ────────────────────────────────────────────────────────────
   Future<void> _printKot() async {
     if (cartItems.isEmpty || _isPrintingKot) return;
     setState(() => _isPrintingKot = true);
@@ -1378,6 +1565,8 @@ class _CartScreenState extends State<CartScreen> {
         cashierName: captainName,
         items: printItems,
         context: context,
+        kotNumber: kotNumber, // 👈 NEW: pass the KOT number parsed from the API response above
+        kotId: kotId,         // 👈 NEW: pass the KOT id too, in case the printer template needs it
       );
 
       setState(() {
@@ -1810,7 +1999,8 @@ class _CartScreenState extends State<CartScreen> {
       appBar: AppBar(
         // toolbarHeight: 28,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
@@ -2267,30 +2457,59 @@ class _CartScreenState extends State<CartScreen> {
                         //   ],
                         // ),
 
-                        if (subtitle.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Text(
-                                subtitle,
-                                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        // if (subtitle.isNotEmpty) ...[
+                        //   const SizedBox(height: 2),
+                        //   Row(
+                        //     children: [
+                        //       Text(
+                        //         subtitle,
+                        //         style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                        //       ),
+                        //       const SizedBox(width: 4),
+                        //       if (hasAddOns)
+                        //         GestureDetector(
+                        //           onTap: () => _showEditAddOnsSheet(item),
+                        //           child: Container(
+                        //             padding: const EdgeInsets.all(2),
+                        //             decoration: const BoxDecoration(
+                        //               color: Colors.orange,
+                        //               shape: BoxShape.circle,
+                        //             ),
+                        //             child: const Icon(Icons.edit, size: 8, color: Colors.white),
+                        //           ),
+                        //         ),
+                        //     ],
+                        //   ),
+                        // ],
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            if (subtitle.isNotEmpty) ...[
+                              Flexible(
+                                child: Text(
+                                  subtitle,
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                               const SizedBox(width: 4),
-                              if (hasAddOns)
-                                GestureDetector(
-                                  onTap: () => _showEditAddOnsSheet(item),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.orange,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.edit, size: 8, color: Colors.white),
-                                  ),
-                                ),
                             ],
-                          ),
-                        ],
+                            // 👈 CHANGED: edit icon now always shows (not gated on hasAddOns),
+                            // so users can open the add-ons sheet even when none are selected yet.
+                            GestureDetector(
+                              onTap: () => _showEditAddOnsSheet(item),
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  borderRadius: BorderRadius.circular(4), // 👈 CHANGED: circle -> rounded square
+                                ),
+                                child: const Icon(Icons.edit, size: 8, color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

@@ -20,8 +20,19 @@ class PrinterDBHelper {
       // Column already exists (or table not created yet) - ignore.
     }
   }
+  Future<void> clearAllSelections() async {
+    final db = await DatabaseInitializer().initDatabase();
+    await _ensureIsSelectedColumn(db);   // make sure the column exists
 
-  // NEW: Ensure port column exists
+    await db.update(
+      AppDBConst.printerTable,
+      {'is_selected': 0},
+    );
+
+    if (kDebugMode) {
+      print("#### Cleared all printer selections (is_selected = 0)");
+    }
+  }  // NEW: Ensure port column exists
   Future<void> _ensurePortColumn(db) async {
     try {
       await db.execute(

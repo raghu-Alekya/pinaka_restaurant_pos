@@ -77,8 +77,18 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
   void initState() {
     super.initState();
     final bloc = context.read<CategoryBloc>();
+    // if (bloc.state is CategoryInitial) {
+    //   bloc.add(LoadCategories());
+    // }
     if (bloc.state is CategoryInitial) {
       bloc.add(LoadCategories());
+    } else if (bloc.state is CategoryLoaded) {
+      // 👈 NEW: always reset to the 1st category whenever Menu Management
+      // opens, regardless of whatever category was left selected elsewhere.
+      final loaded = bloc.state as CategoryLoaded;
+      if (loaded.categories.isNotEmpty) {
+        bloc.add(SelectCategory(categoryId: loaded.categories.first.id));
+      }
     }
     _loadCaptainRole();
   }
@@ -111,6 +121,39 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     return product.inStock;
   }
 
+  // Future<void> _openUpdatePinDialog() async {
+  //   final pinResult = await showDialog<String>(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (_) => const _UpdatePinDialog(),
+  //   );
+  //   if (pinResult == null) return;
+  //   if (!mounted) return;
+  //
+  //   final result = await Navigator.of(context).push<Set<int>>(
+  //     MaterialPageRoute(
+  //       builder: (_) => EditMenuScreen(
+  //         restaurantId: widget.restaurantId,
+  //         initialUnavailableIds: Set<int>.from(_unavailableIds),
+  //         pin: pinResult,
+  //       ),
+  //     ),
+  //   );
+  //
+  //   if (result != null && mounted) {
+  //     // Instant UI update — status chips/cards use _unavailableIds only.
+  //     // No LoadCategories() here (avoids loading spinner / lag).
+  //     setState(() {
+  //       _unavailableIds
+  //         ..clear()
+  //         ..addAll(result);
+  //     });
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Menu updated successfully')),
+  //     );
+  //   }
+  // }
+
   Future<void> _openUpdatePinDialog() async {
     final pinResult = await showDialog<String>(
       context: context,
@@ -120,12 +163,21 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
     if (pinResult == null) return;
     if (!mounted) return;
 
+    // Capture whichever category is currently selected in Menu Management,
+    // so Edit Menu opens on the same category instead of resetting to the 1st.
+    int? currentCategoryId;
+    final catState = context.read<CategoryBloc>().state;
+    if (catState is CategoryLoaded) {
+      currentCategoryId = catState.selectedCategoryId;
+    }
+
     final result = await Navigator.of(context).push<Set<int>>(
       MaterialPageRoute(
         builder: (_) => EditMenuScreen(
           restaurantId: widget.restaurantId,
           initialUnavailableIds: Set<int>.from(_unavailableIds),
           pin: pinResult,
+          initialCategoryId: currentCategoryId, // 👈 new
         ),
       ),
     );
@@ -138,8 +190,16 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
           ..clear()
           ..addAll(result);
       });
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(content: Text('Menu updated successfully')),
+      // );
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Menu updated successfully')),
+        const SnackBar(
+          content: Text('Menu updated successfully'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 1),
+        ),
       );
     }
   }
@@ -153,8 +213,9 @@ class _MenuManagementScreenState extends State<MenuManagementScreen> {
       backgroundColor: kPageBg,
       appBar: AppBar(
         // toolbarHeight: 44,
-        backgroundColor: ColorConstants.backgroundColor,
-        foregroundColor: ColorConstants.textColor,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(
@@ -743,6 +804,283 @@ class _MenuSearchRow extends StatelessWidget {
   }
 }
 
+//
+// class _UpdatePinDialog extends StatefulWidget {
+//   const _UpdatePinDialog();
+//
+//   @override
+//   State<_UpdatePinDialog> createState() => _UpdatePinDialogState();
+// }
+//
+// class _UpdatePinDialogState extends State<_UpdatePinDialog> {
+//   static const int _pinLength = 6;
+//
+//   String _pin = '';
+//   String? _error;
+//   bool _isVerifying = false;
+//
+//   // Keypad laid out exactly as in the reference image: 1-9, C, 0, backspace.
+//   static const List<List<String>> _keyRows = [
+//     ['1', '2', '3'],
+//     ['4', '5', '6'],
+//     ['7', '8', '9'],
+//     ['C', '0', '⌫'],
+//   ];
+//
+//   void _addDigit(String d) {
+//     // Tapping a number key fills exactly ONE pin box (the next empty one).
+//     if (_isVerifying || _pin.length >= _pinLength) return;
+//     setState(() {
+//       _pin += d;
+//       _error = null;
+//     });
+//   }
+//
+//   void _backspace() {
+//     if (_isVerifying || _pin.isEmpty) return;
+//     setState(() => _pin = _pin.substring(0, _pin.length - 1));
+//   }
+//
+//   void _clear() {
+//     if (_isVerifying) return;
+//     setState(() {
+//       _pin = '';
+//       _error = null;
+//     });
+//   }
+//
+//   Future<void> _submit() async {
+//     if (_pin.length != _pinLength) {
+//       setState(() => _error = 'Enter your $_pinLength-digit pin');
+//       return;
+//     }
+//
+//     setState(() {
+//       _isVerifying = true;
+//       _error = null;
+//     });
+//
+//     try {
+//       final prefs = await SharedPreferences.getInstance();
+//       final savedPin = prefs.getString('captain_pin') ?? '';
+//
+//       print('Entered PIN: $_pin');
+//       print('Saved PIN:   $savedPin');
+//
+//       if (savedPin.isEmpty) {
+//         setState(() {
+//           _isVerifying = false;
+//           _error = 'No saved PIN found. Please login again.';
+//           _pin = '';
+//         });
+//         return;
+//       }
+//
+//       if (_pin.trim() == savedPin.trim()) {
+//         print('PIN matched. Allowing edit access.');
+//         if (!mounted) return;
+//         Navigator.of(context).pop(_pin);
+//       } else {
+//         print('PIN mismatch. Access denied.');
+//         setState(() {
+//           _isVerifying = false;
+//           _error = 'Incorrect pin. Try again.';
+//           _pin = '';
+//         });
+//       }
+//     } catch (e) {
+//       print('PIN validation error: $e');
+//       setState(() {
+//         _isVerifying = false;
+//         _error = 'Something went wrong. Try again.';
+//         _pin = '';
+//       });
+//     }
+//   }
+//
+//   // Single pin box — one box per digit, never shares a box with the keypad.
+//   Widget _pinBox(int index) {
+//     final filled = index < _pin.length;
+//     return Expanded(
+//       child: Container(
+//         height: 46,
+//         margin: EdgeInsets.only(right: index == _pinLength - 1 ? 0 : 8),
+//         alignment: Alignment.center,
+//         decoration: BoxDecoration(
+//           color: kPinBoxBg,
+//           borderRadius: BorderRadius.circular(10),
+//           border: Border.all(
+//             color: filled ? ColorConstants.primaryColor : kPinBoxBorder,
+//             width: filled ? 1.4 : 1,
+//           ),
+//         ),
+//         child: filled
+//             ? Container(
+//           width: 8,
+//           height: 8,
+//           decoration: const BoxDecoration(
+//             shape: BoxShape.circle,
+//             color: Colors.black87,
+//           ),
+//         )
+//             : null,
+//       ),
+//     );
+//   }
+//
+//   // Single keypad key — equal-width grid cell (3 per row) like the reference.
+//   Widget _keypadKey(String label) {
+//     final bool isBackspace = label == '⌫';
+//     final bool isClear = label == 'C';
+//
+//     return Expanded(
+//       child: GestureDetector(
+//         onTap: _isVerifying
+//             ? null
+//             : () {
+//           if (isBackspace) {
+//             _backspace();
+//           } else if (isClear) {
+//             _clear();
+//           } else {
+//             _addDigit(label);
+//           }
+//         },
+//         child: Container(
+//           height: 52,
+//           alignment: Alignment.center,
+//           decoration: BoxDecoration(
+//             color: kKeypadKeyBg,
+//             borderRadius: BorderRadius.circular(14),
+//           ),
+//           child: isBackspace
+//               ? const Icon(Icons.backspace_outlined, size: 18, color: Colors.black87)
+//               : Text(
+//             label,
+//             style: const TextStyle(
+//               fontSize: 17,
+//               fontWeight: FontWeight.w600,
+//               color: Colors.black87,
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+//
+//   Widget _keypadRow(List<String> row) {
+//     return Padding(
+//       padding: const EdgeInsets.only(bottom: 10),
+//       child: Row(
+//         children: [
+//           for (int i = 0; i < row.length; i++) ...[
+//             _keypadKey(row[i]),
+//             if (i != row.length - 1) const SizedBox(width: 10),
+//           ],
+//         ],
+//       ),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Dialog(
+//       backgroundColor: ColorConstants.backgroundColor,
+//       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+//       insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 40),
+//       child: Padding(
+//         padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+//         child: Column(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             // Title row with close button – directly in the row, no Transform.translate
+//             Row(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 const Expanded(
+//                   child: Text(
+//                     'Update Menu Items',
+//                     textAlign: TextAlign.center,
+//                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+//                   ),
+//                 ),
+//                 GestureDetector(
+//                   onTap: _isVerifying ? null : () => Navigator.of(context).pop(null),
+//                   child: Container(
+//                     width: 30,
+//                     height: 30,
+//                     alignment: Alignment.center,
+//                     decoration: const BoxDecoration(
+//                       shape: BoxShape.circle,
+//                       color: kCloseCircleBg,
+//                     ),
+//                     child: const Icon(Icons.close, size: 16, color: Colors.white),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//             const SizedBox(height: 4),
+//             const Text(
+//               'Select items to keep them available. Unselected items will be unavailable',
+//               textAlign: TextAlign.center,
+//               style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.35),
+//             ),
+//             const SizedBox(height: 20),
+//             const Text(
+//               'Enter Pin',
+//               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+//             ),
+//             const SizedBox(height: 14),
+//
+//             // Six individual pin boxes — one digit per box only.
+//             Row(
+//               children: List.generate(_pinLength, _pinBox),
+//             ),
+//
+//             if (_error != null) ...[
+//               const SizedBox(height: 8),
+//               Text(
+//                 _error!,
+//                 style: TextStyle(color: ColorConstants.errorColor, fontSize: 12),
+//               ),
+//             ],
+//
+//             const SizedBox(height: 22),
+//
+//             // Numeric keypad — 3 equal-width columns per row, 4 rows total.
+//             for (final row in _keyRows) _keypadRow(row),
+//
+//             const SizedBox(height: 6),
+//
+//             // Continue button with iOS‑style loading
+//             SizedBox(
+//               width: double.infinity,
+//               child: ElevatedButton(
+//                 onPressed: _isVerifying ? null : _submit,
+//                 style: ElevatedButton.styleFrom(
+//                   backgroundColor: ColorConstants.primaryColor,
+//                   foregroundColor: Colors.white,
+//                   elevation: 0,
+//                   padding: const EdgeInsets.symmetric(vertical: 15),
+//                   shape: RoundedRectangleBorder(
+//                     borderRadius: BorderRadius.circular(10),
+//                   ),
+//                 ),
+//                 child: _isVerifying
+//                     ? const CupertinoActivityIndicator(radius: 12, color: Colors.white)
+//                     : const Text(
+//                   'Continue',
+//                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
 
 class _UpdatePinDialog extends StatefulWidget {
   const _UpdatePinDialog();
@@ -842,7 +1180,7 @@ class _UpdatePinDialogState extends State<_UpdatePinDialog> {
     final filled = index < _pin.length;
     return Expanded(
       child: Container(
-        height: 46,
+        height: 40,
         margin: EdgeInsets.only(right: index == _pinLength - 1 ? 0 : 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
@@ -886,7 +1224,7 @@ class _UpdatePinDialogState extends State<_UpdatePinDialog> {
           }
         },
         child: Container(
-          height: 52,
+          height: 40,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: kKeypadKeyBg,
@@ -909,7 +1247,7 @@ class _UpdatePinDialogState extends State<_UpdatePinDialog> {
 
   Widget _keypadRow(List<String> row) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
           for (int i = 0; i < row.length; i++) ...[
@@ -926,9 +1264,9 @@ class _UpdatePinDialogState extends State<_UpdatePinDialog> {
     return Dialog(
       backgroundColor: ColorConstants.backgroundColor,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 40),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 34, vertical: 24),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -958,18 +1296,18 @@ class _UpdatePinDialogState extends State<_UpdatePinDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             const Text(
               'Select items to keep them available. Unselected items will be unavailable',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.35),
+              style: TextStyle(fontSize: 12, color: Colors.black54, height: 1.3),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             const Text(
               'Enter Pin',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
 
             // Six individual pin boxes — one digit per box only.
             Row(
@@ -977,19 +1315,19 @@ class _UpdatePinDialogState extends State<_UpdatePinDialog> {
             ),
 
             if (_error != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 _error!,
                 style: TextStyle(color: ColorConstants.errorColor, fontSize: 12),
               ),
             ],
 
-            const SizedBox(height: 22),
+            const SizedBox(height: 14),
 
             // Numeric keypad — 3 equal-width columns per row, 4 rows total.
             for (final row in _keyRows) _keypadRow(row),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 2),
 
             // Continue button with iOS‑style loading
             SizedBox(
@@ -1000,7 +1338,7 @@ class _UpdatePinDialogState extends State<_UpdatePinDialog> {
                   backgroundColor: ColorConstants.primaryColor,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -1020,17 +1358,19 @@ class _UpdatePinDialogState extends State<_UpdatePinDialog> {
   }
 }
 
-
 class EditMenuScreen extends StatefulWidget {
   final int restaurantId;
   final Set<int> initialUnavailableIds;
   final String pin;
+  final int? initialCategoryId; // 👈 new
 
   const EditMenuScreen({
     Key? key,
     required this.restaurantId,
     required this.initialUnavailableIds,
     required this.pin,
+    this.initialCategoryId, // 👈 new
+
   }) : super(key: key);
 
   @override
@@ -1069,13 +1409,47 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
     }
   }
 
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _unavailableIds = Set<int>.from(widget.initialUnavailableIds);
+  //   final bloc = context.read<CategoryBloc>();
+  //   if (bloc.state is CategoryInitial) {
+  //     bloc.add(LoadCategories());
+  //   }
+  //   _loadToken();
+  // }
+
   @override
   void initState() {
     super.initState();
     _unavailableIds = Set<int>.from(widget.initialUnavailableIds);
     final bloc = context.read<CategoryBloc>();
+    // if (bloc.state is CategoryInitial) {
+    //   bloc.add(LoadCategories());
+    // } else if (widget.initialCategoryId != null) {
+    //   // restore whichever category was selected on the previous screen
+    //   final state = bloc.state;
+    //   if (state is CategoryLoaded && state.selectedCategoryId != widget.initialCategoryId) {
+    //     bloc.add(SelectCategory(categoryId: widget.initialCategoryId!));
+    //   }
+    // }
+
     if (bloc.state is CategoryInitial) {
       bloc.add(LoadCategories());
+    } else if (widget.initialCategoryId != null) {
+      // restore whichever category was selected on the previous screen
+      final state = bloc.state;
+      if (state is CategoryLoaded && state.selectedCategoryId != widget.initialCategoryId) {
+        bloc.add(SelectCategory(categoryId: widget.initialCategoryId!));
+      }
+    } else if (bloc.state is CategoryLoaded) {
+      // 👈 NEW: no explicit category was passed in — default to the 1st one
+      // instead of leaving whatever category another screen last selected.
+      final loaded = bloc.state as CategoryLoaded;
+      if (loaded.categories.isNotEmpty) {
+        bloc.add(SelectCategory(categoryId: loaded.categories.first.id));
+      }
     }
     _loadToken();
   }
@@ -1374,8 +1748,9 @@ class _EditMenuScreenState extends State<EditMenuScreen> {
       backgroundColor: kPageBg,
       appBar: AppBar(
         // toolbarHeight: 44,
-        backgroundColor: ColorConstants.backgroundColor,
-        foregroundColor: ColorConstants.textColor,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        scrolledUnderElevation: 0,
         elevation: 0.5,
         centerTitle: true,
         leading: IconButton(

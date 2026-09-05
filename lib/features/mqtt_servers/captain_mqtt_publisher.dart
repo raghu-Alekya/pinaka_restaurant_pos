@@ -239,4 +239,56 @@ class CaptainMqttPublisher {
       print(stack);
     }
   }
+
+  static Future<void> notifyOrderCancelled({
+    required String restaurantId,
+    required int orderId,
+    required String orderType,
+    int? zoneId,
+    String? zoneName,
+    String? tableName,
+    String? tableId,
+  }) async {
+    try {
+      await _ensureConnected();
+      if (!_connected || _client == null) {
+        print('⚠️ Cannot publish order_cancelled: MQTT not connected');
+        return;
+      }
+
+      final payload = {
+        'event': 'order_cancelled',
+        'restaurant_id': restaurantId,
+        'parent_order_id': orderId,
+        'order_type': orderType,
+        'zone_id': zoneId,
+        'zone_name': zoneName ?? '',
+        'table_name': tableName ?? '',
+        'table_id': tableId ?? '',
+        'status': 'cancelled',
+        'table_status': 'Available',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('========== CAPTAIN → POS order_cancelled ==========');
+      print('Topic  : ${_statusTopic(restaurantId)}');
+      print('Payload: ${jsonEncode(payload)}');
+      print('==================================================');
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _statusTopic(restaurantId), // store/{id}/captain/status
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print('✅ Captain published order_cancelled to POS');
+    } catch (e, stack) {
+      print('❌ Captain order_cancelled publish failed: $e');
+      print(stack);
+    }
+  }
+
 }

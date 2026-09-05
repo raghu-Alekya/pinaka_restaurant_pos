@@ -114,6 +114,7 @@ class _GuestCountBottomSheetState extends State<GuestCountBottomSheet> {
                   Expanded(
                     child: Text(
                       'Table No ${widget.tableName}',
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
