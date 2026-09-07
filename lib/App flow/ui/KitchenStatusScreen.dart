@@ -1921,7 +1921,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisExtent: 185,
+        mainAxisExtent: 145,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
@@ -2153,8 +2153,11 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
     final timeStr = dateTimeMap['time'] ?? '-';
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 100),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      constraints: const BoxConstraints(minHeight: 80), // was 100
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 6, // was 12
+      ),
       decoration: BoxDecoration(
         color: cardBgColor,
         borderRadius: BorderRadius.circular(6),

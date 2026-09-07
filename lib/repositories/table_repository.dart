@@ -161,12 +161,21 @@ class TableRepository {
         if (tableList != null && tableList is List) {
           final List<Map<String, dynamic>> tables =
           List<Map<String, dynamic>>.from(tableList);
+          // WITH THIS:
           for (var t in tables) {
             final tId = t['table_id'] ?? t['id'];
             final tName = t['table_name'] ?? t['tableName'] ?? t['name'];
-            final override = getLocalStatusOverride(tId, tName);
-            if (override != null) {
-              t['status'] = override;
+            final serverStatus = (t['status']?.toString() ?? 'available').toLowerCase().trim();
+            // If backend says Available, REMOVE any stale "Ready to Pay" override!
+            if (serverStatus == 'available') {
+              if (tId != null) _statusOverrides.remove(tId.toString());
+              if (tName != null) _statusOverrides.remove(tName.toString().toLowerCase());
+              t['status'] = 'Available';
+            } else {
+              final override = getLocalStatusOverride(tId, tName);
+              if (override != null) {
+                t['status'] = override;
+              }
             }
           }
           _memoryTableCache = tables;

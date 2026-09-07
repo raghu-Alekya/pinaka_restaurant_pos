@@ -2369,8 +2369,13 @@ class _paymentsummaryState extends State<paymentsummary> {
               if (result != null) {
                 debugPrint("Discount Result: $result");
 
+                // final double applied =
+                // (result["amount"] as double).abs();
                 final double applied =
-                (result["amount"] as double).abs();
+                ((result["amount"] as num?)?.toDouble() ?? 0.0).abs();
+
+                final String formattedDiscount =
+                applied.toStringAsFixed(2);
                 final bool isNc = result["isNc"] == true;
 
                 debugPrint("isNc = $isNc");
@@ -2378,7 +2383,10 @@ class _paymentsummaryState extends State<paymentsummary> {
                 setState(() {
                   _isDiscountApplied = true;
                   _isNcDiscount = isNc;
-                  discountController.text = applied.toStringAsFixed(2);
+
+                  // Always preserve exactly two decimal places
+                  discountController.text = formattedDiscount;
+                  // discountController.text = applied.toStringAsFixed(2);
                   _lastAppliedDiscountStr = result["discountStr"];
                   _lastAppliedDiscountReason = result["reason"];
                 });
