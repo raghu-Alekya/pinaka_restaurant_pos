@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +18,10 @@ import '../utils/AppConstant.dart';
 import '../utils/kds_logger.dart';
 
 class OrderProvider extends ChangeNotifier {
+
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  // Track which KOTs we already played sound for (so refresh does not repeat)
+  final Set<String> _soundPlayedKotIds = {};
 
   Timer? _servedCleanupTimer;
   Map<String, List<bool>> selectedItemsMap = {};
@@ -39,6 +44,20 @@ class OrderProvider extends ChangeNotifier {
   Future<void> initialize() async {
     await _init();
   }
+
+  Future<void> _playNewOrderSound() async {
+    try {
+      debugPrint('🔊 PLAYING SOUND → assets/sounds/new_order.mp3.wav');
+      await _audioPlayer.stop();
+      await _audioPlayer.play(
+        AssetSource('sounds/new_order.mp3.wav'),
+      );
+      debugPrint('✅ SOUND PLAYED SUCCESSFULLY');
+    } catch (e) {
+      debugPrint('❌ SOUND ERROR: $e');
+    }
+  }
+
   final Set<String> _completedTakeawayOrderIds = {};
 
   final KdsMqttService _mqttService;
@@ -345,6 +364,461 @@ class OrderProvider extends ChangeNotifier {
   //   );
   // }
 
+//   Future<void> _handleMessage(Map<String, dynamic> message) async {
+//     final event = message['event']?.toString();
+//     debugPrint('🔥🔥🔥 MQTT MESSAGE RECEIVED 🔥🔥🔥');
+//     debugPrint('MQTT MESSAGE = $message');
+//     debugPrint('');
+//     debugPrint('🔥🔥🔥 EVERY MQTT EVENT 🔥🔥🔥');
+//     debugPrint('EVENT       : $event');
+//     debugPrint('RESTAURANT  : ${message['restaurant_id']}');
+//     debugPrint('STORE       : ${message['store_id']}');
+//     debugPrint('KOT ID      : ${message['kot_id']}');
+//     debugPrint('KOT NUMBER  : ${message['kot_number']}');
+//     debugPrint('PARENT ID   : ${message['parent_order_id']}');
+//     debugPrint('TABLE       : ${message['table_name']}');
+//     debugPrint('ZONE ID     : ${message['zone_id']}');
+//     debugPrint('ZONE NAME   : ${message['zone_name']}');
+//     debugPrint('🔥🔥🔥 END MQTT EVENT 🔥🔥🔥');
+//
+//     // ==========================================================
+//     // RESTAURANT ISOLATION CHECK
+//     // ==========================================================
+//     final dynamic msgRestIdRaw =
+//         message['restaurant_id'] ??
+//             message['restaurantId'] ??
+//             message['merchant_id'] ??
+//             message['merchantId'] ??
+//             (message['kot'] is Map
+//                 ? (
+//                 message['kot']['restaurant_id'] ??
+//                     message['kot']['restaurantId'] ??
+//                     message['kot']['merchant_id'] ??
+//                     message['kot']['merchantId']
+//             )
+//                 : null);
+//     if (msgRestIdRaw != null) {
+//       final String msgRestId = msgRestIdRaw.toString().trim();
+//       final String currentRestId = _apiService.restaurantId.toString().trim();
+//
+//       if (msgRestId.isNotEmpty && currentRestId.isNotEmpty && msgRestId != currentRestId) {
+//         debugPrint('🚫 RESTAURANT MISMATCH: IGNORING MQTT MESSAGE (msg: $msgRestId vs current: $currentRestId)');
+//         return;
+//       }
+//     }
+//
+//     debugPrint('========== MQTT EVENT ==========');
+//     debugPrint('EVENT: $event');
+//     debugPrint('MESSAGE: $message');
+//     debugPrint('================================');
+//
+//
+//     // ==========================================================
+//     // NEW KOT CREATED
+//     // ==========================================================
+//     if (event == 'kot_created') {
+//       try {
+//         // --------------------------------------------------------
+//         // Enrich MQTT message with category information
+//         // --------------------------------------------------------
+//         final enrichedMessage =
+//         _enrichMqttMessageWithCategories(message);
+//
+//         // --------------------------------------------------------
+//         // Convert MQTT payload to KitchenOrder
+//         // --------------------------------------------------------
+//         final order =
+//         KitchenOrder.fromMqttPayload(enrichedMessage);
+//
+//         debugPrint(
+//           '========== KOT CREATED DEBUG ==========',
+//         );
+//
+//         debugPrint(
+//           'KOT ID       : ${order.kotId}',
+//         );
+//
+//         debugPrint(
+//           'KOT NUMBER   : ${order.kotNo}',
+//         );
+//
+//         debugPrint(
+//           'ORDER ID     : ${order.id}',
+//         );
+//
+//         debugPrint(
+//           'PARENT ID    : ${order.parentOrderId}',
+//         );
+//
+//         debugPrint(
+//           'TYPE         : ${order.type}',
+//         );
+//
+//         debugPrint(
+//           'STATUS       : ${order.status}',
+//         );
+//
+//         debugPrint(
+//           'ITEMS        : ${order.items.length}',
+//         );
+//
+//         debugPrint(
+//           '========================================',
+//         );
+//
+//         // ========================================================
+//         // GET ORDER TYPE
+//         // ========================================================
+//
+//         final orderType =
+//         order.type
+//             .toString()
+//             .trim()
+//             .toLowerCase();
+//
+//         final normalizedOrderType =
+//         orderType
+//             .replaceAll('_', '')
+//             .replaceAll('-', '')
+//             .replaceAll(' ', '');
+//
+//         final isTakeaway =
+//             normalizedOrderType == 'takeaway' ||
+//                 normalizedOrderType == 'takeaways';
+//
+//         final parentOrderId =
+//         order.parentOrderId.toString();
+//
+//         // ========================================================
+//         // TAKEAWAY CHECK
+//         // ========================================================
+//
+//         debugPrint(
+//           '========== TAKEAWAY CHECK ==========',
+//         );
+//
+//         debugPrint(
+//           'Parent ID       : $parentOrderId',
+//         );
+//
+//         debugPrint(
+//           'Original Type   : ${order.type}',
+//         );
+//
+//         debugPrint(
+//           'Normalized Type : $normalizedOrderType',
+//         );
+//
+//         debugPrint(
+//           'Is Takeaway     : $isTakeaway',
+//         );
+//
+//         debugPrint(
+//           'Completed IDs   : $_completedTakeawayOrderIds',
+//         );
+//
+//         debugPrint(
+//           '====================================',
+//         );
+//
+//         // ========================================================
+//         // IMPORTANT:
+//         //
+//         // TAKEAWAY KOT MUST NOT BE DISPLAYED WHEN CHECKOUT
+//         // BUTTON IS PRESSED.
+//         //
+//         // POS creates the KOT before payment.
+//         //
+//         // Therefore:
+//         //
+//         // kot_created
+//         //       ↓
+//         // takeaway
+//         //       ↓
+//         // DO NOT ADD TO KDS
+//         //
+//         // After payment:
+//         //
+//         // takeaway_completed
+//         //       ↓
+//         // _handleTakeawayCompleted()
+//         //       ↓
+//         // ADD TO KDS
+//         // ========================================================
+//
+//         // Process all order types (dine-in, takeaway, online) immediately upon kot_created
+//
+//
+//         // ========================================================
+//         // DINE-IN / OTHER KOT STATUS NORMALIZATION
+//         // ========================================================
+//
+//         final mqttStatus =
+//         order.status
+//             .trim()
+//             .toLowerCase();
+//
+//         if (mqttStatus == 'created' ||
+//             mqttStatus == 'new' ||
+//             mqttStatus == 'yet to prepare' ||
+//             mqttStatus == 'yet_to_prepare' ||
+//             mqttStatus == 'pending') {
+//           order.status = 'Pending';
+//         }
+//
+//         // ========================================================
+//         // ADD DINE-IN / OTHER KOT TO PROVIDER
+//         // ========================================================
+//
+//         debugPrint(
+//           '========== MQTT KOT CREATED ==========',
+//         );
+//
+//         debugPrint(
+//           'KOT ID          : ${order.kotId}',
+//         );
+//
+//         debugPrint(
+//           'KOT NUMBER      : ${order.kotNo}',
+//         );
+//
+//         debugPrint(
+//           'PARENT ORDER ID : ${order.parentOrderId}',
+//         );
+//
+//         debugPrint(
+//           'KOT TYPE        : ${order.type}',
+//         );
+//
+//         debugPrint(
+//           'ORIGINAL STATUS : $mqttStatus',
+//         );
+//
+//         debugPrint(
+//           'FINAL STATUS    : ${order.status}',
+//         );
+//
+//         debugPrint(
+//           'KOT STATUS      : ${order.kotStatus}',
+//         );
+//
+//         debugPrint(
+//           'KOT ITEMS       : ${order.items.length}',
+//         );
+//
+//         // --------------------------------------------------------
+//         // Add normal KOT immediately
+//         // --------------------------------------------------------
+//         _addOrder(order);
+//
+//         // _playNewOrderSound();
+//         //
+//         // debugPrint(
+//         //   '✅ KOT ADDED TO PROVIDER WITHOUT IMMEDIATE API REFRESH',
+//         // );
+//         // --------------------------------------------------------
+//         // Add normal KOT immediately
+//         // --------------------------------------------------------
+//
+//         // --------------------------------------------------------
+//         // Check if this KOT is new BEFORE adding
+//         // --------------------------------------------------------
+//         // --------------------------------------------------------
+//         // Check if this KOT is new BEFORE adding
+//         // --------------------------------------------------------
+//         final bool isNewOrder = !_orders.any((o) =>
+//         o.id == order.id ||
+//             (order.kotId != null && o.kotId == order.kotId));
+//
+//         debugPrint('========== NEW ORDER CHECK ==========');
+//         debugPrint('KOT ID       : ${order.kotId}');
+//         debugPrint('KOT NUMBER   : ${order.kotNo}');
+//         debugPrint('IS NEW ORDER : $isNewOrder');
+//         debugPrint('SOURCE       : MQTT (kot_created)');
+//         debugPrint('=====================================');
+//
+//         // Add only once
+//         _addOrder(order);
+//
+//         if (isNewOrder) {
+//           debugPrint('🔊 NEW ORDER FROM MQTT → PLAYING SOUND');
+//           _soundPlayedKotIds.add(order.kotId?.toString() ?? order.id);
+//           _playNewOrderSound();
+//         } else {
+//           debugPrint('ℹ️ Order already exists → NO SOUND');
+//         }
+//
+//         debugPrint('✅ KOT ADDED TO PROVIDER');
+//         debugPrint('TOTAL ORDERS NOW: ${_orders.length}');
+//         debugPrint('PENDING ORDERS NOW: ${pendingOrders.length}');
+//         debugPrint('======================================');
+//
+//         debugPrint(
+//           '✅ KOT ADDED TO PROVIDER WITHOUT IMMEDIATE API REFRESH',
+//         );
+//         debugPrint(
+//           '✅ KOT ADDED TO PROVIDER',
+//         );
+//
+//         debugPrint(
+//           'TOTAL ORDERS NOW: ${_orders.length}',
+//         );
+//
+//         debugPrint(
+//           'PENDING ORDERS NOW: ${pendingOrders.length}',
+//         );
+//
+//         debugPrint(
+//           '======================================',
+//         );
+//       } catch (e, stack) {
+//         KdsDebugLog.error(
+//           '❌ Failed to parse created KOT: $e\n$stack',
+//         );
+//       }
+//
+//       return;
+//     }
+//
+//     // ==========================================================
+// // KOT ITEM / QUANTITY UPDATED
+// // ==========================================================
+//     if (event == 'kot_item_updated' ||
+//         event == 'kot_quantity_updated' ||
+//         event == 'order_item_updated') {
+//
+//       debugPrint(
+//         '========== KOT ITEM / QUANTITY UPDATED ==========',
+//       );
+//
+//       debugPrint(
+//         'KOT ID       : ${message['kot_id']}',
+//       );
+//
+//       debugPrint(
+//         'KOT NUMBER   : ${message['kot_number']}',
+//       );
+//
+//       debugPrint(
+//         'ITEM ID      : ${message['item_id'] ?? message['line_item_id']}',
+//       );
+//
+//       debugPrint(
+//         'NEW QTY      : ${message['quantity'] ?? message['qty']}',
+//       );
+//
+//       _handleKotItemQuantityUpdate(message);
+//
+//       return;
+//     }
+//
+//     // ==========================================================
+//     // KOT STATUS UPDATED
+//     // ==========================================================
+//     if (event == 'kot_status_updated') {
+//       debugPrint(
+//         '========== KOT STATUS UPDATED ==========',
+//       );
+//
+//       debugPrint(
+//         'Parent Order ID: ${message['parent_order_id']}',
+//       );
+//
+//       debugPrint(
+//         'KOT ID: ${message['kot_id']}',
+//       );
+//
+//       debugPrint(
+//         'KOT Number: ${message['kot_number']}',
+//       );
+//
+//       debugPrint(
+//         'Status: ${message['status']}',
+//       );
+//
+//       _handleKotStatusUpdate(message);
+//
+//       return;
+//     }
+//
+//     // ==========================================================
+//     // TAKEAWAY PAYMENT COMPLETED
+//     // ==========================================================
+//     if (event == 'takeaway_completed') {
+//       debugPrint(
+//         '========== TAKEAWAY PAYMENT COMPLETED ==========',
+//       );
+//
+//       debugPrint(
+//         'Parent Order ID: ${message['parent_order_id']}',
+//       );
+//
+//       debugPrint(
+//         'KOT ID: ${message['kot_id']}',
+//       );
+//
+//       debugPrint(
+//         'KOT Number: ${message['kot_number']}',
+//       );
+//
+//       debugPrint(
+//         'Status: ${message['status']}',
+//       );
+//
+//       // --------------------------------------------------------
+//       // IMPORTANT:
+//       //
+//       // _handleTakeawayCompleted() will:
+//       //
+//       // 1. Call KDS orders API
+//       // 2. Find the matching takeaway KOT
+//       // 3. Convert it to KitchenOrder
+//       // 4. Set status = Pending
+//       // 5. Add it to _orders
+//       //
+//       // So takeaway appears ONLY after payment.
+//       // --------------------------------------------------------
+//
+//       await _handleTakeawayCompleted(message);
+//
+//       debugPrint(
+//         '==============================================',
+//       );
+//
+//       return;
+//     }
+//     // ==========================================================
+// // KOT TABLE TRANSFER / TABLE UPDATE
+// // ==========================================================
+//     if (event == 'kot_table_updated' ||
+//         event == 'kot_transferred' ||
+//         event == 'table_transferred' ||
+//         event == 'kot_table_transferred') {
+//
+//       debugPrint('========== KOT TABLE UPDATE ==========');
+//       debugPrint('KOT ID       : ${message['kot_id']}');
+//       debugPrint('KOT NUMBER   : ${message['kot_number']}');
+//       debugPrint('PARENT ID    : ${message['parent_order_id']}');
+//       debugPrint('OLD TABLE    : ${message['old_table_name']}');
+//       debugPrint('NEW TABLE    : ${message['table_name']}');
+//       debugPrint('TABLE ID     : ${message['table_id']}');
+//       debugPrint('NEW ZONE ID  : ${message['zone_id']}');
+//       debugPrint('NEW ZONE     : ${message['zone_name']}');
+//
+//       _handleKotTableUpdate(message);
+//
+//       return;
+//     }
+//
+//     // ==========================================================
+//     // UNKNOWN EVENT
+//     // ==========================================================
+//
+//     debugPrint(
+//       'Ignoring MQTT event: $event',
+//     );
+//   }
+
   Future<void> _handleMessage(Map<String, dynamic> message) async {
     final event = message['event']?.toString();
     debugPrint('🔥🔥🔥 MQTT MESSAGE RECEIVED 🔥🔥🔥');
@@ -588,9 +1062,34 @@ class OrderProvider extends ChangeNotifier {
         );
 
         // --------------------------------------------------------
-        // Add normal KOT immediately
+        // Check if this KOT is new BEFORE adding
         // --------------------------------------------------------
+        final bool isNewOrder = !_orders.any((o) =>
+        o.id == order.id ||
+            (order.kotId != null && o.kotId == order.kotId));
+
+        debugPrint('========== NEW ORDER CHECK ==========');
+        debugPrint('KOT ID       : ${order.kotId}');
+        debugPrint('KOT NUMBER   : ${order.kotNo}');
+        debugPrint('IS NEW ORDER : $isNewOrder');
+        debugPrint('SOURCE       : MQTT (kot_created)');
+        debugPrint('=====================================');
+
+        // Add only once
         _addOrder(order);
+
+        if (isNewOrder) {
+          debugPrint('🔊 NEW ORDER FROM MQTT → PLAYING SOUND');
+          _soundPlayedKotIds.add(order.kotId?.toString() ?? order.id);
+          _playNewOrderSound();
+        } else {
+          debugPrint('ℹ️ Order already exists → NO SOUND');
+        }
+
+        debugPrint('✅ KOT ADDED TO PROVIDER');
+        debugPrint('TOTAL ORDERS NOW: ${_orders.length}');
+        debugPrint('PENDING ORDERS NOW: ${pendingOrders.length}');
+        debugPrint('======================================');
 
         debugPrint(
           '✅ KOT ADDED TO PROVIDER WITHOUT IMMEDIATE API REFRESH',
@@ -757,6 +1256,7 @@ class OrderProvider extends ChangeNotifier {
       'Ignoring MQTT event: $event',
     );
   }
+
   void _handleKotTableUpdate(Map<String, dynamic> message) {
     final kotId = message['kot_id']?.toString().trim();
     final kotNumber = message['kot_number']?.toString().trim();
@@ -2236,14 +2736,65 @@ class OrderProvider extends ChangeNotifier {
       // UPDATE MASTER LIST
       // ----------------------------------------------------------
 
+      // _orders
+      //   ..clear()
+      //   ..addAll(mergedOrders.values);
+      //
+      // // ----------------------------------------------------------
+      // // SAVE
+      // // ----------------------------------------------------------
+      //
+      // await _persist();
+      //
+      // notifyListeners();
+      //
+      // debugPrint(
+      //   'KDS ORDERS LOADED: ${_orders.length}',
+      // );
+      // ----------------------------------------------------------
+      // DETECT NEW KOTS (for sound)
+      // ----------------------------------------------------------
+      final previousIds = _orders
+          .map((o) => o.kotId?.toString() ?? o.id)
+          .toSet();
+
+      final newKots = <KitchenOrder>[];
+
+      for (final order in mergedOrders.values) {
+        final key = order.kotId?.toString() ?? order.id;
+
+        final isNew = !previousIds.contains(key) &&
+            !_soundPlayedKotIds.contains(key);
+
+        if (isNew) {
+          newKots.add(order);
+          _soundPlayedKotIds.add(key);
+        }
+      }
+
+      // ----------------------------------------------------------
+      // UPDATE MASTER LIST
+      // ----------------------------------------------------------
       _orders
         ..clear()
         ..addAll(mergedOrders.values);
 
       // ----------------------------------------------------------
+      // PLAY SOUND FOR NEW KOTS FROM API
+      // ----------------------------------------------------------
+      if (newKots.isNotEmpty) {
+        debugPrint('🔊 ${newKots.length} NEW KOT(s) FROM API → PLAYING SOUND');
+        for (final o in newKots) {
+          debugPrint('   → New KOT: ${o.kotNo} (id=${o.kotId})');
+        }
+        _playNewOrderSound();
+      } else {
+        debugPrint('ℹ️ No new KOTs from API → NO SOUND');
+      }
+
+      // ----------------------------------------------------------
       // SAVE
       // ----------------------------------------------------------
-
       await _persist();
 
       notifyListeners();
@@ -2251,7 +2802,6 @@ class OrderProvider extends ChangeNotifier {
       debugPrint(
         'KDS ORDERS LOADED: ${_orders.length}',
       );
-
       // Debug cancelled items
       for (final order in _orders) {
         for (final item in order.items) {
@@ -2715,7 +3265,7 @@ Future<bool> updateOrderStatus(String orderId, String status) async {
   @override
   void dispose() {
     _servedCleanupTimer?.cancel();
-
+    _audioPlayer.dispose();
     _apiService.dispose();
     _mqttService.dispose();
 
