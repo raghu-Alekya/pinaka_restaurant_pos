@@ -920,4 +920,97 @@ class KdsMqttPublisher {
     }
   }
 
+
+  // ─── Notify Captain – Order Cancelled ───────────────────────────
+  static Future<void> notifyOrderCancelled({
+    required String restaurantId,
+    required int orderId,
+    required String orderType,
+    int? zoneId,
+    String? zoneName,
+    String? tableName,
+    String? tableId,
+  }) async {
+    try {
+      await _ensureConnected();
+      if (!_connected || _client == null) {
+        print('⚠️ MQTT not connected - cannot notify order cancelled');
+        return;
+      }
+
+      final payload = {
+        'event': 'order_cancelled',
+        'restaurant_id': restaurantId,
+        'parent_order_id': orderId,
+        'order_type': orderType,
+        'zone_id': zoneId,
+        'zone_name': zoneName ?? '',
+        'table_name': tableName ?? '',
+        'table_id': tableId ?? '',
+        'status': 'cancelled',
+        'table_status': 'Available',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('========== PUBLISH ORDER CANCELLED → CAPTAIN ==========');
+      print('Topic  : ${_captainOrdersTopic(restaurantId)}');
+      print('Payload: ${jsonEncode(payload)}');
+      print('======================================================');
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _captainOrdersTopic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print('✅ Order cancelled event sent to Captain successfully');
+    } catch (e, stack) {
+      print('❌ Order cancelled MQTT publish failed: $e');
+      print(stack);
+    }
+  }
+
+  static Future<void> notifyMenuStockUpdated({
+    required String restaurantId,
+    required List<Map<String, dynamic>> products,
+    // { product_id, old_status, new_status }
+  }) async {
+    try {
+      await _ensureConnected();
+      if (!_connected || _client == null) {
+        print('⚠️ MQTT not connected - cannot notify menu stock');
+        return;
+      }
+
+      final payload = {
+        'event': 'menu_stock_updated',
+        'restaurant_id': restaurantId,
+        'products': products,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('========== PUBLISH MENU STOCK → CAPTAIN ==========');
+      print('Topic  : ${_captainOrdersTopic(restaurantId)}');
+      print('Payload: ${jsonEncode(payload)}');
+      print('=================================================');
+
+      final builder = MqttClientPayloadBuilder()
+        ..addString(jsonEncode(payload));
+
+      _client!.publishMessage(
+        _captainOrdersTopic(restaurantId),
+        MqttQos.atLeastOnce,
+        builder.payload!,
+      );
+
+      print('✅ Menu stock update sent to Captain');
+    } catch (e, stack) {
+      print('❌ Menu stock MQTT failed: $e');
+      print(stack);
+    }
+  }
+
 }

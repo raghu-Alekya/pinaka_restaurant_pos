@@ -709,6 +709,18 @@ class _OrderPanelState extends State<OrderPanel> {
           CancelOrder(parentOrderId: currentOrderId, token: widget.token),
         );
 
+        unawaited(
+          KdsMqttPublisher.notifyOrderCancelled(
+            restaurantId: widget.restaurantId,
+            orderId: currentOrderId,
+            orderType: widget.isTakeAway ? 'Take Away' : 'Dine In',
+            zoneId: widget.zoneId,
+            zoneName: widget.zoneName,
+            tableName: widget.tableName,
+            tableId: widget.tableId.toString(),
+          ),
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             duration: const Duration(seconds: 1),

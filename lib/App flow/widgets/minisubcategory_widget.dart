@@ -1312,6 +1312,8 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   late final ProductStatusRepository _productStatusRepository;
   late OrderRepository orderRepository;
   bool _isCreatingTakeAwayOrder = false;
+  StreamSubscription? _menuStockSub;
+
   final List<Color> tileColors = [
     const Color(0xFFF0FBFF),
     const Color(0xFFFEE8C2),
@@ -1336,6 +1338,58 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
         _prefetchAllCategoryData();
       }
     });
+
+    // ─── Listen for Captain menu stock updates ─────────────────────
+    _menuStockSub = KdsMqttPublisher.captainUpdates.listen((map) {
+      final event = map['event']?.toString();
+      if (event != 'menu_stock_updated') return;
+
+      final products = map['products'];
+      if (products is! List) return;
+
+      print('🔔 POS menu stock update from Captain: $products');
+
+      bool anyChanged = false;
+
+      for (final p in products) {
+        if (p is! Map) continue;
+        final id = p['product_id'];
+        final newStatus = p['new_status']?.toString().toLowerCase();
+        if (id == null || newStatus == null) continue;
+
+        final productId = id is int ? id : int.tryParse(id.toString());
+        if (productId == null) continue;
+
+        final inStock = newStatus == 'instock';
+        _stockStatusCache[productId] = inStock;
+        anyChanged = true;
+      }
+
+      if (!anyChanged || !mounted) return;
+
+      setState(() {
+        _productCache.forEach((key, list) {
+          _productCache[key] = _applyStockOverrides(list);
+        });
+
+        if (selectedFolder != null) {
+          final updated = _applyStockOverrides(selectedFolder!.products);
+          selectedFolder = selectedFolder!.copyWith(
+            products: updated,
+            count: updated.length,
+          );
+          currentSubCategories = currentSubCategories
+              .map((s) => s.id == selectedFolder!.id ? selectedFolder! : s)
+              .toList();
+        }
+
+        currentSubCategories = currentSubCategories.map((sub) {
+          final updated = _applyStockOverrides(sub.products);
+          return sub.copyWith(products: updated, count: updated.length);
+        }).toList();
+      });
+    });
+
     KdsMqttPublisher.listenForStockUpdates(
       restaurantId: widget.restaurantId,
     );
@@ -1347,6 +1401,7 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
   }
   @override
   void dispose() {
+    _menuStockSub?.cancel();
     _stockSubscription?.cancel();
 
     // existing dispose code...
@@ -2793,6 +2848,19 @@ class _MiniSubCategoryWidgetState extends State<MiniSubCategoryWidget> {
           newStockStatus
               ? Colors.green
               : Colors.red,
+        ),
+      );
+
+      unawaited(
+        KdsMqttPublisher.notifyMenuStockUpdated(
+          restaurantId: widget.restaurantId,
+          products: [
+            {
+              'product_id': item.id,
+              'old_status': oldStatus,   // 'instock' or 'outofstock'
+              'new_status': newStatus,   // 'instock' or 'outofstock'
+            },
+          ],
         ),
       );
 

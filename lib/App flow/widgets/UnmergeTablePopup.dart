@@ -20,23 +20,71 @@ class UnmergeTablePopup extends StatelessWidget {
     required this.repository,
   });
 
+  // Future<void> _unmergeTable(BuildContext context) async {
+  //   final parentTableId = tableData['table_id'] ?? 0;
+  //   final zoneId = tableData['zone_id'] ?? 0;
+  //   final restaurantId = tableData['restaurant_id'] ?? 0;
+  //
+  //   final parentTableName =
+  //       tableData['table_name']?.toString() ??
+  //       tableData['tableName']?.toString() ??
+  //       '';
+  //
+  //   final mergedTables =
+  //       tableData['merged_tables']?.toString() ?? parentTableName;
+  //
+  //   final zoneName =
+  //       tableData['areaName']?.toString() ??
+  //       tableData['zone_name']?.toString() ??
+  //       '';
+  //
+  //   try {
+  //     final resData = await repository.deleteMergeTable(
+  //       token: token,
+  //       parentTableId: parentTableId,
+  //       zoneId: zoneId,
+  //       restaurantId: restaurantId,
+  //     );
+  //
+  //     if (resData['success'] == true) {
+  //       // Notify Captain – tables unmerged / free
+  //       unawaited(
+  //         KdsMqttPublisher.notifyTablesUnmerged(
+  //           restaurantId: restaurantId.toString(),
+  //           parentTableId:
+  //               parentTableId is int
+  //                   ? parentTableId
+  //                   : int.tryParse(parentTableId.toString()) ?? 0,
+  //           parentTableName: parentTableName,
+  //           zoneId: zoneId is int ? zoneId : int.tryParse(zoneId.toString()),
+  //           zoneName: zoneName,
+  //           mergedTables: mergedTables,
+  //         ),
+  //       );
+  //
+  //       Navigator.of(context).pop();
+  //       onUnmerge(index, tableData);
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error unmerging table: $e');
+  //   }
+  // }
+
+
   Future<void> _unmergeTable(BuildContext context) async {
     final parentTableId = tableData['table_id'] ?? 0;
     final zoneId = tableData['zone_id'] ?? 0;
     final restaurantId = tableData['restaurant_id'] ?? 0;
-
     final parentTableName =
         tableData['table_name']?.toString() ??
-        tableData['tableName']?.toString() ??
-        '';
-
+            tableData['tableName']?.toString() ??
+            '';
     final mergedTables =
         tableData['merged_tables']?.toString() ?? parentTableName;
-
     final zoneName =
         tableData['areaName']?.toString() ??
-        tableData['zone_name']?.toString() ??
-        '';
+            tableData['zone_name']?.toString() ??
+            '';
 
     try {
       final resData = await repository.deleteMergeTable(
@@ -51,10 +99,9 @@ class UnmergeTablePopup extends StatelessWidget {
         unawaited(
           KdsMqttPublisher.notifyTablesUnmerged(
             restaurantId: restaurantId.toString(),
-            parentTableId:
-                parentTableId is int
-                    ? parentTableId
-                    : int.tryParse(parentTableId.toString()) ?? 0,
+            parentTableId: parentTableId is int
+                ? parentTableId
+                : int.tryParse(parentTableId.toString()) ?? 0,
             parentTableName: parentTableName,
             zoneId: zoneId is int ? zoneId : int.tryParse(zoneId.toString()),
             zoneName: zoneName,

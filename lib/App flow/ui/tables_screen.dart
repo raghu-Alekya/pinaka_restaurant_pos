@@ -35,6 +35,7 @@ import '../../repositories/order_repository.dart';
 import '../../repositories/table_merge_repository.dart';
 import '../../repositories/table_repository.dart';
 import '../../repositories/zone_repository.dart';
+import '../../services/kds_seivices.dart';
 import '../../utils/GlobalReservationMonitor.dart';
 import '../../utils/SessionManager.dart';
 import '../../utils/app_theme.dart';
@@ -125,6 +126,8 @@ class _TablesScreenState extends State<TablesScreen> {
   UserPermissions? _userPermissions;
   Map<String, dynamic>? _selectedUser;
   late VoidCallback _reservationListener;
+
+  StreamSubscription? _captainMqttSub;
 
 
 
@@ -261,7 +264,7 @@ class _TablesScreenState extends State<TablesScreen> {
   @override
   void initState() {
     super.initState();
-
+    _initCaptainMqttListener();
     _loadZones();
     _loadSavedPermissions();
     _currentViewMode = ViewMode.gridShapeBased; // default
@@ -291,8 +294,34 @@ class _TablesScreenState extends State<TablesScreen> {
         .reservationsNotifier
         .removeListener(_reservationListener);
     gridScrollController.dispose();
+    _captainMqttSub?.cancel();
 
     super.dispose();
+  }
+
+  Future<void> _initCaptainMqttListener() async {
+    await KdsMqttPublisher.listenForCaptainUpdates(
+      restaurantId: widget.restaurantId,
+    );
+
+    _captainMqttSub = KdsMqttPublisher.captainUpdates.listen((map) {
+      final event = map['event']?.toString();
+      print('🔔 TablesScreen received Captain event: $event');
+
+      if (event == 'order_created' ||
+          event == 'payment_completed' ||
+          event == 'order_cancelled' ||
+          event == 'kot_printed' ||
+          event == 'bill_generated' ||
+          event == 'tables_merged' ||
+          event == 'tables_unmerged' ||
+          event == 'tables_merge_updated') {
+        // Reload tables so status updates (Occupied / Available / Running)
+        if (mounted) {
+          context.read<TableBloc>().add(LoadTablesEvent(widget.token));
+        }
+      }
+    });
   }
 
   Future<void> _loadSavedPermissions() async {
