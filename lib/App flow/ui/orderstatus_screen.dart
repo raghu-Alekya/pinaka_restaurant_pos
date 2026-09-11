@@ -23,6 +23,7 @@ import '../../models/UserPermissions.dart';
 import '../../models/order/guest_details.dart';
 import '../../models/order/order_model.dart';
 import '../../models/order_list/order_list_model.dart';
+import '../../printer/printer_service.dart';
 import '../../repositories/order_repository.dart';
 import '../../services/api_exception.dart';
 import '../../utils/SessionManager.dart';
@@ -1601,30 +1602,65 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                                     ),
 
                                                     // 3. PRINT BUTTON
+                                                    // 3. PRINT BUTTON
                                                     IconButton(
                                                       icon: Icon(
-                                                        Icons
-                                                            .print_outlined,
-                                                        color:
-                                                        (order.status ??
-                                                            "")
-                                                            .toLowerCase() ==
-                                                            "cancelled"
-                                                            ? Colors
-                                                            .grey
-                                                            : const Color(
-                                                          0xFF4C81F1,
-                                                        ),
+                                                        Icons.print_outlined,
+                                                        color: (order.status ?? "").toLowerCase() == "cancelled"
+                                                            ? Colors.grey
+                                                            : const Color(0xFF4C81F1),
                                                       ),
                                                       tooltip: "Print",
-                                                      onPressed:
-                                                      (order.status ??
-                                                          "")
-                                                          .toLowerCase() ==
-                                                          "cancelled"
+                                                      onPressed: (order.status ?? "").toLowerCase() == "cancelled"
                                                           ? null
-                                                          : () {
-                                                        // Print logic
+                                                          : () async {
+                                                        try {
+                                                          // Build items list from KOT line items
+                                                          final List<Map<String, dynamic>> printItems = [];
+                                                          for (final kot in order.kotOrders ?? []) {
+                                                            for (final item in kot.lineItems ?? kot.initialKotItems ?? []) {
+                                                              final qty = (item.quantity ?? 0).toInt();
+                                                              if (qty <= 0) continue;
+                                                              final price = (item.itemPrice ?? 0).toDouble();
+                                                              final amount = price * qty;
+                                                              printItems.add({
+                                                                'name': item.name ?? '-',
+                                                                'qty': qty,
+                                                                'price': price,
+                                                                'amount': amount,
+                                                                'modifiers': item.modifiers ?? [],
+                                                              });
+                                                            }
+                                                          }
+
+                                                          await Printer.printBill(
+                                                            context: context,
+                                                            orderId: order.orderId?.toString() ?? '-',
+                                                            tableName: (order.tableName?.isNotEmpty == true)
+                                                                ? order.tableName!
+                                                                : (order.orderType ?? 'Takeaway'),
+                                                            cashierName: order.placedByName ?? '-',
+                                                            items: printItems,
+                                                            grossTotal: (order.grossTotal ?? 0).toDouble(),
+                                                            couponDiscount: order.totalCouponDiscount.toDouble(),
+                                                            merchantDiscount: (order.merchantDiscount ?? 0).toDouble(),
+                                                            tipAmount: (order.tipAmount ?? 0).toDouble(),
+                                                            taxAmount: (order.totalTax ?? 0).toDouble(),
+                                                            serviceCharge: (order.serviceChargeValue ?? 0).toDouble(),
+                                                            netPayable: (order.netPayable ?? order.displayTotal).toDouble(),
+                                                            couponDetails: order.couponDetails
+                                                                ?.map((c) => {'code': c.code, 'value': c.value})
+                                                                .toList(),
+                                                          );
+                                                        } catch (e) {
+                                                          if (!context.mounted) return;
+                                                          ScaffoldMessenger.of(context).showSnackBar(
+                                                            SnackBar(
+                                                              content: Text("Print failed: $e"),
+                                                              backgroundColor: Colors.red,
+                                                            ),
+                                                          );
+                                                        }
                                                       },
                                                     ),
                                                   ],

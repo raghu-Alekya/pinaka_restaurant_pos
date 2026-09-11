@@ -1450,10 +1450,31 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
                                         : (isDark
                                         ? const Color(0xFF2B3042)
                                         : const Color(0xFFF3F3F3)),
-                                    borderRadius:
-                                    const BorderRadius.only(
+
+                                    borderRadius: const BorderRadius.only(
                                       bottomLeft: Radius.circular(8),
                                       bottomRight: Radius.circular(8),
+                                    ),
+
+                                    border: Border(
+                                      left: BorderSide(
+                                        color: isDark
+                                            ? const Color(0xFF3A4050)
+                                            : const Color(0xFFD8DEE8),
+                                        width: 1,
+                                      ),
+                                      right: BorderSide(
+                                        color: isDark
+                                            ? const Color(0xFF3A4050)
+                                            : const Color(0xFFD8DEE8),
+                                        width: 1,
+                                      ),
+                                      bottom: BorderSide(
+                                        color: isDark
+                                            ? const Color(0xFF3A4050)
+                                            : const Color(0xFFD8DEE8),
+                                        width: 1,
+                                      ),
                                     ),
                                   ),
                                   child: _buildTableList(),
@@ -1484,7 +1505,7 @@ class _KitchenStatusScreenState extends State<KitchenStatusScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 17),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 19),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF34384F) : const Color(0xFFFFDFAC),
         borderRadius: const BorderRadius.only(

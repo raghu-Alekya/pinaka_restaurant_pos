@@ -23,20 +23,12 @@ class GeneralSettingsData {
   final String email;
   final String? phoneNumber;
   final String? userDeviceId;
-
-  // API returns string
   final String gstin;
-
   final String companyName;
   final String profileUrl;
-
-  // API returns string
   final String headerText;
   final String footerText;
-
-  // API returns array of printer names/IPs
   final List<String> printSettings;
-
   final String receiptLogo;
 
   GeneralSettingsData({
@@ -54,57 +46,44 @@ class GeneralSettingsData {
     required this.receiptLogo,
   });
 
-  factory GeneralSettingsData.fromJson(
-      Map<String, dynamic> json,
-      ) {
+  // Safe parser – handles null, "", single String, or List
+  static List<String> _parsePrintSettings(dynamic value) {
+    if (value == null) return [];
+    if (value is String) {
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? [] : [trimmed];
+    }
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  factory GeneralSettingsData.fromJson(Map<String, dynamic> json) {
     return GeneralSettingsData(
       userId: json['user_id'] ?? 0,
-
       fullName: json['full_name'] ?? '',
-
       email: json['email'] ?? '',
-
       phoneNumber: json['phone_number'],
-
       userDeviceId: json['user_device_id'],
-
       gstin: json['gstin']?.toString() ?? '',
-
       companyName: json['company_name'] ?? '',
-
       profileUrl: json['profile_url'] ?? '',
-
       headerText: json['header_text']?.toString() ?? '',
-
       footerText: json['footer_text']?.toString() ?? '',
-
-      // IMPORTANT:
-      // print_settings is an array
-      printSettings: json['print_settings'] != null
-          ? List<String>.from(
-        (json['print_settings'] as List)
-            .map((e) => e.toString()),
-      )
-          : [],
-
+      printSettings: _parsePrintSettings(json['print_settings']),
       receiptLogo: json['receipt_logo'] ?? '',
     );
   }
 }
 
-
 // ============================================================
 // SAVE REQUEST
 // ============================================================
-
 class SaveGeneralSettingsRequest {
   final String? headerText;
   final String? footerText;
-
-  // IMPORTANT:
-  // This is now a List<String>, not String
   final List<String> printSettings;
-
   final String? receiptLogoUrl;
 
   SaveGeneralSettingsRequest({
@@ -118,20 +97,15 @@ class SaveGeneralSettingsRequest {
     return {
       "header_text": headerText,
       "footer_text": footerText,
-
-      // Send printer names/IPs as an array
       "print_settings": printSettings,
-
       "receipt_logo_url": receiptLogoUrl,
     };
   }
 }
 
-
 // ============================================================
 // SAVE RESPONSE
 // ============================================================
-
 class SaveGeneralSettingsResponse {
   final bool success;
   final String message;
@@ -143,9 +117,7 @@ class SaveGeneralSettingsResponse {
     required this.data,
   });
 
-  factory SaveGeneralSettingsResponse.fromJson(
-      Map<String, dynamic> json,
-      ) {
+  factory SaveGeneralSettingsResponse.fromJson(Map<String, dynamic> json) {
     return SaveGeneralSettingsResponse(
       success: json["success"] ?? false,
       message: json["message"] ?? "",
@@ -156,11 +128,9 @@ class SaveGeneralSettingsResponse {
   }
 }
 
-
 // ============================================================
 // SAVE RESPONSE DATA
 // ============================================================
-
 class SaveGeneralSettingsData {
   final int userId;
   final String? fullName;
@@ -172,11 +142,7 @@ class SaveGeneralSettingsData {
   final String? profileUrl;
   final String? headerText;
   final String? footerText;
-
-  // IMPORTANT:
-  // Printer settings are an array
   final List<String> printSettings;
-
   final String? receiptLogo;
 
   SaveGeneralSettingsData({
@@ -194,38 +160,32 @@ class SaveGeneralSettingsData {
     this.receiptLogo,
   });
 
-  factory SaveGeneralSettingsData.fromJson(
-      Map<String, dynamic> json,
-      ) {
+  // Same safe parser
+  static List<String> _parsePrintSettings(dynamic value) {
+    if (value == null) return [];
+    if (value is String) {
+      final trimmed = value.trim();
+      return trimmed.isEmpty ? [] : [trimmed];
+    }
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  factory SaveGeneralSettingsData.fromJson(Map<String, dynamic> json) {
     return SaveGeneralSettingsData(
       userId: json["user_id"] ?? 0,
-
       fullName: json["full_name"],
-
       email: json["email"],
-
       phoneNumber: json["phone_number"],
-
       userDeviceId: json["user_device_id"],
-
       gstin: json["gstin"],
-
       companyName: json["company_name"],
-
       profileUrl: json["profile_url"],
-
       headerText: json["header_text"],
-
       footerText: json["footer_text"],
-
-      // IMPORTANT
-      printSettings: json["print_settings"] != null
-          ? List<String>.from(
-        (json["print_settings"] as List)
-            .map((e) => e.toString()),
-      )
-          : [],
-
+      printSettings: _parsePrintSettings(json["print_settings"]),
       receiptLogo: json["receipt_logo"],
     );
   }

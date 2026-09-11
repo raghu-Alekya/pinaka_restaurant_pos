@@ -1294,6 +1294,18 @@ class _TablesScreenState extends State<TablesScreen> {
               }),
             if (status.toLowerCase() == 'available')
               _buildActionButton("delete", () {
+                if (isMerged) {
+                  AreaMovementNotifier.showPopup(
+                    context: context,
+                    fromArea: area ?? '',
+                    toArea: '',
+                    tableName: mergedTables,
+                    customMessage:
+                    'Please unmerge the table first, then you can delete the table.',
+                  );
+                  return;
+                }
+
                 _showDeleteConfirmationDialog(index);
               }),
             if (!_showPopup) const SizedBox(height: 6),

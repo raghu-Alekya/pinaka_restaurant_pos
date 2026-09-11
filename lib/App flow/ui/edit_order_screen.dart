@@ -12,6 +12,7 @@ import '../../repositories/edit_order_repository.dart';
 import '../../repositories/order_list_repository.dart';
 import '../../utils/SessionManager.dart';
 import '../../utils/logger.dart';
+import '../widgets/confirmation_pop_up.dart';
 import '../widgets/navigationhelper.dart';
 import '../widgets/top_bar.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -90,7 +91,58 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
   bool _isVoidedLoading = false;
   int? _lastFetchedKotId;
   final Map<int, List<VoidedItem>> _voidedCache = {};
+  /// Returns true if any item in the right panel has a quantity
+  /// different from its original snapshot.
+  bool _hasUnsavedChanges() {
+    if (_selectedKotId == null) return false;
 
+    final items = _editedKotItems[_selectedKotId];
+    if (items == null || items.isEmpty) return false;
+
+    return items.any((item) {
+      final original = item.originalQuantity ?? item.maxQty ?? 0;
+      final current  = item.quantity ?? 0;
+      return original != current;
+    });
+  }
+  Future<bool> _handleBackNavigation() async {
+    // No unsaved changes → allow Home navigation
+    if (!_hasUnsavedChanges()) {
+      return true;
+    }
+
+    // Use the user-facing KOT number, NOT kotOrderId
+    final kotNumber = _selectedKot?.kotNumber?.toString() ?? '-';
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.transparent,
+      builder: (_) => ConfirmationPopup(
+        title: "Discard Changes?",
+        message: "You have unsaved changes in ",
+        highlightedText: "$kotNumber",
+        trailingMessage: ". Going back will discard them.",
+        cancelButtonText: "Stay",
+        confirmButtonText: "Discard",
+        primaryColor: const Color(0xFFE53935),
+        imagePath: "assets/warning_icon.png",
+        isLoading: false,
+
+        // Stay on Edit Order
+        onCancel: () {
+          Navigator.pop(context, false);
+        },
+
+        // Allow TopBar to continue Home navigation
+        onConfirm: () {
+          Navigator.pop(context, true);
+        },
+      ),
+    );
+
+    return result ?? false;
+  }
   // EDITABLE PER KOT (persisted)
   final Map<int, List<LineItem>> _editedKotItems = {};
   @override
@@ -706,6 +758,7 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
         appBar: TopBar(
           token: widget.token,
           pin: widget.pin,
+          onHomePressed: _handleBackNavigation,
           userPermissions: _userPermissions,
           restaurantId: widget.restaurantId,
           restaurantName: widget.restaurantName,
@@ -808,8 +861,12 @@ class _EditOrdersListScreenState extends State<EditOrdersListScreen> {
                               SizedBox(
                                 width: 110, // button width
                                 child:GestureDetector(
-                                  onTap: () {
-                                    Navigator.pop(context, _kotUpdated);
+                                  onTap: () async {
+                                    final shouldGoBack = await _handleBackNavigation();
+
+                                    if (shouldGoBack && mounted) {
+                                      Navigator.pop(context, _kotUpdated);
+                                    }
                                   },
                                   child: Container(
                                     width: 110,

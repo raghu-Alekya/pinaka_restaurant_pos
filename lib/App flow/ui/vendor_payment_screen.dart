@@ -577,9 +577,12 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     bottom:
                                     6, // moves hint/text slightly upward
                                   ),
-                                  prefixIcon: const Icon(
+                                  prefixIcon:  Icon(
                                     Icons.search,
-                                    color: Colors.black,
+                                    color:
+                                    isDark
+                                        ? Colors.white24
+                                        : Colors.transparent,
                                   ),
                                   hintText: "Search by name or phone number",
                                   hintStyle: TextStyle(
