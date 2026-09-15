@@ -250,7 +250,7 @@ class _TipsScreenState extends State<TipsScreen>
 
     setState(() {
       isLoading = true;
-      _isRefreshing = forceRefresh;
+      // _isRefreshing = forceRefresh;
     });
 
     try {
@@ -612,6 +612,14 @@ class _TipsScreenState extends State<TipsScreen>
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             isDense: true,
+                            hintText: 'Select Date',
+                            hintStyle: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isDark
+                                  ? Colors.white54
+                                  : const Color(0xFF6B7280),
+                            ),
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 10,

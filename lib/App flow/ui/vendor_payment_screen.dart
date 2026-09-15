@@ -92,7 +92,7 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
   static const Duration _autoRefreshInterval = Duration(seconds: 3);
   bool _isDateFiltered = false;
   bool _isSearchActive = false;
-
+  bool _isResetting = false;
   @override
   void initState() {
     super.initState();
@@ -581,8 +581,8 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     Icons.search,
                                     color:
                                     isDark
-                                        ? Colors.white24
-                                        : Colors.transparent,
+                                        ? Colors.white54
+                                        : const Color(0xFFC3C2C2),
                                   ),
                                   hintText: "Search by name or phone number",
                                   hintStyle: TextStyle(
@@ -713,6 +713,14 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                                     enabledBorder: InputBorder.none,
                                     focusedBorder: InputBorder.none,
                                     isDense: true,
+                                    hintText: 'Select Date',
+                                    hintStyle: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDark
+                                          ? Colors.white54
+                                          : const Color(0xFF6B7280),
+                                    ),
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12,
                                       vertical: 10,
@@ -730,6 +738,93 @@ class _VendorpaymentsscreenState extends State<Vendorpaymentsscreen> {
                               ),
                             ),
 
+
+
+                    const SizedBox(width: 16),
+
+          /// Reset Button
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark
+                  ? const Color(0xFF374151)
+                  : const Color(0xFFFDF8F8),
+              foregroundColor: isDark
+                  ? Colors.white70
+                  : Colors.grey[700],
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 18,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  color: isDark
+                      ? Colors.grey.shade600
+                      : Colors.grey.shade300,
+                ),
+              ),
+            ),
+
+            onPressed: _isResetting
+                ? null
+                : () async {
+              setState(() {
+                _isResetting = true;
+
+                // Clear selected date
+                selectedDate = null;
+                _datevendorController.clear();
+
+                // Clear search
+                searchController.clear();
+              });
+
+              try {
+                // Reload all vendor payments
+                await _loadVendorPayments(
+                  forceRefresh: true,
+                );
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    _isResetting = false;
+                  });
+                }
+              }
+            },
+
+            icon: _isResetting
+                ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
+                : Icon(
+              Icons.refresh,
+              size: 16,
+              color: isDark
+                  ? Colors.white70
+                  : Colors.grey[700],
+            ),
+
+            label: Text(
+              "Reset",
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark
+                    ? Colors.white70
+                    : Colors.grey[700],
+              ),
+            ),
+          ),
+
+          // const SizedBox(width: 16),
+
+      // After reset, the date field will show **`Select Date`**, the selected date will be cleared, the search will be cleared, and all vendor payments will be reloaded.
 
                             const SizedBox(width: 16),
 

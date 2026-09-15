@@ -952,10 +952,11 @@ class _OrdersListTableState extends State<OrdersListTable> {
                                           color: Color(0xFF1E2A5A),
                                         ),
                                       )
-                                          : const Icon(
+                                          :  Icon(
                                         Icons.sync,
-                                        size: 24,
-                                        color: Color(0xFF1E2A5A),
+                                        size: 24,       color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF152148),
                                       ),
                                     ),
                                   ),

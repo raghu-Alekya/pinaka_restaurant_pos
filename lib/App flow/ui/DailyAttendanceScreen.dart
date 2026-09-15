@@ -48,6 +48,13 @@ class _AttendancePopupState extends State<AttendancePopup> {
   String currentTime = '';
   String currentDate = '';
   bool _isSaving = false;
+  bool get _isAttendanceComplete {
+    return widget.employees.isNotEmpty &&
+        widget.employees.every(
+          (employee) =>
+              employee.status == 'Present' || employee.status == 'Absent',
+        );
+  }
 
   @override
   void initState() {
@@ -111,10 +118,10 @@ class _AttendancePopupState extends State<AttendancePopup> {
   @override
   Widget build(BuildContext context) {
     final filteredEmployees =
-    widget.employees.where((e) {
-      return e.id.contains(searchQuery) ||
-          e.name.toLowerCase().contains(searchQuery.toLowerCase());
-    }).toList();
+        widget.employees.where((e) {
+          return e.id.contains(searchQuery) ||
+              e.name.toLowerCase().contains(searchQuery.toLowerCase());
+        }).toList();
 
     final viewInsets = MediaQuery.of(context).viewInsets;
     final theme = Theme.of(context);
@@ -150,260 +157,231 @@ class _AttendancePopupState extends State<AttendancePopup> {
                         ),
                         child: Scrollbar(
                           child:
-                          filteredEmployees.isEmpty
-                              ? Center(
-                            child: Text(
-                              "No results found.",
-                              style: TextStyle(
-                                color: theme.textTheme.bodyLarge?.color,
-                              ),
-                            ),
-                          )
-                              : ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: filteredEmployees.length,
-                            itemBuilder: (context, index) {
-                              final emp = filteredEmployees[index];
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: theme.cardColor,
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: theme.dividerColor,
+                              filteredEmployees.isEmpty
+                                  ? Center(
+                                    child: Text(
+                                      "No results found.",
+                                      style: TextStyle(
+                                        color: theme.textTheme.bodyLarge?.color,
+                                      ),
                                     ),
-                                    right: BorderSide(
-                                      color: theme.dividerColor,
-                                    ),
-                                    bottom: BorderSide(
-                                      color: theme.dividerColor,
-                                    ),
+                                  )
+                                  : ListView.builder(
+                                    shrinkWrap: true,
+                                    itemCount: filteredEmployees.length,
+                                    itemBuilder: (context, index) {
+                                      final emp = filteredEmployees[index];
+                                      return Container(
+                                        decoration: BoxDecoration(
+                                          color: theme.cardColor,
+                                          border: Border(
+                                            left: BorderSide(
+                                              color: theme.dividerColor,
+                                            ),
+                                            right: BorderSide(
+                                              color: theme.dividerColor,
+                                            ),
+                                            bottom: BorderSide(
+                                              color: theme.dividerColor,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            _buildCell(emp.id, flex: 2),
+                                            _buildCell(emp.name, flex: 4),
+                                            _buildStatusCell(emp),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    _buildCell(emp.id, flex: 2),
-                                    _buildCell(emp.name, flex: 4),
-                                    _buildStatusCell(emp),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
                         ),
                       ),
                       const SizedBox(height: 20),
+
                       SizedBox(
                         width: 220,
                         height: 40,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepOrange,
+                            backgroundColor:
+                                _isAttendanceComplete
+                                    ? Colors.deepOrange
+                                    : Colors.grey.shade600,
+                            disabledBackgroundColor: Colors.grey.shade600,
+                            disabledForegroundColor: Colors.white54,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
-                          onPressed: () async {
-                            if (_isSaving) return;
+                          onPressed:
+                              !_isAttendanceComplete || _isSaving
+                                  ? null
+                                  : () async {
+                                    if (_isSaving) return;
 
-                            if (selectedShift.isEmpty) {
-                              AreaMovementNotifier.showPopup(
-                                context: context,
-                                fromArea: '',
-                                toArea: '',
-                                tableName: 'Shift',
-                                customMessage:
-                                'Please fill the shift timings field',
-                                duration: const Duration(seconds: 3),
-                              );
-                              return;
-                            }
+                                    if (selectedShift.isEmpty) {
+                                      AreaMovementNotifier.showPopup(
+                                        context: context,
+                                        fromArea: '',
+                                        toArea: '',
+                                        tableName: 'Shift',
+                                        customMessage:
+                                            'Please fill the shift timings field',
+                                        duration: const Duration(seconds: 3),
+                                      );
+                                      return;
+                                    }
 
-                            if (!widget.employees.any(
-                                  (e) => e.status == 'Present',
-                            )) {
-                              AreaMovementNotifier.showPopup(
-                                context: context,
-                                fromArea: '',
-                                toArea: '',
-                                tableName: 'Employee',
-                                customMessage:
-                                'Please mark at least one employee as Present.',
-                                duration: const Duration(seconds: 3),
-                              );
-                              return;
-                            }
+                                    setState(() => _isSaving = true);
 
-                            setState(() => _isSaving = true);
+                                    final startTime =
+                                        selectedShift.split(' - ').first.trim();
 
-                            final startTime =
-                            selectedShift.split(' - ').first.trim();
-                            final presentIds =
-                            widget.employees
-                                .where((e) => e.status == 'Present')
-                                .map((e) => int.tryParse(e.id))
-                                .whereType<int>()
-                                .toList();
+                                    final presentIds =
+                                        widget.employees
+                                            .where((e) => e.status == 'Present')
+                                            .map((e) => int.tryParse(e.id))
+                                            .whereType<int>()
+                                            .toList();
 
-                            final absentIds =
-                            widget.employees
-                                .where((e) => e.status == 'Absent')
-                                .map((e) => int.tryParse(e.id))
-                                .whereType<int>()
-                                .toList();
+                                    final absentIds =
+                                        widget.employees
+                                            .where((e) => e.status == 'Absent')
+                                            .map((e) => int.tryParse(e.id))
+                                            .whereType<int>()
+                                            .toList();
 
-                            final now = DateTime.now();
-                            final shiftDate = DateFormat(
-                              'yyyy-MM-dd',
-                            ).format(now);
+                                    final now = DateTime.now();
+                                    final shiftDate = DateFormat(
+                                      'yyyy-MM-dd',
+                                    ).format(now);
 
-                            AppLogger.info(
-                              ' Selected Shift Start Time: $startTime',
-                            );
-                            AppLogger.info(
-                              ' Present Employee IDs: $presentIds',
-                            );
-                            AppLogger.info(' Absent Employee IDs: $absentIds');
+                                    try {
+                                      if (widget.isUpdateMode) {
+                                        final currentShift =
+                                            await EmployeeRepository()
+                                                .getCurrentShift(widget.token);
 
-                            try {
-                              if (widget.isUpdateMode) {
-                                final currentShift = await EmployeeRepository()
-                                    .getCurrentShift(widget.token);
-                                final shiftId = currentShift?['shift_id'];
+                                        final shiftId =
+                                            currentShift?['shift_id'];
 
-                                if (shiftId == null) {
-                                  throw Exception(
-                                    'Current shift not found or missing ID.',
-                                  );
-                                }
+                                        if (shiftId == null) {
+                                          throw Exception(
+                                            'Current shift not found or missing ID.',
+                                          );
+                                        }
 
-                                await EmployeeRepository().updateShift(
-                                  token: widget.token,
-                                  shiftId: shiftId,
-                                  presentEmployeeIds: presentIds,
-                                  absentEmployeeIds: absentIds,
-                                );
+                                        await EmployeeRepository().updateShift(
+                                          token: widget.token,
+                                          shiftId: shiftId,
+                                          presentEmployeeIds: presentIds,
+                                          absentEmployeeIds: absentIds,
+                                        );
 
-                                AppLogger.info(
-                                  '✅ Shift updated with ID $shiftId',
-                                );
+                                        AreaMovementNotifier.showPopup(
+                                          context: context,
+                                          fromArea: '',
+                                          toArea: '',
+                                          tableName: 'Shift',
+                                          customMessage:
+                                              'Shift updated successfully!',
+                                          duration: const Duration(seconds: 3),
+                                        );
+                                      } else {
+                                        final shiftId =
+                                            await EmployeeRepository()
+                                                .createShift(
+                                                  token: widget.token,
+                                                  shiftDate: shiftDate,
+                                                  startTime: startTime,
+                                                  employeeIds: presentIds,
+                                                  absentEmployeeIds: absentIds,
+                                                );
 
-                                AreaMovementNotifier.showPopup(
-                                  context: context,
-                                  fromArea: '',
-                                  toArea: '',
-                                  tableName: 'Shift',
-                                  customMessage: 'Shift updated successfully!',
-                                  duration: const Duration(seconds: 3),
-                                );
-                              } else {
-                                final shiftId = await EmployeeRepository()
-                                    .createShift(
-                                  token: widget.token,
-                                  shiftDate: shiftDate,
-                                  startTime: startTime,
-                                  employeeIds: presentIds,
-                                  absentEmployeeIds: absentIds,
-                                );
+                                        await ShiftDao().saveShift(
+                                          shiftId,
+                                          shiftDate,
+                                        );
 
-                                await ShiftDao().saveShift(shiftId, shiftDate);
-                                AppLogger.info(
-                                  '✅ Shift created for date $shiftDate at $startTime with ${presentIds.length} employees.',
-                                );
+                                        AreaMovementNotifier.showPopup(
+                                          context: context,
+                                          fromArea: '',
+                                          toArea: '',
+                                          tableName: 'Shift',
+                                          customMessage:
+                                              'Shift created successfully!',
+                                          duration: const Duration(seconds: 3),
+                                        );
+                                      }
 
-                                AreaMovementNotifier.showPopup(
-                                  context: context,
-                                  fromArea: '',
-                                  toArea: '',
-                                  tableName: 'Shift',
-                                  customMessage: 'Shift created successfully!',
-                                  duration: const Duration(seconds: 3),
-                                );
-                              }
+                                      await Future.delayed(
+                                        const Duration(milliseconds: 500),
+                                      );
 
-                              await Future.delayed(
-                                const Duration(milliseconds: 500),
-                              );
-                              if (context.mounted) Navigator.of(context).pop();
-                              widget.onComplete?.call(startTime);
-                            } catch (e) {
-                              AppLogger.error(
-                                'Shift creation/update failed: $e',
-                              );
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop();
+                                      }
 
-                              String errorMessage;
+                                      widget.onComplete?.call(startTime);
+                                    } catch (e) {
+                                      AppLogger.error(
+                                        'Shift creation/update failed: $e',
+                                      );
 
-                              if (e.toString().contains(
-                                'Empty response body',
-                              )) {
-                                errorMessage =
-                                'An open shift already exists. Please close the current shift first.';
-                              } else if (e.toString().contains('shift_id')) {
-                                errorMessage =
-                                'Shift response missing shift ID. Please check with admin.';
-                              } else {
-                                errorMessage =
-                                'Shift operation failed. Please try again.';
-                              }
+                                      String errorMessage;
 
-                              AreaMovementNotifier.showPopup(
-                                context: context,
-                                fromArea: '',
-                                toArea: '',
-                                tableName: 'Shift',
-                                customMessage: errorMessage,
-                                duration: const Duration(seconds: 3),
-                              );
+                                      if (e.toString().contains(
+                                        'Empty response body',
+                                      )) {
+                                        errorMessage =
+                                            'An open shift already exists. Please close the current shift first.';
+                                      } else if (e.toString().contains(
+                                        'shift_id',
+                                      )) {
+                                        errorMessage =
+                                            'Shift response missing shift ID. Please check with admin.';
+                                      } else {
+                                        errorMessage =
+                                            'Shift operation failed. Please try again.';
+                                      }
 
-                              // Navigate to login only for generic shift operation failure
-                              if (errorMessage ==
-                                  'Shift operation failed. Please try again.') {
-                                await Future.delayed(
-                                  const Duration(seconds: 3),
-                                );
+                                      AreaMovementNotifier.showPopup(
+                                        context: context,
+                                        fromArea: '',
+                                        toArea: '',
+                                        tableName: 'Shift',
+                                        customMessage: errorMessage,
+                                        duration: const Duration(seconds: 3),
+                                      );
+                                    }
 
-                                if (context.mounted) {
-                                  final prefs =
-                                  await SharedPreferences.getInstance();
-                                  await prefs.clear();
-
-                                  Navigator.pushAndRemoveUntil(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => const EmployeeLoginPage(
-                                        storeBaseUrl: '',
-                                        storeName: '',
-                                        storeId: '',
+                                    if (mounted) {
+                                      setState(() => _isSaving = false);
+                                    }
+                                  },
+                          child:
+                              _isSaving
+                                  ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
                                       ),
                                     ),
-                                        (route) => false,
-                                  );
-                                }
-                              }
-                            }
-                            setState(() => _isSaving = false);
-                          },
-                          child:
-                          _isSaving
-                              ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                              : Text(
-                            widget.isUpdateMode
-                                ? "Update"
-                                : "Save & Continue",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                            ),
-                          ),
+                                  )
+                                  : Text(
+                                    widget.isUpdateMode
+                                        ? "Update"
+                                        : "Save & Continue",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                         ),
                       ),
                     ],
@@ -427,24 +405,24 @@ class _AttendancePopupState extends State<AttendancePopup> {
                                 MaterialPageRoute(
                                   builder:
                                       (_) => const EmployeeLoginPage(
-                                    storeBaseUrl: '',
-                                    storeName: '',
-                                    storeId: '',
-                                  ),
+                                        storeBaseUrl: '',
+                                        storeName: '',
+                                        storeId: '',
+                                      ),
                                 ),
-                                    (route) => false,
+                                (route) => false,
                               );
                             }
                           },
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
-                              vertical: 8,
+                              vertical: 12,
                             ),
                             backgroundColor:
-                            isDark
-                                ? Colors.grey.shade800
-                                : const Color(0xFFFFF3EE),
+                                isDark
+                                    ? Colors.grey.shade800
+                                    : const Color(0xFFFFF3EE),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -455,9 +433,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
                               Icon(
                                 Icons.logout,
                                 color:
-                                isDark
-                                    ? Colors.orange.shade300
-                                    : const Color(0xFFFF3D00),
+                                    isDark
+                                        ? Colors.orange.shade300
+                                        : const Color(0xFFFF3D00),
                                 size: 22,
                               ),
                               SizedBox(width: 8),
@@ -465,9 +443,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
                                 'Logout',
                                 style: TextStyle(
                                   color:
-                                  isDark
-                                      ? Colors.orange.shade300
-                                      : const Color(0xFFFF3D00),
+                                      isDark
+                                          ? Colors.orange.shade300
+                                          : const Color(0xFFFF3D00),
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -681,10 +659,10 @@ class _AttendancePopupState extends State<AttendancePopup> {
   }
 
   Widget _buildHeaderCell(
-      String text, {
-        required int flex,
-        bool showRightBorder = true,
-      }) {
+    String text, {
+    required int flex,
+    bool showRightBorder = true,
+  }) {
     final theme = Theme.of(context);
 
     return Expanded(
@@ -694,9 +672,9 @@ class _AttendancePopupState extends State<AttendancePopup> {
         decoration: BoxDecoration(
           border: Border(
             right:
-            showRightBorder
-                ? BorderSide(color: theme.dividerColor)
-                : BorderSide.none,
+                showRightBorder
+                    ? BorderSide(color: theme.dividerColor)
+                    : BorderSide.none,
           ),
         ),
         child: Center(
@@ -732,13 +710,13 @@ class _AttendancePopupState extends State<AttendancePopup> {
         decoration: BoxDecoration(
           border: Border(
             left:
-            isFirstColumn
-                ? BorderSide.none
-                : BorderSide(color: theme.dividerColor),
+                isFirstColumn
+                    ? BorderSide.none
+                    : BorderSide(color: theme.dividerColor),
             right:
-            isFirstColumn
-                ? BorderSide.none
-                : BorderSide(color: theme.dividerColor),
+                isFirstColumn
+                    ? BorderSide.none
+                    : BorderSide(color: theme.dividerColor),
           ),
         ),
         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -780,14 +758,14 @@ class _AttendancePopupState extends State<AttendancePopup> {
               emp.status == 'Present',
               '✓ PRESENT',
               Colors.green,
-                  () => _updateStatus(emp, 'Present'),
+              () => _updateStatus(emp, 'Present'),
             ),
             const SizedBox(width: 10),
             _buildStatusButton(
               emp.status == 'Absent',
               '✕ ABSENT',
               Colors.red,
-                  () => _updateStatus(emp, 'Absent'),
+              () => _updateStatus(emp, 'Absent'),
             ),
           ],
         ),
@@ -796,11 +774,11 @@ class _AttendancePopupState extends State<AttendancePopup> {
   }
 
   Widget _buildStatusButton(
-      bool selected,
-      String label,
-      Color color,
-      VoidCallback onTap,
-      ) {
+    bool selected,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -812,21 +790,21 @@ class _AttendancePopupState extends State<AttendancePopup> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color:
-            selected
-                ? color
-                : (isDark ? Color(0xFF252837) : const Color(0xFFE0E0E0)),
+                selected
+                    ? color
+                    : (isDark ? Color(0xFF252837) : const Color(0xFFE0E0E0)),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: selected ? color : theme.dividerColor),
             boxShadow:
-            selected
-                ? [
-              BoxShadow(
-                color: color.withOpacity(0.3),
-                offset: const Offset(0, 2),
-                blurRadius: 4,
-              ),
-            ]
-                : [],
+                selected
+                    ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.3),
+                        offset: const Offset(0, 2),
+                        blurRadius: 4,
+                      ),
+                    ]
+                    : [],
           ),
           alignment: Alignment.center,
           child: Text(

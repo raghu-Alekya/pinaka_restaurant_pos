@@ -78,7 +78,7 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
     _dateController.text = DateFormat('dd/MM/yyyy').format(selectedDate!);
     _loadPermissions();
     _loadZones();
-
+    final today = DateTime.now(); selectedDate = today; _dateController.text = _formatDateForDisplay(today);
     if (_ReservationListCache.hasData) {
       _reservations = _ReservationListCache.get();
       _isLoading = false;
@@ -132,6 +132,13 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
       });
     }
   }
+
+  String _formatDateForDisplay(DateTime date) {
+    return "${date.day.toString().padLeft(2, '0')}/"
+        "${date.month.toString().padLeft(2, '0')}/"
+        "${date.year}";
+  }
+
 
   Future<void> _fetchReservations({bool isRefresh = false}) async {
     if (isRefresh && _isRefreshing) return;
@@ -870,6 +877,14 @@ class _ReservationListScreenState extends State<ReservationListScreen> {
                                 enabledBorder: InputBorder.none,
                                 focusedBorder: InputBorder.none,
                                 isDense: true,
+                                hintText: 'Select Date',
+                                hintStyle: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? Colors.white54
+                                      : const Color(0xFF6B7280),
+                                ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 10,

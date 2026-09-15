@@ -130,6 +130,8 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final bool canProceed =
+        selectedParent != null && selectedChildren.isNotEmpty;
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       backgroundColor: theme.cardColor,
@@ -310,114 +312,124 @@ class _MergeEditTablePopupState extends State<MergeEditTablePopup> {
             const SizedBox(height: 16),
 
             /// Merge Button
-            SizedBox(
-              width: 220,
-              height: 40,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF5A5A),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () async {
-                  if (selectedParent == null || selectedChildren.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content:
-                        Text("Please select parent and child tables."),
-                        duration: Duration(seconds: 1),
-                        backgroundColor: Colors.red,),
 
-                    );
-                    return;
-                  }
-                  try {
-                    final parentTable = parentTables
-                        .firstWhere((t) => t['table_name'] == selectedParent);
-                    final parentTableId = parentTable['table_id'] as int;
-                    final childTableIds = childTables
-                        .where((t) => selectedChildren.contains(t['table_name']))
-                        .map<int>((t) => t['table_id'] as int)
-                        .toList();
 
-                    final result = widget.tableData['is_merged'] == true
-                        ? await _repository.updateMergeTablesWithStatus(
-                      token: widget.token,
-                      restaurantId: widget.tableData['restaurant_id'],
-                      zoneName: widget.tableData['areaName'],
-                      parentTableId: parentTableId,
-                      childTableIds: childTableIds,
-                    )
-                        : await _repository.createMergeTables(
-                      token: widget.token,
-                      restaurantId: widget.tableData['restaurant_id'],
-                      zoneName: widget.tableData['areaName'],
-                      parentTableId: parentTableId,
-                      childTableIds: childTableIds,
-                    );
+      SizedBox(
+      width: 220,
+      height: 40,
+      child: ElevatedButton(
+      style: ElevatedButton.styleFrom(
+      backgroundColor: canProceed
+      ? const Color(0xFFFF5A5A)
+          : Colors.grey.shade400,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+    onPressed: canProceed
+    ? () async {
+    try {
+    final parentTable = parentTables.firstWhere(
+    (t) => t['table_name'] == selectedParent,
+    );
 
-                    if (result['success'] == true) {
-                      unawaited(
-                        KdsMqttPublisher.notifyTablesMerged(
-                          restaurantId: widget.tableData['restaurant_id'].toString(),
-                          parentTableId: parentTableId,
-                          parentTableName: parentTable['table_name']?.toString() ?? '',
-                          childTableIds: childTableIds,
-                          childTableNames: selectedChildren.toList(),
-                          zoneId: widget.tableData['zone_id'] as int?,
-                          zoneName: widget.tableData['areaName']?.toString(),
-                          isUpdate: widget.tableData['is_merged'] == true,
-                        ),
-                      );
-                      Navigator.of(context).pop();
-                      AreaMovementNotifier.showPopup(
-                        context: context,
-                        fromArea: widget.tableData['areaName'],
-                        toArea: widget.tableData['areaName'],
-                        tableName: parentTable['table_name'],
-                        customMessage:
-                        'Table "${parentTable['table_name']}" merged with ${childTableIds.length} table(s) successfully.',
-                      );
+    final parentTableId = parentTable['table_id'] as int;
 
-                      widget.onMergeEdit(
-                        widget.index,
-                        widget.tableData,
-                        parentTableId,
-                        childTableIds,
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                          Text(result['message'] ?? "Merge failed."),
-                          duration: Duration(seconds: 1),
-                          backgroundColor: Colors.red,),
-                      );
-                    }
-                  } catch (e) {
-                    debugPrint("Error creating merge tables: $e");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Error: $e"),
-                        duration: Duration(seconds: 1),
-                        backgroundColor: Colors.red,),
-                    );
-                  }
-                },
-                child: Text(
-                  widget.tableData['is_merged'] == true
-                      ? "Update & Proceed"
-                      : "Merge & Proceed",
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-            ),
-          ],
+    final childTableIds = childTables
+        .where(
+    (t) => selectedChildren.contains(t['table_name']),
+    )
+        .map<int>((t) => t['table_id'] as int)
+        .toList();
+
+    final result = widget.tableData['is_merged'] == true
+    ? await _repository.updateMergeTablesWithStatus(
+    token: widget.token,
+    restaurantId: widget.tableData['restaurant_id'],
+    zoneName: widget.tableData['areaName'],
+    parentTableId: parentTableId,
+    childTableIds: childTableIds,
+    )
+        : await _repository.createMergeTables(
+    token: widget.token,
+    restaurantId: widget.tableData['restaurant_id'],
+    zoneName: widget.tableData['areaName'],
+    parentTableId: parentTableId,
+    childTableIds: childTableIds,
+    );
+
+    if (result['success'] == true) {
+    unawaited(
+    KdsMqttPublisher.notifyTablesMerged(
+    restaurantId:
+    widget.tableData['restaurant_id'].toString(),
+    parentTableId: parentTableId,
+    parentTableName:
+    parentTable['table_name']?.toString() ?? '',
+    childTableIds: childTableIds,
+    childTableNames: selectedChildren.toList(),
+    zoneId: widget.tableData['zone_id'] as int?,
+    zoneName: widget.tableData['areaName']?.toString(),
+    isUpdate: widget.tableData['is_merged'] == true,
+    ),
+    );
+
+    Navigator.of(context).pop();
+
+    AreaMovementNotifier.showPopup(
+    context: context,
+    fromArea: widget.tableData['areaName'],
+    toArea: widget.tableData['areaName'],
+    tableName: parentTable['table_name'],
+    customMessage:
+    'Table "${parentTable['table_name']}" merged with ${childTableIds.length} table(s) successfully.',
+    );
+
+    widget.onMergeEdit(
+    widget.index,
+    widget.tableData,
+    parentTableId,
+    childTableIds,
+    );
+    } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+    content: Text(result['message'] ?? "Merge failed."),
+    duration: const Duration(seconds: 1),
+    backgroundColor: Colors.red,
+    ),
+    );
+    }
+    } catch (e) {
+    debugPrint("Error creating merge tables: $e");
+
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+    content: Text("Error: $e"),
+    duration: const Duration(seconds: 1),
+    backgroundColor: Colors.red,
+    ),
+    );
+    }
+    }
+        : null,
+    child: Text(
+    widget.tableData['is_merged'] == true
+    ? "Update & Proceed"
+        : "Merge & Proceed",
+    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+    color: Colors.white,
+    fontWeight: FontWeight.w600,
+    fontSize: 15,
+    ),
+    ),
+    ),
+    ),
+
+
+    ],
         ),
       ),
     );

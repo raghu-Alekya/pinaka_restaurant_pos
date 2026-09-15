@@ -159,7 +159,7 @@ class _GuestDetailsPopupState extends State<GuestDetailsPopup> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     ElevatedButton(
-                      onPressed: _isCreatingOrder
+                      onPressed: _isCreatingOrder || selectedGuests.isEmpty
                           ? null
                           : () async {
                         if (selectedGuests.isEmpty) {

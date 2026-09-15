@@ -302,7 +302,10 @@ class _AreaPopupState extends State<AreaPopup> {
                           width: 130,
                           height: 40,
                           child: ElevatedButton(
-                            onPressed: widget.isLoading ? null : widget.createArea,
+                            onPressed: widget.isLoading ||
+                                widget.areaNameController.text.trim().isEmpty
+                                ? null
+                                : widget.createArea,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1F9724),
                               shape: RoundedRectangleBorder(

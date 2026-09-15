@@ -28,7 +28,9 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
   final TextEditingController noteController = TextEditingController();
   String _currency = "₹";
   bool isLoading = true;
-
+  bool get canSave {
+    return selectedModifiers.isNotEmpty || selectedAddOns.isNotEmpty;
+  }
   double get total {
     double addonsTotal = selectedAddOns.entries.fold(0.0, (sum, e) {
       final qty = e.value['quantity'] ?? 0;
@@ -609,15 +611,20 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                           ),
                           const Spacer(),
                           ElevatedButton(
-                            onPressed: () {
+                            onPressed: canSave
+                                ? () {
                               Navigator.pop(context, {
                                 'modifiers': selectedModifiers.toList(),
                                 'addOns': selectedAddOns,
                                 'note': noteController.text,
                               });
-                            },
+                            }
+                                : null,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF4D20),
+                              backgroundColor: canSave
+                                  ? const Color(0xFFFF4D20)
+                                  : Colors.grey,
+                              disabledBackgroundColor: Colors.grey.shade400,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -625,9 +632,9 @@ class _ModifierAddOnPopupState extends State<ModifierAddOnPopup> {
                             child: const Text(
                               'Save & Continue',
                               style: TextStyle(
-                                color: Colors.white, // text color
-                                fontSize: 16, // optional font size
-                                fontWeight: FontWeight.bold, // optional
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
