@@ -58,5 +58,9 @@
          scanning silently fails / can also cause issues. -->
     <key>NSLocalNetworkUsageDescription</key>
     <string>This app searches your local network to find and connect to WiFi printers.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>This app uses location to discover nearby Bluetooth and network printers.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>This app uses location to discover nearby Bluetooth and network printers.</string>
 </dict>
 </plist>

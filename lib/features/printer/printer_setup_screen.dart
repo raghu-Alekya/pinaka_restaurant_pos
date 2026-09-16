@@ -17,6 +17,7 @@ import 'package:thermal_printer/esc_pos_utils_platform/src/enums.dart';
 import 'package:thermal_printer/esc_pos_utils_platform/src/generator.dart';
 import 'package:thermal_printer/esc_pos_utils_platform/src/pos_column.dart';
 import 'package:thermal_printer/esc_pos_utils_platform/src/pos_styles.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:thermal_printer/thermal_printer.dart';
 
 class PrinterSetup extends StatefulWidget {
@@ -77,70 +78,112 @@ class _PrinterSetupState extends State<PrinterSetup> {
   List<BluetoothPrinter> _networkDevices = [];
   bool _isScanningNetwork = false;
 
+  Future<void> _requestPermissions() async {
+    try {
+      if (Platform.isAndroid) {
+        await [
+          Permission.bluetoothScan,
+          Permission.bluetoothConnect,
+          Permission.bluetoothAdvertise,
+          Permission.location,
+        ].request();
+      } else if (Platform.isIOS) {
+        await [
+          Permission.bluetooth,
+          Permission.locationWhenInUse,
+        ].request();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error requesting printer permissions: $e");
+      }
+    }
+  }
+
+  Future<void> _initAndScan() async {
+    await _requestPermissions();
+    if (mounted) {
+      _scan();
+    }
+  }
+
   @override
   void initState() {
     if (Platform.isWindows) defaultPrinterType = PrinterType.usb;
     if (Platform.isIOS) _isBle = true; // iOS only supports BLE, not classic Bluetooth
     super.initState();
     _portController.text = _port;
-    _scan();
+    _initAndScan();
 
-    _subscriptionBtStatus = PrinterManager.instance.stateBluetooth.listen((
-        status,
-        ) {
-      log(' ----------------- status bt $status ------------------ ');
-      _currentStatus = status;
-      if (status == BTStatus.connected) {
-        setState(() {
-          _isConnected = true;
-        });
-      }
-      if (status == BTStatus.none) {
-        setState(() {
-          _isConnected = false;
-        });
-      }
-      if (status == BTStatus.connected && pendingTask != null) {
-        if (Platform.isAndroid) {
-          Future.delayed(const Duration(milliseconds: 1000), () {
+    _subscriptionBtStatus = PrinterManager.instance.stateBluetooth.listen(
+      (status) {
+        log(' ----------------- status bt $status ------------------ ');
+        _currentStatus = status;
+        if (status == BTStatus.connected) {
+          setState(() {
+            _isConnected = true;
+          });
+        }
+        if (status == BTStatus.none) {
+          setState(() {
+            _isConnected = false;
+          });
+        }
+        if (status == BTStatus.connected && pendingTask != null) {
+          if (Platform.isAndroid) {
+            Future.delayed(const Duration(milliseconds: 1000), () {
+              PrinterManager.instance.send(
+                type: PrinterType.bluetooth,
+                bytes: pendingTask!,
+              );
+              pendingTask = null;
+            });
+          } else if (Platform.isIOS) {
             PrinterManager.instance.send(
               type: PrinterType.bluetooth,
               bytes: pendingTask!,
             );
             pendingTask = null;
-          });
-        } else if (Platform.isIOS) {
-          PrinterManager.instance.send(
-            type: PrinterType.bluetooth,
-            bytes: pendingTask!,
-          );
-          pendingTask = null;
+          }
         }
-      }
-    });
+      },
+      onError: (e) {
+        log('BT status stream error: $e');
+      },
+    );
 
-    _subscriptionUsbStatus = PrinterManager.instance.stateUSB.listen((status) {
-      if (kDebugMode) {
-        print(' ----------------- status usb $status ------------------ ');
-      }
-      _currentUsbStatus = status;
-      if (Platform.isAndroid) {
-        if (status == USBStatus.connected && pendingTask != null) {
-          Future.delayed(const Duration(milliseconds: 1000), () {
-            PrinterManager.instance.send(
-              type: PrinterType.usb,
-              bytes: pendingTask!,
-            );
-            pendingTask = null;
-          });
+    _subscriptionUsbStatus = PrinterManager.instance.stateUSB.listen(
+      (status) {
+        if (kDebugMode) {
+          print(' ----------------- status usb $status ------------------ ');
         }
-      }
-    });
+        _currentUsbStatus = status;
+        if (Platform.isAndroid) {
+          if (status == USBStatus.connected && pendingTask != null) {
+            Future.delayed(const Duration(milliseconds: 1000), () {
+              PrinterManager.instance.send(
+                type: PrinterType.usb,
+                bytes: pendingTask!,
+              );
+              pendingTask = null;
+            });
+          }
+        }
+      },
+      onError: (e) {
+        log('USB status stream error: $e');
+      },
+    );
 
-    _subscriptionTCPStatus = PrinterManager.instance.stateTCP.listen((status) {
-      log(' ----------------- status tcp $status ------------------ ');
-      _currentTCPStatus = status;
-    });
+    _subscriptionTCPStatus = PrinterManager.instance.stateTCP.listen(
+      (status) {
+        log(' ----------------- status tcp $status ------------------ ');
+        _currentTCPStatus = status;
+      },
+      onError: (e) {
+        log('TCP status stream error: $e');
+      },
+    );
 
     _loadNetworkPrinters();
   }
@@ -168,35 +211,42 @@ class _PrinterSetupState extends State<PrinterSetup> {
     try {
       final subscription = printerManager
           .discovery(type: PrinterType.network, isBle: false)
-          .listen((device) {
-        if (kDebugMode) {
-          print(
-            "Network device found: ${device.name}, address: ${device.address}",
+          .listen(
+            (device) {
+              if (kDebugMode) {
+                print(
+                  "Network device found: ${device.name}, address: ${device.address}",
+                );
+              }
+
+              if (device.name == null || device.name!.isEmpty) return;
+              if (device.address == null || device.address!.isEmpty) return;
+
+              final exists = _networkDevices.any(
+                    (d) => d.address == device.address,
+              );
+
+              if (!exists) {
+                setState(() {
+                  _networkDevices.add(
+                    BluetoothPrinter(
+                      deviceName: device.name ?? "Unknown Printer",
+                      address: device.address ?? "",
+                      vendorId: device.vendorId,
+                      productId: device.productId,
+                      isBle: false,
+                      typePrinter: PrinterType.network,
+                    ),
+                  );
+                });
+              }
+            },
+            onError: (error) {
+              if (kDebugMode) {
+                print("Network device discovery stream error: $error");
+              }
+            },
           );
-        }
-
-        if (device.name == null || device.name!.isEmpty) return;
-        if (device.address == null || device.address!.isEmpty) return;
-
-        final exists = _networkDevices.any(
-              (d) => d.address == device.address,
-        );
-
-        if (!exists) {
-          setState(() {
-            _networkDevices.add(
-              BluetoothPrinter(
-                deviceName: device.name ?? "Unknown Printer",
-                address: device.address ?? "",
-                vendorId: device.vendorId,
-                productId: device.productId,
-                isBle: false,
-                typePrinter: PrinterType.network,
-              ),
-            );
-          });
-        }
-      });
 
       await Future.delayed(const Duration(seconds: 5));
       await subscription.cancel();
@@ -801,61 +851,81 @@ class _PrinterSetupState extends State<PrinterSetup> {
 
   void _scan() {
     devices.clear();
+    _subscription?.cancel();
 
-     _subscription = printerManager
-        .discovery(type: defaultPrinterType, isBle: _isBle)
-        .listen(
+    try {
+      _subscription = printerManager
+          .discovery(type: defaultPrinterType, isBle: _isBle)
+          .listen(
             (device) {
+              if (kDebugMode) {
+                print("device found: ${device.name}, address: ${device.address}");
+              }
+
+              if (device.name == null || device.name!.isEmpty) return;
+
+              if (defaultPrinterType == PrinterType.usb) {
+                if (!Platform.isWindows) {
+                  if (device.vendorId == null || device.productId == null) {
+                    return;
+                  }
+                }
+
+                final name = device.name!.toLowerCase();
+                if (!name.contains('printer') &&
+                    !name.contains('xp') &&
+                    !name.contains('thermal') &&
+                    !name.contains('rocket') &&
+                    !name.contains('pos') &&
+                    !name.contains('80mm') &&
+                    !name.contains('58mm')) {
+                  return;
+                }
+              }
+
+              if (defaultPrinterType != PrinterType.usb) {
+                if (device.address == null || device.address!.isEmpty) {
+                  return;
+                }
+              }
+
+              try {
+                final exists = devices.any((d) =>
+                  defaultPrinterType == PrinterType.usb
+                      ? d.vendorId == device.vendorId && d.productId == device.productId
+                      : d.address == device.address
+                );
+                if (!exists) {
+                  devices.add(
+                    BluetoothPrinter(
+                      deviceName: device.name ?? "Unknown Printer",
+                      address: device.address ?? "",
+                      vendorId: device.vendorId,
+                      productId: device.productId,
+                      isBle: _isBle,
+                      typePrinter: defaultPrinterType,
+                    ),
+                  );
+
+                  if (mounted) setState(() {});
+                }
+              } catch (e) {
+                if (kDebugMode) {
+                  print("Printer discovery error (ignored): $e");
+                }
+              }
+            },
+            onError: (error) {
+              if (kDebugMode) {
+                print("Printer discovery stream error (handled safely): $error");
+              }
+            },
+          );
+    } catch (e) {
       if (kDebugMode) {
-        print("device found: ${device.name}, address: ${device.address}");
+        print("Failed to start printer discovery stream: $e");
       }
-
-      if (device.name == null || device.name!.isEmpty) return;
-
-      if (defaultPrinterType == PrinterType.usb) {
-        if (!Platform.isWindows) {
-          if (device.vendorId == null || device.productId == null) {
-            return;
-          }
-        }
-
-        final name = device.name!.toLowerCase();
-        if (!name.contains('printer') &&
-            !name.contains('xp') &&
-            !name.contains('thermal') &&
-            !name.contains('rocket') &&
-            !name.contains('pos') &&
-            !name.contains('80mm') &&
-            !name.contains('58mm')) {
-          return;
-        }
-      }
-
-      if (defaultPrinterType != PrinterType.usb) {
-        if (device.address == null || device.address!.isEmpty) {
-          return;
-        }
-      }
-
-      try {
-        devices.add(
-          BluetoothPrinter(
-            deviceName: device.name ?? "Unknown Printer",
-            address: device.address ?? "",
-            vendorId: device.vendorId,
-            productId: device.productId,
-            isBle: _isBle,
-            typePrinter: defaultPrinterType,
-          ),
-        );
-
-        if (mounted) setState(() {});
-      } catch (e) {
-        if (kDebugMode) {
-          print("Printer discovery error (ignored): $e");
-        }
-      }
-    });
+    }
   }
 
   Future<void> setPort(String value) async {
