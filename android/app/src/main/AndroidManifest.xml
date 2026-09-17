@@ -30,7 +30,7 @@
     <application
         android:label="Restaurant captain"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/captain_app_logo"
         android:usesCleartextTraffic="true"
         android:allowBackup="false"
         android:fullBackupContent="false">
